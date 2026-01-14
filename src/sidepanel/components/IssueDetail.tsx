@@ -1,5 +1,4 @@
-import type { Issue } from '@/shared/types';
-import { SEVERITY_CONFIG } from '@/shared/constants';
+import type { Issue, Severity } from '@/shared/types';
 import CodeBlock from './CodeBlock';
 
 interface IssueDetailProps {
@@ -14,6 +13,20 @@ interface IssueDetailProps {
   hasNext: boolean;
 }
 
+const SEVERITY_COLORS: Record<Severity, { bg: string; text: string }> = {
+  critical: { bg: '#FF3B30', text: '#FFFFFF' },
+  serious: { bg: '#FF9500', text: '#FFFFFF' },
+  moderate: { bg: '#FFCC00', text: '#1C1C1E' },
+  minor: { bg: '#00C7BE', text: '#1C1C1E' },
+};
+
+const SEVERITY_LABELS: Record<Severity, string> = {
+  critical: 'Critical',
+  serious: 'Serious',
+  moderate: 'Moderate',
+  minor: 'Minor',
+};
+
 export default function IssueDetail({
   issue,
   currentIndex,
@@ -25,62 +38,64 @@ export default function IssueDetail({
   hasPrev,
   hasNext,
 }: IssueDetailProps) {
-  const config = SEVERITY_CONFIG[issue.severity];
+  const severityColor = SEVERITY_COLORS[issue.severity];
 
   return (
-    <div className="flex flex-col h-full animate-slide-in">
+    <div className="flex flex-col h-full animate-slide-in bg-[#1C1C1E]">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#3A3A3C]">
         <button
           onClick={onBack}
-          className="p-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+          className="flex items-center gap-2 text-[#007AFF] hover:text-[#66B2FF] transition-colors"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
+          <span className="text-sm">Back to Issues</span>
         </button>
-        <span className="text-sm text-gray-600 dark:text-gray-400">Back to Issues</span>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Severity badge */}
-        <div
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium"
-          style={{ backgroundColor: config.bgColor, color: config.color }}
-        >
-          <span className="text-base">{config.icon}</span>
-          {config.label}
+      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+        {/* Title and Severity */}
+        <div className="flex items-start justify-between gap-3">
+          <h2 className="text-lg font-semibold text-white flex-1">{issue.message}</h2>
+          <span
+            className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full"
+            style={{ backgroundColor: severityColor.bg, color: severityColor.text }}
+          >
+            {SEVERITY_LABELS[issue.severity]}
+          </span>
         </div>
-
-        {/* Title */}
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{issue.message}</h2>
 
         {/* WCAG Info */}
-        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-100 dark:border-blue-800">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-blue-900 dark:text-blue-300">
-              WCAG {issue.wcag.id} (Level {issue.wcag.level})
-            </span>
+        <div className="p-4 bg-[#0A2540] rounded-lg border border-[#1E4976]">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-[#007AFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="text-sm font-medium text-[#66B2FF]">WCAG Info</span>
           </div>
-          <p className="text-sm text-blue-800 dark:text-blue-400">{issue.wcag.name}</p>
-          <p className="text-xs text-blue-600 dark:text-blue-500 mt-1">{issue.description}</p>
+          <p className="text-white font-medium mb-1">
+            WCAG {issue.wcag.id} (Level {issue.wcag.level})
+          </p>
+          <p className="text-sm text-[#8E8E93]">{issue.description}</p>
         </div>
 
-        {/* Element */}
+        {/* Current Element */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Element</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-medium text-white">Current Element</h3>
             <button
               onClick={onHighlight}
-              className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300 flex items-center gap-1"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2C2C2E] hover:bg-[#3A3A3C] rounded-lg text-[#007AFF] text-sm transition-colors"
             >
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -97,72 +112,49 @@ export default function IssueDetail({
               Highlight
             </button>
           </div>
-          <CodeBlock code={issue.element.html} label="Current HTML" />
+          <CodeBlock code={issue.element.html} />
         </div>
 
-        {/* Fix Suggestion */}
+        {/* How to Fix */}
         <div>
-          <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">How to Fix</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{issue.fix.description}</p>
-          {issue.fix.code && (
-            <CodeBlock code={issue.fix.code} label="Suggested Fix" copyLabel="Copy Fix" />
-          )}
+          <h3 className="text-sm font-medium text-white mb-2">How to Fix</h3>
+          <p className="text-sm text-[#8E8E93] mb-3">{issue.fix.description}</p>
         </div>
 
-        {/* Learn More */}
-        <a
-          href={issue.fix.learnMoreUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-sm text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
-        >
-          Learn More
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-            />
-          </svg>
-        </a>
+        {/* Suggested Fix */}
+        {issue.fix.code && (
+          <div>
+            <h3 className="text-sm font-medium text-white mb-3">Suggested Fix</h3>
+            <CodeBlock code={issue.fix.code} showCopy />
+          </div>
+        )}
       </div>
 
-      {/* Navigation */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+      {/* Navigation Footer */}
+      <div className="flex items-center justify-between px-4 py-3 border-t border-[#3A3A3C] bg-[#2C2C2E]">
         <button
           onClick={onPrev}
           disabled={!hasPrev}
-          className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 text-sm text-[#007AFF] hover:text-[#66B2FF] disabled:text-[#3A3A3C] disabled:cursor-not-allowed transition-colors"
         >
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
-          Prev
+          Previous
         </button>
 
-        <span className="text-sm text-gray-500 dark:text-gray-400">
+        <span className="text-sm text-[#8E8E93]">
           {currentIndex + 1} of {totalCount}
         </span>
 
         <button
           onClick={onNext}
           disabled={!hasNext}
-          className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 text-sm text-[#007AFF] hover:text-[#66B2FF] disabled:text-[#3A3A3C] disabled:cursor-not-allowed transition-colors"
         >
           Next
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 5l7 7-7 7"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </button>
       </div>

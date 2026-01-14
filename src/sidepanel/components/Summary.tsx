@@ -1,5 +1,4 @@
 import type { ScanSummary, Severity } from '@/shared/types';
-import { SEVERITY_CONFIG } from '@/shared/constants';
 
 interface SummaryProps {
   summary: ScanSummary;
@@ -7,47 +6,53 @@ interface SummaryProps {
   activeSeverity: Severity | 'all';
 }
 
+const SEVERITY_COLORS: Record<Severity, string> = {
+  critical: '#FF3B30',
+  serious: '#FF9500',
+  moderate: '#FFCC00',
+  minor: '#00C7BE',
+};
+
+const SEVERITY_LABELS: Record<Severity, string> = {
+  critical: 'Critical',
+  serious: 'Serious',
+  moderate: 'Moderate',
+  minor: 'Minor',
+};
+
 export default function Summary({ summary, onFilterBySeverity, activeSeverity }: SummaryProps) {
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
 
   return (
-    <div className="px-4 py-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 animate-fade-in">
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{summary.total} Issues Found</h2>
-        {activeSeverity !== 'all' && (
-          <button
-            onClick={() => onFilterBySeverity('all')}
-            className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
-          >
-            Clear filter
-          </button>
-        )}
-      </div>
-
-      <div className="grid grid-cols-4 gap-2">
+    <div className="px-4 py-4 bg-[#1C1C1E] border-b border-[#3A3A3C] animate-fade-in">
+      <div className="flex items-center justify-between">
         {severities.map((severity) => {
-          const config = SEVERITY_CONFIG[severity];
           const count = summary.bySeverity[severity] || 0;
           const isActive = activeSeverity === severity;
+          const color = SEVERITY_COLORS[severity];
 
           return (
             <button
               key={severity}
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
-              className={`flex flex-col items-center p-2 rounded-lg transition-all ${
+              className={`flex flex-col items-center px-4 py-2 rounded-lg transition-all ${
                 isActive
-                  ? 'ring-2 ring-offset-1 dark:ring-offset-gray-800'
-                  : 'hover:bg-gray-100 dark:hover:bg-gray-700'
+                  ? 'bg-[#2C2C2E] ring-1 ring-[#3A3A3C]'
+                  : 'hover:bg-[#2C2C2E]'
               }`}
-              style={{
-                backgroundColor: isActive ? config.bgColor : undefined,
-                ['--tw-ring-color' as string]: config.color,
-              }}
             >
-              <span className="text-lg font-bold" style={{ color: config.color }}>
+              <span
+                className="text-2xl font-bold"
+                style={{ color }}
+              >
                 {count}
               </span>
-              <span className="text-xs text-gray-600 dark:text-gray-400">{config.label}</span>
+              <span
+                className="text-xs mt-1"
+                style={{ color: isActive ? color : '#8E8E93' }}
+              >
+                {SEVERITY_LABELS[severity]}
+              </span>
             </button>
           );
         })}

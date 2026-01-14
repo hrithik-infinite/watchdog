@@ -1,5 +1,4 @@
-import type { Issue } from '@/shared/types';
-import { SEVERITY_CONFIG } from '@/shared/constants';
+import type { Issue, Severity } from '@/shared/types';
 
 interface IssueCardProps {
   issue: Issue;
@@ -8,10 +7,24 @@ interface IssueCardProps {
   onHighlight: () => void;
 }
 
-export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: IssueCardProps) {
-  const config = SEVERITY_CONFIG[issue.severity];
+const SEVERITY_COLORS: Record<Severity, { bg: string; text: string }> = {
+  critical: { bg: '#FF3B30', text: '#FFFFFF' },
+  serious: { bg: '#FF9500', text: '#FFFFFF' },
+  moderate: { bg: '#FFCC00', text: '#1C1C1E' },
+  minor: { bg: '#00C7BE', text: '#1C1C1E' },
+};
 
-  const truncateHtml = (html: string, maxLength: number = 60) => {
+const SEVERITY_LABELS: Record<Severity, string> = {
+  critical: 'Critical',
+  serious: 'Serious',
+  moderate: 'Moderate',
+  minor: 'Minor',
+};
+
+export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: IssueCardProps) {
+  const severityColor = SEVERITY_COLORS[issue.severity];
+
+  const truncateHtml = (html: string, maxLength: number = 80) => {
     const stripped = html.replace(/<[^>]*>/g, '').trim();
     if (stripped.length <= maxLength) return html;
     return html.slice(0, maxLength) + '...';
@@ -19,8 +32,8 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
 
   return (
     <div
-      className={`p-3 border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors animate-fade-in ${
-        isSelected ? 'bg-blue-50 dark:bg-blue-900/20 border-l-4 border-l-blue-500' : ''
+      className={`p-4 bg-[#2C2C2E] rounded-lg mb-3 cursor-pointer transition-all animate-fade-in hover:bg-[#3A3A3C] ${
+        isSelected ? 'ring-2 ring-[#007AFF]' : ''
       }`}
       onClick={() => onSelect(issue.id)}
       onMouseEnter={onHighlight}
@@ -28,47 +41,42 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onSelect(issue.id)}
     >
-      <div className="flex items-start gap-3">
-        {/* Severity indicator */}
-        <div
-          className="flex-shrink-0 w-2 h-2 mt-2 rounded-full"
-          style={{ backgroundColor: config.color }}
-          title={config.label}
-        />
+      {/* Severity Badge */}
+      <span
+        className="inline-block text-xs font-medium px-2.5 py-1 rounded-full mb-3"
+        style={{ backgroundColor: severityColor.bg, color: severityColor.text }}
+      >
+        {SEVERITY_LABELS[issue.severity]}
+      </span>
 
-        <div className="flex-1 min-w-0">
-          {/* Severity badge */}
-          <div className="flex items-center gap-2 mb-1">
-            <span
-              className="text-xs font-medium px-2 py-0.5 rounded"
-              style={{ backgroundColor: config.bgColor, color: config.color }}
-            >
-              {config.label}
-            </span>
-            <span className="text-xs text-gray-400 dark:text-gray-500">
-              WCAG {issue.wcag.id} ({issue.wcag.level})
-            </span>
-          </div>
+      {/* Issue Title */}
+      <h3 className="text-white font-medium mb-2 leading-snug">{issue.message}</h3>
 
-          {/* Issue message */}
-          <p className="text-sm font-medium text-gray-900 dark:text-white mb-1">{issue.message}</p>
+      {/* WCAG Reference */}
+      <p className="text-xs text-[#8E8E93] mb-3">
+        WCAG {issue.wcag.id} ({issue.wcag.level})
+      </p>
 
-          {/* Element preview */}
-          <code className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded font-mono block truncate">
-            {truncateHtml(issue.element.html)}
-          </code>
-        </div>
+      {/* Description */}
+      <p className="text-sm text-[#8E8E93] mb-3 line-clamp-2">{issue.description}</p>
 
-        {/* Arrow */}
-        <svg
-          className="flex-shrink-0 w-5 h-5 text-gray-400 dark:text-gray-500"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
+      {/* Code Preview */}
+      <div className="bg-[#1C1C1E] rounded-lg p-3 mb-3 overflow-hidden">
+        <code className="text-xs text-[#66B2FF] font-mono block truncate">
+          {truncateHtml(issue.element.html)}
+        </code>
       </div>
+
+      {/* Learn More Link */}
+      <a
+        href={issue.helpUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="text-sm text-[#007AFF] hover:text-[#66B2FF] transition-colors"
+      >
+        Learn more →
+      </a>
     </div>
   );
 }

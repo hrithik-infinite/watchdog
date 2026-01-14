@@ -20,6 +20,10 @@ chrome.runtime.onMessage.addListener(
 
 async function handleMessage(message: Message): Promise<unknown> {
   switch (message.type) {
+    case 'PING': {
+      return { success: true, loaded: true };
+    }
+
     case 'SCAN_PAGE': {
       try {
         const result = await scanPage();

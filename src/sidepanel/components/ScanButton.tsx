@@ -8,7 +8,7 @@ export default function ScanButton({ isScanning, onScan }: ScanButtonProps) {
     <button
       onClick={onScan}
       disabled={isScanning}
-      className="w-full py-3 px-4 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 dark:disabled:bg-blue-800 text-white font-medium rounded-lg transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+      className="w-full py-4 px-6 bg-[#007AFF] hover:bg-[#0056B3] disabled:bg-[#007AFF]/50 text-white text-lg font-semibold rounded-full transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-[#007AFF]/25"
     >
       {isScanning ? (
         <>
@@ -19,7 +19,7 @@ export default function ScanButton({ isScanning, onScan }: ScanButtonProps) {
               cy="12"
               r="10"
               stroke="currentColor"
-              strokeWidth="4"
+              strokeWidth="3"
             />
             <path
               className="opacity-75"
@@ -30,17 +30,7 @@ export default function ScanButton({ isScanning, onScan }: ScanButtonProps) {
           Scanning...
         </>
       ) : (
-        <>
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          Scan Page
-        </>
+        'Start Scan'
       )}
     </button>
   );

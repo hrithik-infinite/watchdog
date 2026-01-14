@@ -3,13 +3,15 @@ import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/share
 import { generateFix } from '@/shared/fixes';
 
 // Lazy load axe-core only when needed
-let axeModule: typeof import('axe-core') | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let axeInstance: any = null;
 
 async function getAxe() {
-  if (!axeModule) {
-    axeModule = await import('axe-core');
+  if (!axeInstance) {
+    const module = await import('axe-core');
+    axeInstance = module.default;
   }
-  return axeModule;
+  return axeInstance;
 }
 
 let idCounter = 0;

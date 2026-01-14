@@ -1,10 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  --color-critical: #DC2626;
-  --color-serious: #EA580C;
-  --color-moderate: #CA8A04;
-  --color-minor: #2563EB;
+  /* Primary Blues */
+  --color-primary: #007AFF;
+  --color-primary-dark: #0056B3;
+  --color-primary-light: #66B2FF;
+
+  /* Secondary Greys */
+  --color-bg-dark: #1C1C1E;
+  --color-bg-card: #2C2C2E;
+  --color-bg-elevated: #3A3A3C;
+  --color-text-secondary: #8E8E93;
+  --color-text-tertiary: #E5E5EA;
+
+  /* Semantic Colors */
+  --color-critical: #FF3B30;
+  --color-serious: #FF9500;
+  --color-moderate: #FFCC00;
+  --color-minor: #00C7BE;
+
+  /* WCAG Info */
+  --color-wcag-bg: #0A2540;
+  --color-wcag-border: #1E4976;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: local('Inter'), local('Inter-Regular');
+  font-weight: 400;
+  font-style: normal;
 }
 
 * {
@@ -14,59 +38,66 @@
 }
 
 html {
-  color-scheme: light dark;
+  color-scheme: dark;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell,
-    'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  @apply bg-white text-gray-900;
+  background-color: var(--color-bg-dark);
+  color: #FFFFFF;
+  font-size: 14px;
+  line-height: 1.5;
 }
 
-/* Dark mode */
-@media (prefers-color-scheme: dark) {
-  body {
-    @apply bg-gray-900 text-gray-100;
-  }
+/* Typography */
+.text-h1 {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
-.dark body {
-  @apply bg-gray-900 text-gray-100;
+.text-h2 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
 }
 
-/* Custom scrollbar - Light mode */
+.text-h3 {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.text-body {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.4;
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--color-bg-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--color-bg-elevated);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-
-/* Dark mode scrollbar */
-@media (prefers-color-scheme: dark) {
-  ::-webkit-scrollbar-track {
-    background: #1f2937;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    background: #4b5563;
-  }
-
-  ::-webkit-scrollbar-thumb:hover {
-    background: #6b7280;
-  }
+  background: var(--color-text-secondary);
 }
 
 /* Animations */
@@ -115,11 +146,32 @@ body {
 
 /* Focus styles for accessibility */
 *:focus-visible {
-  outline: 2px solid #3B82F6;
+  outline: 2px solid var(--color-primary);
   outline-offset: 2px;
 }
 
 /* Smooth transitions */
 button, a, input, select {
   transition: all 0.15s ease;
+}
+
+/* Severity badge colors */
+.badge-critical {
+  background-color: var(--color-critical);
+  color: white;
+}
+
+.badge-serious {
+  background-color: var(--color-serious);
+  color: white;
+}
+
+.badge-moderate {
+  background-color: var(--color-moderate);
+  color: #1C1C1E;
+}
+
+.badge-minor {
+  background-color: var(--color-minor);
+  color: #1C1C1E;
 }

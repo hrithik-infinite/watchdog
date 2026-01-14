@@ -16,10 +16,10 @@ export default function IssueList({
 }: IssueListProps) {
   if (issues.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 text-center">
+      <div className="flex-1 flex items-center justify-center p-8 text-center bg-[#1C1C1E]">
         <div>
           <svg
-            className="w-12 h-12 mx-auto text-gray-300 mb-3"
+            className="w-16 h-16 mx-auto text-[#3A3A3C] mb-4"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -28,18 +28,18 @@ export default function IssueList({
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={1.5}
-              d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
-          <p className="text-gray-500">No issues match your filters</p>
-          <p className="text-sm text-gray-400 mt-1">Try adjusting your filter criteria</p>
+          <p className="text-white font-medium mb-1">No issues match your filters</p>
+          <p className="text-sm text-[#8E8E93]">Try adjusting your filter criteria</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto">
+    <div className="flex-1 overflow-y-auto p-4 bg-[#1C1C1E]">
       {issues.map((issue) => (
         <IssueCard
           key={issue.id}

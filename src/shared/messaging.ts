@@ -2,6 +2,7 @@ import type { ScanResult, Settings } from './types';
 
 // Message types for communication between extension parts
 export type MessageType =
+  | 'PING'
   | 'SCAN_PAGE'
   | 'SCAN_RESULT'
   | 'HIGHLIGHT_ELEMENT'
@@ -11,6 +12,10 @@ export type MessageType =
   | 'OPEN_SIDEPANEL';
 
 // Message payloads
+export interface PingMessage {
+  type: 'PING';
+}
+
 export interface ScanPageMessage {
   type: 'SCAN_PAGE';
 }
@@ -47,6 +52,7 @@ export interface OpenSidePanelMessage {
 
 // Union type for all messages
 export type Message =
+  | PingMessage
   | ScanPageMessage
   | ScanResultMessage
   | HighlightElementMessage
