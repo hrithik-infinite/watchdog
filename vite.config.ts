@@ -2,7 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { crx } from '@crxjs/vite-plugin';
 import { resolve } from 'path';
-import manifest from './src/manifest.json';
+import manifest from './manifest.config';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
@@ -12,11 +12,11 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
-  server: {
-    port: 5173,
-    strictPort: true,
-    hmr: {
-      port: 5173,
+   server: {
+    cors: {
+      origin: [
+        /chrome-extension:\/\//,
+      ],
     },
   },
   build: {
