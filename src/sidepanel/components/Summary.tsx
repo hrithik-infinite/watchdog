@@ -24,7 +24,7 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
 
   return (
-    <div className="px-4 py-4 bg-[#1C1C1E] border-b border-[#3A3A3C] animate-fade-in">
+    <div className="px-5 py-4 bg-[#1C1C1E] border-b border-[#3A3A3C] animate-fade-in">
       <div className="flex items-center justify-between">
         {severities.map((severity) => {
           const count = summary.bySeverity[severity] || 0;

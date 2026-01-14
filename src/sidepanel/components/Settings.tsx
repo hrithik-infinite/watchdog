@@ -12,7 +12,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   return (
     <div className="h-full flex flex-col bg-[#1C1C1E]">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#3A3A3C]">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-[#3A3A3C]">
         <button
           onClick={onClose}
           className="flex items-center gap-2 text-[#007AFF] hover:text-[#66B2FF] transition-colors"
@@ -24,12 +24,12 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         </button>
       </div>
 
-      <div className="px-4 py-4 border-b border-[#3A3A3C]">
+      <div className="px-5 py-4 border-b border-[#3A3A3C]">
         <h2 className="text-xl font-semibold text-white">Settings</h2>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {/* WCAG Level */}
         <div>
           <label className="block text-sm font-medium text-white mb-2">
@@ -109,7 +109,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-[#3A3A3C]">
+      <div className="px-5 py-4 border-t border-[#3A3A3C]">
         <p className="text-xs text-[#8E8E93] text-center">
           WatchDog v1.0.0
         </p>

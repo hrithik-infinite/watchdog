@@ -48,7 +48,7 @@ export default function FilterBar({
   ];
 
   return (
-    <div className="px-4 py-3 bg-[#1C1C1E] border-b border-[#3A3A3C] space-y-3">
+    <div className="px-5 py-3 bg-[#1C1C1E] border-b border-[#3A3A3C] space-y-3">
       {/* Search */}
       <div className="relative">
         <svg

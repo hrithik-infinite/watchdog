@@ -89,21 +89,31 @@ export default function App() {
     );
   }
 
-  // List view
+  // Initial state - scan button at bottom
+  if (!error && !scanResult) {
+    return (
+      <div className="h-screen flex flex-col bg-[#1C1C1E]">
+        <Header onSettingsClick={() => setShowSettings(true)} />
+        <EmptyState type="initial" />
+        <div className="px-5 pb-6">
+          <ScanButton isScanning={isScanning} onScan={scan} />
+        </div>
+      </div>
+    );
+  }
+
+  // List view with results
   return (
     <div className="h-screen flex flex-col bg-[#1C1C1E]">
       <Header onSettingsClick={() => setShowSettings(true)} />
 
-      {/* Scan button */}
-      <div className="px-4 py-4">
+      {/* Scan button at top for results view */}
+      <div className="px-5 py-4">
         <ScanButton isScanning={isScanning} onScan={scan} hasResults={!!scanResult} />
       </div>
 
       {/* Error state */}
       {error && <EmptyState type="error" error={error} onScan={scan} />}
-
-      {/* Initial state */}
-      {!error && !scanResult && <EmptyState type="initial" />}
 
       {/* Results */}
       {!error && scanResult && (

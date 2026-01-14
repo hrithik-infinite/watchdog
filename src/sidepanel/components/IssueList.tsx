@@ -39,7 +39,7 @@ export default function IssueList({
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 bg-[#1C1C1E]">
+    <div className="flex-1 overflow-y-auto p-5 bg-[#1C1C1E]">
       {issues.map((issue) => (
         <IssueCard
           key={issue.id}

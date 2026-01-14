@@ -43,7 +43,7 @@ export default function IssueDetail({
   return (
     <div className="flex flex-col h-full animate-slide-in bg-[#1C1C1E]">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-[#3A3A3C]">
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-[#3A3A3C]">
         <button
           onClick={onBack}
           className="flex items-center gap-2 text-[#007AFF] hover:text-[#66B2FF] transition-colors"
@@ -56,7 +56,7 @@ export default function IssueDetail({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-5">
+      <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {/* Title and Severity */}
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-lg font-semibold text-white flex-1">{issue.message}</h2>
@@ -131,7 +131,7 @@ export default function IssueDetail({
       </div>
 
       {/* Navigation Footer */}
-      <div className="flex items-center justify-between px-4 py-3 border-t border-[#3A3A3C] bg-[#2C2C2E]">
+      <div className="flex items-center justify-between px-5 py-4 border-t border-[#3A3A3C] bg-[#2C2C2E]">
         <button
           onClick={onPrev}
           disabled={!hasPrev}

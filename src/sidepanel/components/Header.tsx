@@ -4,7 +4,7 @@ interface HeaderProps {
 
 export default function Header({ onSettingsClick }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between px-4 py-3 bg-[#1C1C1E]">
+    <header className="flex items-center justify-between px-5 py-4 bg-[#1C1C1E]">
       <div className="flex items-center gap-2">
         {/* WatchDog Eye Logo */}
         <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
