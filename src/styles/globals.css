@@ -22,47 +22,40 @@
   /* WCAG Info */
   --color-wcag-bg: #0a2540;
   --color-wcag-border: #1e4976;
-}
 
-/* shadcn/ui CSS Variables */
-:root {
-  --background: 240 6% 12%;
-  --foreground: 0 0% 100%;
-  --card: 240 4% 18%;
-  --card-foreground: 0 0% 100%;
-  --popover: 240 4% 18%;
-  --popover-foreground: 0 0% 100%;
-  --primary: 211 100% 50%;
-  --primary-foreground: 0 0% 100%;
-  --secondary: 240 3% 23%;
-  --secondary-foreground: 0 0% 100%;
-  --muted: 240 4% 18%;
-  --muted-foreground: 240 2% 57%;
-  --accent: 240 3% 23%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 4 90% 58%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 240 3% 23%;
-  --input: 240 3% 23%;
-  --ring: 211 100% 50%;
-  --radius: 0.5rem;
+  /* shadcn/ui colors for Tailwind v4 */
+  --color-background: hsl(240 6% 12%);
+  --color-foreground: hsl(0 0% 100%);
+  --color-card: hsl(240 4% 18%);
+  --color-card-foreground: hsl(0 0% 100%);
+  --color-popover: hsl(240 4% 18%);
+  --color-popover-foreground: hsl(0 0% 100%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(240 3% 23%);
+  --color-secondary-foreground: hsl(0 0% 100%);
+  --color-muted: hsl(240 4% 18%);
+  --color-muted-foreground: hsl(240 2% 57%);
+  --color-accent: hsl(240 3% 23%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(4 90% 58%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-border: hsl(240 3% 23%);
+  --color-input: hsl(240 3% 23%);
+  --color-ring: hsl(211 100% 50%);
 
   /* Chart colors */
-  --chart-1: 211 100% 50%;
-  --chart-2: 173 80% 40%;
-  --chart-3: 45 100% 50%;
-  --chart-4: 32 100% 50%;
-  --chart-5: 4 90% 58%;
-}
+  --color-chart-1: hsl(211 100% 50%);
+  --color-chart-2: hsl(173 80% 40%);
+  --color-chart-3: hsl(45 100% 50%);
+  --color-chart-4: hsl(32 100% 50%);
+  --color-chart-5: hsl(4 90% 58%);
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
+  /* Radius */
+  --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 @font-face {
@@ -76,6 +69,7 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  border-color: var(--color-border);
 }
 
 html {
@@ -92,8 +86,8 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: var(--color-bg-dark);
-  color: #ffffff;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
   font-size: 14px;
   line-height: 1.5;
 }
