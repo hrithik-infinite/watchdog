@@ -24,8 +24,8 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
 
   return (
-    <div className="px-4 py-4 bg-[#1C1C1E] border-b border-[#3A3A3C] animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="px-4 py-6 bg-[#1C1C1E] border-b border-[#2C2C2E] animate-fade-in">
+      <div className="grid grid-cols-4 gap-2">
         {severities.map((severity) => {
           const count = summary.bySeverity[severity] || 0;
           const isActive = activeSeverity === severity;
@@ -35,20 +35,20 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
             <button
               key={severity}
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
-              className={`flex flex-col items-center px-4 py-2 rounded-lg transition-all ${
+              className={`flex flex-col items-center justify-center py-3 rounded-xl transition-all duration-200 ${
                 isActive
-                  ? 'bg-[#2C2C2E] ring-1 ring-[#3A3A3C]'
-                  : 'hover:bg-[#2C2C2E]'
+                  ? 'bg-[#2C2C2E] shadow-inner scale-95'
+                  : 'hover:bg-[#2C2C2E] hover:scale-105'
               }`}
             >
               <span
-                className="text-2xl font-bold"
-                style={{ color }}
+                className="text-3xl font-black mb-1"
+                style={{ color, textShadow: isActive ? `0 0 12px ${color}40` : 'none' }}
               >
                 {count}
               </span>
               <span
-                className="text-xs mt-1"
+                className="text-[10px] font-bold uppercase tracking-wider"
                 style={{ color: isActive ? color : '#8E8E93' }}
               >
                 {SEVERITY_LABELS[severity]}

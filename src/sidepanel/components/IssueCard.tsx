@@ -32,8 +32,8 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
 
   return (
     <div
-      className={`p-4 bg-[#2C2C2E] rounded-lg mb-3 cursor-pointer transition-all animate-fade-in hover:bg-[#3A3A3C] ${
-        isSelected ? 'ring-2 ring-[#007AFF]' : ''
+      className={`p-4 bg-[#2C2C2E] rounded-xl mb-3 cursor-pointer transition-all duration-200 animate-fade-in hover:bg-[#3A3A3C] hover:translate-y-[-2px] hover:shadow-lg ${
+        isSelected ? 'ring-2 ring-[#007AFF] bg-[#3A3A3C]' : 'border border-transparent'
       }`}
       onClick={() => onSelect(issue.id)}
       onMouseEnter={onHighlight}

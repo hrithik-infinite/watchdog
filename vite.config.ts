@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { crx } from '@crxjs/vite-plugin';
-import { resolve } from 'path';
+import { fileURLToPath, URL } from 'node:url';
 import manifest from './src/manifest.json';
 
 export default defineConfig({
@@ -11,21 +11,24 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
   server: {
-    port: 5173,
+    host: '0.0.0.0',
+    port: 5000,
     strictPort: true,
     hmr: {
-      port: 5173,
+      port: 5000,
     },
+    allowedHosts: true,
   },
   build: {
     rollupOptions: {
       input: {
-        sidepanel: resolve(__dirname, 'src/sidepanel/index.html'),
-        popup: resolve(__dirname, 'src/popup/index.html'),
+        sidepanel: fileURLToPath(new URL('./src/sidepanel/index.html', import.meta.url)),
+        popup: fileURLToPath(new URL('./src/popup/index.html', import.meta.url)),
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
       },
     },
   },
