@@ -1,6 +1,10 @@
-import type { Issue, Severity } from '@/shared/types';
+import { ChevronLeft, ChevronRight, Info, Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import CodeBlock from './CodeBlock';
-import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, EyeViewIcon } from './icons';
+import type { Issue, Severity } from '@/shared/types';
+import { cn } from '@/lib/utils';
 
 interface IssueDetailProps {
   issue: Issue;
@@ -14,11 +18,11 @@ interface IssueDetailProps {
   hasNext: boolean;
 }
 
-const SEVERITY_COLORS: Record<Severity, { bg: string; text: string }> = {
-  critical: { bg: '#FF3B30', text: '#FFFFFF' },
-  serious: { bg: '#FF9500', text: '#FFFFFF' },
-  moderate: { bg: '#FFCC00', text: '#1C1C1E' },
-  minor: { bg: '#00C7BE', text: '#1C1C1E' },
+const SEVERITY_STYLES: Record<Severity, string> = {
+  critical: 'bg-critical text-white',
+  serious: 'bg-serious text-white',
+  moderate: 'bg-moderate text-background',
+  minor: 'bg-minor text-background',
 };
 
 const SEVERITY_LABELS: Record<Severity, string> = {
@@ -39,99 +43,82 @@ export default function IssueDetail({
   hasPrev,
   hasNext,
 }: IssueDetailProps) {
-  const severityColor = SEVERITY_COLORS[issue.severity];
-
   return (
-    <div className="flex flex-col h-full animate-slide-in bg-[#1C1C1E]">
+    <div className="flex flex-col h-full animate-slide-in bg-background">
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-[#3A3A3C]">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 text-[#007AFF] hover:text-[#66B2FF] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5" />
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
+        <Button variant="ghost" onClick={onBack} className="gap-2 text-primary">
+          <ChevronLeft className="h-5 w-5" />
           <span className="text-sm">Back to Issues</span>
-        </button>
+        </Button>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {/* Title and Severity */}
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold text-white flex-1">{issue.message}</h2>
-          <span
-            className="flex-shrink-0 text-xs font-medium px-2.5 py-1 rounded-full"
-            style={{ backgroundColor: severityColor.bg, color: severityColor.text }}
-          >
+          <h2 className="text-lg font-semibold text-foreground flex-1">{issue.message}</h2>
+          <Badge className={cn('flex-shrink-0', SEVERITY_STYLES[issue.severity])}>
             {SEVERITY_LABELS[issue.severity]}
-          </span>
+          </Badge>
         </div>
 
         {/* WCAG Info */}
-        <div className="p-4 bg-[#0A2540] rounded-lg border border-[#1E4976]">
-          <div className="flex items-center gap-2 mb-2">
-            <InfoIcon className="w-4 h-4 text-[#007AFF]" />
-            <span className="text-sm font-medium text-[#66B2FF]">WCAG Info</span>
-          </div>
-          <p className="text-white font-medium mb-1">
-            WCAG {issue.wcag.id} (Level {issue.wcag.level})
-          </p>
-          <p className="text-sm text-[#8E8E93]">{issue.description}</p>
-        </div>
+        <Card className="bg-wcag-bg border-wcag-border">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Info className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary-light">WCAG Info</span>
+            </div>
+            <p className="text-foreground font-medium mb-1">
+              WCAG {issue.wcag.id} (Level {issue.wcag.level})
+            </p>
+            <p className="text-sm text-muted-foreground">{issue.description}</p>
+          </CardContent>
+        </Card>
 
         {/* Current Element */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-white">Current Element</h3>
-            <button
-              onClick={onHighlight}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2C2C2E] hover:bg-[#3A3A3C] rounded-lg text-[#007AFF] text-sm transition-colors"
-            >
-              <EyeViewIcon className="w-4 h-4" />
+            <h3 className="text-sm font-medium text-foreground">Current Element</h3>
+            <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
+              <Eye className="h-4 w-4" />
               Highlight
-            </button>
+            </Button>
           </div>
           <CodeBlock code={issue.element.html} />
         </div>
 
         {/* How to Fix */}
         <div>
-          <h3 className="text-sm font-medium text-white mb-2">How to Fix</h3>
-          <p className="text-sm text-[#8E8E93] mb-3">{issue.fix.description}</p>
+          <h3 className="text-sm font-medium text-foreground mb-2">How to Fix</h3>
+          <p className="text-sm text-muted-foreground mb-3">{issue.fix.description}</p>
         </div>
 
         {/* Suggested Fix */}
         {issue.fix.code && (
           <div>
-            <h3 className="text-sm font-medium text-white mb-3">Suggested Fix</h3>
+            <h3 className="text-sm font-medium text-foreground mb-3">Suggested Fix</h3>
             <CodeBlock code={issue.fix.code} showCopy />
           </div>
         )}
       </div>
 
       {/* Navigation Footer */}
-      <div className="flex items-center justify-between px-5 py-4 border-t border-[#3A3A3C] bg-[#2C2C2E]">
-        <button
-          onClick={onPrev}
-          disabled={!hasPrev}
-          className="flex items-center gap-1.5 text-sm text-[#007AFF] hover:text-[#66B2FF] disabled:text-[#3A3A3C] disabled:cursor-not-allowed transition-colors"
-        >
-          <ChevronLeftIcon className="w-4 h-4" />
+      <div className="flex items-center justify-between px-5 py-4 border-t border-border bg-card">
+        <Button variant="ghost" size="sm" onClick={onPrev} disabled={!hasPrev} className="gap-1.5">
+          <ChevronLeft className="h-4 w-4" />
           Previous
-        </button>
+        </Button>
 
-        <span className="text-sm text-[#8E8E93]">
+        <span className="text-sm text-muted-foreground">
           {currentIndex + 1} of {totalCount}
         </span>
 
-        <button
-          onClick={onNext}
-          disabled={!hasNext}
-          className="flex items-center gap-1.5 text-sm text-[#007AFF] hover:text-[#66B2FF] disabled:text-[#3A3A3C] disabled:cursor-not-allowed transition-colors"
-        >
+        <Button variant="ghost" size="sm" onClick={onNext} disabled={!hasNext} className="gap-1.5">
           Next
-          <ChevronRightIcon className="w-4 h-4" />
-        </button>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );

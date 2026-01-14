@@ -1,4 +1,6 @@
+import { Button } from '@/components/ui/button';
 import type { ScanSummary, Severity } from '@/shared/types';
+import { cn } from '@/lib/utils';
 
 interface SummaryProps {
   summary: ScanSummary;
@@ -6,11 +8,11 @@ interface SummaryProps {
   activeSeverity: Severity | 'all';
 }
 
-const SEVERITY_COLORS: Record<Severity, string> = {
-  critical: '#FF3B30',
-  serious: '#FF9500',
-  moderate: '#FFCC00',
-  minor: '#00C7BE',
+const SEVERITY_CLASSES: Record<Severity, string> = {
+  critical: 'text-critical',
+  serious: 'text-serious',
+  moderate: 'text-moderate',
+  minor: 'text-minor',
 };
 
 const SEVERITY_LABELS: Record<Severity, string> = {
@@ -24,28 +26,32 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
 
   return (
-    <div className="px-5 py-4 bg-[#1C1C1E] border-b border-[#3A3A3C] animate-fade-in">
+    <div className="px-5 py-4 bg-background border-b border-border animate-fade-in">
       <div className="flex items-center justify-between">
         {severities.map((severity) => {
           const count = summary.bySeverity[severity] || 0;
           const isActive = activeSeverity === severity;
-          const color = SEVERITY_COLORS[severity];
 
           return (
-            <button
+            <Button
               key={severity}
+              variant="ghost"
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
-              className={`flex flex-col items-center px-4 py-2 rounded-lg transition-all ${
-                isActive ? 'bg-[#2C2C2E] ring-1 ring-[#3A3A3C]' : 'hover:bg-[#2C2C2E]'
-              }`}
+              className={cn(
+                'flex flex-col items-center h-auto px-4 py-2',
+                isActive && 'bg-card ring-1 ring-border'
+              )}
             >
-              <span className="text-2xl font-bold" style={{ color }}>
-                {count}
-              </span>
-              <span className="text-xs mt-1" style={{ color: isActive ? color : '#8E8E93' }}>
+              <span className={cn('text-2xl font-bold', SEVERITY_CLASSES[severity])}>{count}</span>
+              <span
+                className={cn(
+                  'text-xs mt-1',
+                  isActive ? SEVERITY_CLASSES[severity] : 'text-muted-foreground'
+                )}
+              >
                 {SEVERITY_LABELS[severity]}
               </span>
-            </button>
+            </Button>
           );
         })}
       </div>

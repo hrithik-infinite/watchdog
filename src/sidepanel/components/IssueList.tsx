@@ -1,6 +1,6 @@
-import type { Issue, Severity } from '@/shared/types';
+import { Search } from 'lucide-react';
 import IssueCard from './IssueCard';
-import { SearchIcon } from './icons';
+import type { Issue, Severity } from '@/shared/types';
 
 interface IssueListProps {
   issues: Issue[];
@@ -17,18 +17,18 @@ export default function IssueList({
 }: IssueListProps) {
   if (issues.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 text-center bg-[#1C1C1E]">
+      <div className="flex-1 flex items-center justify-center p-8 text-center bg-background">
         <div>
-          <SearchIcon className="w-16 h-16 mx-auto text-[#3A3A3C] mb-4" strokeWidth={1.5} />
-          <p className="text-white font-medium mb-1">No issues match your filters</p>
-          <p className="text-sm text-[#8E8E93]">Try adjusting your filter criteria</p>
+          <Search className="w-16 h-16 mx-auto text-muted mb-4" strokeWidth={1.5} />
+          <p className="text-foreground font-medium mb-1">No issues match your filters</p>
+          <p className="text-sm text-muted-foreground">Try adjusting your filter criteria</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-5 bg-[#1C1C1E]">
+    <div className="flex-1 overflow-y-auto p-5 bg-background">
       {issues.map((issue) => (
         <IssueCard
           key={issue.id}

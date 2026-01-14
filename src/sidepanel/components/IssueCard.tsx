@@ -1,4 +1,8 @@
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { Issue, Severity } from '@/shared/types';
+import { cn } from '@/lib/utils';
 
 interface IssueCardProps {
   issue: Issue;
@@ -7,11 +11,11 @@ interface IssueCardProps {
   onHighlight: () => void;
 }
 
-const SEVERITY_COLORS: Record<Severity, { bg: string; text: string }> = {
-  critical: { bg: '#FF3B30', text: '#FFFFFF' },
-  serious: { bg: '#FF9500', text: '#FFFFFF' },
-  moderate: { bg: '#FFCC00', text: '#1C1C1E' },
-  minor: { bg: '#00C7BE', text: '#1C1C1E' },
+const SEVERITY_STYLES: Record<Severity, string> = {
+  critical: 'bg-critical text-white hover:bg-critical/90',
+  serious: 'bg-serious text-white hover:bg-serious/90',
+  moderate: 'bg-moderate text-background hover:bg-moderate/90',
+  minor: 'bg-minor text-background hover:bg-minor/90',
 };
 
 const SEVERITY_LABELS: Record<Severity, string> = {
@@ -22,8 +26,6 @@ const SEVERITY_LABELS: Record<Severity, string> = {
 };
 
 export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: IssueCardProps) {
-  const severityColor = SEVERITY_COLORS[issue.severity];
-
   const truncateHtml = (html: string, maxLength: number = 80) => {
     const stripped = html.replace(/<[^>]*>/g, '').trim();
     if (stripped.length <= maxLength) return html;
@@ -31,52 +33,53 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
   };
 
   return (
-    <div
-      className={`p-4 bg-[#2C2C2E] rounded-lg mb-3 cursor-pointer transition-all animate-fade-in hover:bg-[#3A3A3C] ${
-        isSelected ? 'ring-2 ring-[#007AFF]' : ''
-      }`}
+    <Card
+      className={cn(
+        'mb-3 cursor-pointer transition-all animate-fade-in hover:bg-accent',
+        isSelected && 'ring-2 ring-primary'
+      )}
       onClick={() => onSelect(issue.id)}
       onMouseEnter={onHighlight}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onSelect(issue.id)}
     >
-      {/* Severity Badge */}
-      <span
-        className="inline-block text-xs font-medium px-2.5 py-1 rounded-full mb-3"
-        style={{ backgroundColor: severityColor.bg, color: severityColor.text }}
-      >
-        {SEVERITY_LABELS[issue.severity]}
-      </span>
+      <CardContent className="p-4">
+        {/* Severity Badge */}
+        <Badge className={cn('mb-3', SEVERITY_STYLES[issue.severity])}>
+          {SEVERITY_LABELS[issue.severity]}
+        </Badge>
 
-      {/* Issue Title */}
-      <h3 className="text-white font-medium mb-2 leading-snug">{issue.message}</h3>
+        {/* Issue Title */}
+        <h3 className="text-foreground font-medium mb-2 leading-snug">{issue.message}</h3>
 
-      {/* WCAG Reference */}
-      <p className="text-xs text-[#8E8E93] mb-3">
-        WCAG {issue.wcag.id} ({issue.wcag.level})
-      </p>
+        {/* WCAG Reference */}
+        <p className="text-xs text-muted-foreground mb-3">
+          WCAG {issue.wcag.id} ({issue.wcag.level})
+        </p>
 
-      {/* Description */}
-      <p className="text-sm text-[#8E8E93] mb-3 line-clamp-2">{issue.description}</p>
+        {/* Description */}
+        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{issue.description}</p>
 
-      {/* Code Preview */}
-      <div className="bg-[#1C1C1E] rounded-lg p-3 mb-3 overflow-hidden">
-        <code className="text-xs text-[#66B2FF] font-mono block truncate">
-          {truncateHtml(issue.element.html)}
-        </code>
-      </div>
+        {/* Code Preview */}
+        <div className="bg-background rounded-lg p-3 mb-3 overflow-hidden">
+          <code className="text-xs text-primary-light font-mono block truncate">
+            {truncateHtml(issue.element.html)}
+          </code>
+        </div>
 
-      {/* Learn More Link */}
-      <a
-        href={issue.helpUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={(e) => e.stopPropagation()}
-        className="text-sm text-[#007AFF] hover:text-[#66B2FF] transition-colors"
-      >
-        Learn more →
-      </a>
-    </div>
+        {/* Learn More Link */}
+        <Button
+          variant="link"
+          asChild
+          className="p-0 h-auto text-sm"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <a href={issue.helpUrl} target="_blank" rel="noopener noreferrer">
+            Learn more →
+          </a>
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

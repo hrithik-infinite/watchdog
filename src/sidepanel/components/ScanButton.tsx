@@ -1,4 +1,5 @@
-import { SpinnerIcon, RefreshIcon } from './icons';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ScanButtonProps {
   isScanning: boolean;
@@ -8,22 +9,23 @@ interface ScanButtonProps {
 
 export default function ScanButton({ isScanning, onScan, hasResults = false }: ScanButtonProps) {
   return (
-    <button
+    <Button
       onClick={onScan}
       disabled={isScanning}
-      className="w-full py-4 px-6 bg-[#007AFF] hover:bg-[#0056B3] disabled:bg-[#007AFF]/50 text-white text-lg font-semibold rounded-full transition-all flex items-center justify-center gap-2 active:scale-[0.98] shadow-lg shadow-[#007AFF]/25"
+      size="lg"
+      className="w-full py-6 text-lg font-semibold rounded-full shadow-lg shadow-primary/25"
     >
       {isScanning ? (
         <>
-          <SpinnerIcon className="w-5 h-5 animate-spin" />
+          <Loader2 className="h-5 w-5 animate-spin" />
           Scanning...
         </>
       ) : (
         <>
-          {hasResults && <RefreshIcon className="w-5 h-5" />}
+          {hasResults && <RefreshCw className="h-5 w-5" />}
           {hasResults ? 'Rescan Page' : 'Start Scan'}
         </>
       )}
-    </button>
+    </Button>
   );
 }

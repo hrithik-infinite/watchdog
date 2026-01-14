@@ -1,4 +1,6 @@
-import { WatchDogLogo, SettingsIcon } from './icons';
+import { Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { WatchDogLogo } from './icons';
 
 interface HeaderProps {
   onSettingsClick?: () => void;
@@ -6,20 +8,22 @@ interface HeaderProps {
 
 export default function Header({ onSettingsClick }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between px-6 py-3 bg-[#1C1C1E]">
+    <header className="flex items-center justify-between px-6 py-3 bg-background">
       <div className="flex items-center gap-2">
         <WatchDogLogo />
-        <h1 className="text-lg font-semibold text-white">WatchDog</h1>
+        <h1 className="text-lg font-semibold text-foreground">WatchDog</h1>
       </div>
 
       {onSettingsClick && (
-        <button
+        <Button
+          variant="ghost"
+          size="icon"
           onClick={onSettingsClick}
-          className="p-2 text-[#8E8E93] hover:text-white hover:bg-[#3A3A3C] rounded-lg transition-colors"
           aria-label="Settings"
+          className="text-muted-foreground hover:text-foreground"
         >
-          <SettingsIcon className="w-5 h-5" />
-        </button>
+          <Settings className="h-5 w-5" />
+        </Button>
       )}
     </header>
   );

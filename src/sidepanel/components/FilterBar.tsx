@@ -1,5 +1,13 @@
+import { Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import type { Category, Severity } from '@/shared/types';
-import { SearchIcon, ChevronDownIcon } from './icons';
 
 interface FilterBarProps {
   severityFilter: Severity | 'all';
@@ -49,57 +57,53 @@ export default function FilterBar({
   ];
 
   return (
-    <div className="px-5 py-3 bg-[#1C1C1E] border-b border-[#3A3A3C] space-y-3">
+    <div className="px-5 py-3 bg-background border-b border-border space-y-3">
       {/* Search */}
       <div className="relative">
-        <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8E8E93]" />
-        <input
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
           type="text"
           placeholder="Search issues..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 text-sm bg-[#2C2C2E] border border-[#3A3A3C] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007AFF] focus:border-[#007AFF] text-white placeholder-[#8E8E93]"
+          className="pl-10"
         />
       </div>
 
       {/* Filters */}
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-xs text-[#8E8E93] mb-1">Severity</label>
-          <div className="relative">
-            <select
-              value={severityFilter}
-              onChange={(e) => onSeverityChange(e.target.value as Severity | 'all')}
-              className="w-full px-3 py-2 text-sm bg-[#2C2C2E] border border-[#3A3A3C] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007AFF] focus:border-[#007AFF] text-white appearance-none cursor-pointer"
-            >
-              <option value="all">All Severities</option>
+          <label className="block text-xs text-muted-foreground mb-1">Severity</label>
+          <Select value={severityFilter} onValueChange={onSeverityChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Severities" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Severities</SelectItem>
               {severities.map((severity) => (
-                <option key={severity} value={severity}>
+                <SelectItem key={severity} value={severity}>
                   {SEVERITY_LABELS[severity]}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8E8E93] pointer-events-none" />
-          </div>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex-1">
-          <label className="block text-xs text-[#8E8E93] mb-1">Category</label>
-          <div className="relative">
-            <select
-              value={categoryFilter}
-              onChange={(e) => onCategoryChange(e.target.value as Category | 'all')}
-              className="w-full px-3 py-2 text-sm bg-[#2C2C2E] border border-[#3A3A3C] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#007AFF] focus:border-[#007AFF] text-white appearance-none cursor-pointer"
-            >
-              <option value="all">All Categories</option>
+          <label className="block text-xs text-muted-foreground mb-1">Category</label>
+          <Select value={categoryFilter} onValueChange={onCategoryChange}>
+            <SelectTrigger>
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
               {categories.map((category) => (
-                <option key={category} value={category}>
+                <SelectItem key={category} value={category}>
                   {CATEGORY_LABELS[category]}
-                </option>
+                </SelectItem>
               ))}
-            </select>
-            <ChevronDownIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8E8E93] pointer-events-none" />
-          </div>
+            </SelectContent>
+          </Select>
         </div>
       </div>
     </div>

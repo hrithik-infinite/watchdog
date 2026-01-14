@@ -1,5 +1,9 @@
+import { ChevronLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Card, CardContent } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import type { Settings as SettingsType, WCAGLevel } from '@/shared/types';
-import { ChevronLeftIcon } from './icons';
 
 interface SettingsProps {
   settings: SettingsType;
@@ -11,99 +15,77 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   const wcagLevels: WCAGLevel[] = ['A', 'AA', 'AAA'];
 
   return (
-    <div className="h-full flex flex-col bg-[#1C1C1E]">
+    <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-[#3A3A3C]">
-        <button
-          onClick={onClose}
-          className="flex items-center gap-2 text-[#007AFF] hover:text-[#66B2FF] transition-colors"
-        >
-          <ChevronLeftIcon className="w-5 h-5" />
+      <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
+        <Button variant="ghost" onClick={onClose} className="gap-2 text-primary">
+          <ChevronLeft className="h-5 w-5" />
           <span className="text-sm">Back</span>
-        </button>
+        </Button>
       </div>
 
-      <div className="px-5 py-4 border-b border-[#3A3A3C]">
-        <h2 className="text-xl font-semibold text-white">Settings</h2>
+      <div className="px-5 py-4 border-b border-border">
+        <h2 className="text-xl font-semibold text-foreground">Settings</h2>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {/* WCAG Level */}
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
-            WCAG Conformance Level
-          </label>
-          <p className="text-xs text-[#8E8E93] mb-3">
+          <Label className="text-sm font-medium text-foreground">WCAG Conformance Level</Label>
+          <p className="text-xs text-muted-foreground mb-3">
             Filter issues based on WCAG conformance level requirements.
           </p>
           <div className="flex gap-2">
             {wcagLevels.map((level) => (
-              <button
+              <Button
                 key={level}
+                variant={settings.wcagLevel === level ? 'default' : 'secondary'}
                 onClick={() => onUpdate({ wcagLevel: level })}
-                className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-medium transition-colors ${
-                  settings.wcagLevel === level
-                    ? 'bg-[#007AFF] text-white'
-                    : 'bg-[#2C2C2E] text-[#8E8E93] hover:bg-[#3A3A3C] hover:text-white'
-                }`}
+                className="flex-1"
               >
                 Level {level}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Show Incomplete */}
-        <div className="flex items-center justify-between p-4 bg-[#2C2C2E] rounded-lg">
-          <div>
-            <label className="block text-sm font-medium text-white">Show Incomplete Issues</label>
-            <p className="text-xs text-[#8E8E93] mt-1">Include issues that need manual review.</p>
-          </div>
-          <button
-            onClick={() => onUpdate({ showIncomplete: !settings.showIncomplete })}
-            className={`relative w-12 h-7 rounded-full transition-colors ${
-              settings.showIncomplete ? 'bg-[#007AFF]' : 'bg-[#3A3A3C]'
-            }`}
-            role="switch"
-            aria-checked={settings.showIncomplete}
-          >
-            <span
-              className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                settings.showIncomplete ? 'translate-x-5' : ''
-              }`}
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium text-foreground">Show Incomplete Issues</Label>
+              <p className="text-xs text-muted-foreground">
+                Include issues that need manual review.
+              </p>
+            </div>
+            <Switch
+              checked={settings.showIncomplete}
+              onCheckedChange={(checked) => onUpdate({ showIncomplete: checked })}
             />
-          </button>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Auto Highlight */}
-        <div className="flex items-center justify-between p-4 bg-[#2C2C2E] rounded-lg">
-          <div>
-            <label className="block text-sm font-medium text-white">Auto-highlight on Hover</label>
-            <p className="text-xs text-[#8E8E93] mt-1">
-              Highlight elements when hovering over issues.
-            </p>
-          </div>
-          <button
-            onClick={() => onUpdate({ autoHighlight: !settings.autoHighlight })}
-            className={`relative w-12 h-7 rounded-full transition-colors ${
-              settings.autoHighlight ? 'bg-[#007AFF]' : 'bg-[#3A3A3C]'
-            }`}
-            role="switch"
-            aria-checked={settings.autoHighlight}
-          >
-            <span
-              className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform ${
-                settings.autoHighlight ? 'translate-x-5' : ''
-              }`}
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="space-y-1">
+              <Label className="text-sm font-medium text-foreground">Auto-highlight on Hover</Label>
+              <p className="text-xs text-muted-foreground">
+                Highlight elements when hovering over issues.
+              </p>
+            </div>
+            <Switch
+              checked={settings.autoHighlight}
+              onCheckedChange={(checked) => onUpdate({ autoHighlight: checked })}
             />
-          </button>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-[#3A3A3C]">
-        <p className="text-xs text-[#8E8E93] text-center">WatchDog v1.0.0</p>
+      <div className="px-5 py-4 border-t border-border">
+        <p className="text-xs text-muted-foreground text-center">WatchDog v1.0.0</p>
       </div>
     </div>
   );

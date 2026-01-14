@@ -1,4 +1,6 @@
-import { EyeIcon, CheckCircleIcon, ErrorCircleIcon, RefreshIcon } from './icons';
+import { RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { EyeIcon, CheckCircleIcon, ErrorCircleIcon } from './icons';
 
 interface EmptyStateProps {
   type: 'initial' | 'no-issues' | 'error';
@@ -9,19 +11,16 @@ interface EmptyStateProps {
 export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
   if (type === 'error') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-[#1C1C1E]">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-background">
         <ErrorCircleIcon />
-        <h2 className="text-h1 text-white mt-6 mb-2">Scan Failed</h2>
-        <p className="text-body text-[#8E8E93] max-w-xs mb-6">
+        <h2 className="text-h1 text-foreground mt-6 mb-2">Scan Failed</h2>
+        <p className="text-body text-muted-foreground max-w-xs mb-6">
           {error || 'An error occurred while scanning the page'}
         </p>
         {onScan && (
-          <button
-            onClick={onScan}
-            className="px-6 py-3 bg-[#007AFF] hover:bg-[#0056B3] text-white font-medium rounded-full transition-colors"
-          >
+          <Button onClick={onScan} className="rounded-full">
             Try Again
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -29,20 +28,17 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
 
   if (type === 'no-issues') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-[#1C1C1E]">
+      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-background">
         <CheckCircleIcon />
-        <h2 className="text-h1 text-white mt-6 mb-2">No Issues Found!</h2>
-        <p className="text-body text-[#8E8E93] max-w-xs mb-6">
+        <h2 className="text-h1 text-foreground mt-6 mb-2">No Issues Found!</h2>
+        <p className="text-body text-muted-foreground max-w-xs mb-6">
           This page passed all accessibility checks. Great job!
         </p>
         {onScan && (
-          <button
-            onClick={onScan}
-            className="px-6 py-3 bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#007AFF] font-medium rounded-full transition-colors flex items-center gap-2"
-          >
-            <RefreshIcon className="w-4 h-4" />
+          <Button variant="secondary" onClick={onScan} className="rounded-full gap-2">
+            <RefreshCw className="h-4 w-4" />
             Scan Again
-          </button>
+          </Button>
         )}
       </div>
     );
@@ -52,8 +48,8 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center text-center animate-fade-in">
       <EyeIcon />
-      <h2 className="text-h1 text-white mt-6 mb-2">Ready to Scan</h2>
-      <p className="text-body text-[#8E8E93] max-w-xs">
+      <h2 className="text-h1 text-foreground mt-6 mb-2">Ready to Scan</h2>
+      <p className="text-body text-muted-foreground max-w-xs">
         Scan your page to find and fix accessibility issues
       </p>
     </div>
