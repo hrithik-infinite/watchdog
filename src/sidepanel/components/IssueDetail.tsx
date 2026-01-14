@@ -69,27 +69,22 @@ export default function IssueDetail({
         </div>
 
         {/* WCAG Info */}
-        <div className="p-4 bg-[#0A2540] rounded-xl border border-[#1E4976] shadow-md">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="p-1.5 bg-[#007AFF20] rounded-lg">
-              <svg className="w-4 h-4 text-[#007AFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-            </div>
-            <span className="text-xs font-bold uppercase tracking-widest text-[#66B2FF]">WCAG Compliance</span>
+        <div className="p-4 bg-[#0A2540] rounded-lg border border-[#1E4976]">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-[#007AFF]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="text-sm font-medium text-[#66B2FF]">WCAG Info</span>
           </div>
-          <p className="text-white text-lg font-bold mb-2">
-            Success Criterion {issue.wcag.id}
+          <p className="text-white font-medium mb-1">
+            WCAG {issue.wcag.id} (Level {issue.wcag.level})
           </p>
-          <div className="inline-block px-2 py-0.5 rounded bg-[#1E4976] text-[10px] font-bold text-white mb-3">
-            LEVEL {issue.wcag.level}
-          </div>
-          <p className="text-sm text-[#B0B0B8] leading-relaxed">{issue.description}</p>
+          <p className="text-sm text-[#8E8E93]">{issue.description}</p>
         </div>
 
         {/* Current Element */}
