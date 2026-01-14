@@ -73,7 +73,7 @@ export default function FilterBar({
       {/* Filters */}
       <div className="flex gap-3">
         <div className="flex-1">
-          <label className="block text-xs text-muted-foreground mb-1">Severity</label>
+          <label className="block text-caption text-muted-foreground mb-1">Severity</label>
           <Select value={severityFilter} onValueChange={onSeverityChange}>
             <SelectTrigger>
               <SelectValue placeholder="All Severities" />
@@ -90,7 +90,7 @@ export default function FilterBar({
         </div>
 
         <div className="flex-1">
-          <label className="block text-xs text-muted-foreground mb-1">Category</label>
+          <label className="block text-caption text-muted-foreground mb-1">Category</label>
           <Select value={categoryFilter} onValueChange={onCategoryChange}>
             <SelectTrigger>
               <SelectValue placeholder="All Categories" />

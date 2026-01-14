@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import CodeBlock from './CodeBlock';
 import type { Issue, Severity } from '@/shared/types';
-import { cn } from '@/lib/utils';
 
 interface IssueDetailProps {
   issue: Issue;
@@ -18,11 +17,11 @@ interface IssueDetailProps {
   hasNext: boolean;
 }
 
-const SEVERITY_STYLES: Record<Severity, string> = {
-  critical: 'bg-critical text-white',
-  serious: 'bg-serious text-white',
-  moderate: 'bg-moderate text-background',
-  minor: 'bg-minor text-background',
+const SEVERITY_VARIANTS: Record<Severity, 'critical' | 'serious' | 'moderate' | 'minor'> = {
+  critical: 'critical',
+  serious: 'serious',
+  moderate: 'moderate',
+  minor: 'minor',
 };
 
 const SEVERITY_LABELS: Record<Severity, string> = {
@@ -57,8 +56,8 @@ export default function IssueDetail({
       <div className="flex-1 overflow-y-auto p-5 space-y-5">
         {/* Title and Severity */}
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-lg font-semibold text-foreground flex-1">{issue.message}</h2>
-          <Badge className={cn('flex-shrink-0', SEVERITY_STYLES[issue.severity])}>
+          <h2 className="text-h2 text-foreground flex-1">{issue.message}</h2>
+          <Badge variant={SEVERITY_VARIANTS[issue.severity]} className="flex-shrink-0">
             {SEVERITY_LABELS[issue.severity]}
           </Badge>
         </div>
@@ -80,7 +79,7 @@ export default function IssueDetail({
         {/* Current Element */}
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-foreground">Current Element</h3>
+            <h3 className="text-h3 text-foreground">Current Element</h3>
             <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
               <Eye className="h-4 w-4" />
               Highlight
@@ -91,14 +90,14 @@ export default function IssueDetail({
 
         {/* How to Fix */}
         <div>
-          <h3 className="text-sm font-medium text-foreground mb-2">How to Fix</h3>
-          <p className="text-sm text-muted-foreground mb-3">{issue.fix.description}</p>
+          <h3 className="text-h3 text-foreground mb-2">How to Fix</h3>
+          <p className="text-body text-muted-foreground mb-3">{issue.fix.description}</p>
         </div>
 
         {/* Suggested Fix */}
         {issue.fix.code && (
           <div>
-            <h3 className="text-sm font-medium text-foreground mb-3">Suggested Fix</h3>
+            <h3 className="text-h3 text-foreground mb-3">Suggested Fix</h3>
             <CodeBlock code={issue.fix.code} showCopy />
           </div>
         )}

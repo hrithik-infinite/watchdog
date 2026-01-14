@@ -42,10 +42,10 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
                 isActive && 'bg-card ring-1 ring-border'
               )}
             >
-              <span className={cn('text-2xl font-bold', SEVERITY_CLASSES[severity])}>{count}</span>
+              <span className={cn('text-h1', SEVERITY_CLASSES[severity])}>{count}</span>
               <span
                 className={cn(
-                  'text-xs mt-1',
+                  'text-caption mt-1',
                   isActive ? SEVERITY_CLASSES[severity] : 'text-muted-foreground'
                 )}
               >

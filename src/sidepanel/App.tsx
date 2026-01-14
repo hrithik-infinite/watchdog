@@ -57,7 +57,7 @@ export default function App() {
   // Settings view
   if (showSettings) {
     return (
-      <div className="h-screen flex flex-col bg-[#1C1C1E]">
+      <div className="h-screen flex flex-col bg-bg-dark">
         <Settings
           settings={settings}
           onUpdate={updateSettings}
@@ -70,7 +70,7 @@ export default function App() {
   // Detail view
   if (view === 'detail' && selectedIssue) {
     return (
-      <div className="h-screen flex flex-col bg-[#1C1C1E]">
+      <div className="h-screen flex flex-col bg-bg-dark">
         <Header />
         <IssueDetail
           issue={selectedIssue}
@@ -92,7 +92,7 @@ export default function App() {
   // Initial state - scan button below ready to scan content
   if (!error && !scanResult) {
     return (
-      <div className="h-screen flex flex-col bg-[#1C1C1E]">
+      <div className="h-screen flex flex-col bg-bg-dark">
         <Header onSettingsClick={() => setShowSettings(true)} />
         <div className="flex-1 flex flex-col items-center justify-center p-8">
           <EmptyState type="initial" />
@@ -106,7 +106,7 @@ export default function App() {
 
   // List view with results
   return (
-    <div className="h-screen flex flex-col bg-[#1C1C1E]">
+    <div className="h-screen flex flex-col bg-bg-dark">
       <Header onSettingsClick={() => setShowSettings(true)} />
 
       {/* Scan button at top for results view */}

@@ -11,11 +11,11 @@ interface IssueCardProps {
   onHighlight: () => void;
 }
 
-const SEVERITY_STYLES: Record<Severity, string> = {
-  critical: 'bg-critical text-white hover:bg-critical/90',
-  serious: 'bg-serious text-white hover:bg-serious/90',
-  moderate: 'bg-moderate text-background hover:bg-moderate/90',
-  minor: 'bg-minor text-background hover:bg-minor/90',
+const SEVERITY_VARIANTS: Record<Severity, 'critical' | 'serious' | 'moderate' | 'minor'> = {
+  critical: 'critical',
+  serious: 'serious',
+  moderate: 'moderate',
+  minor: 'minor',
 };
 
 const SEVERITY_LABELS: Record<Severity, string> = {
@@ -46,12 +46,12 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
     >
       <CardContent className="p-4">
         {/* Severity Badge */}
-        <Badge className={cn('mb-3', SEVERITY_STYLES[issue.severity])}>
+        <Badge variant={SEVERITY_VARIANTS[issue.severity]} className="mb-3">
           {SEVERITY_LABELS[issue.severity]}
         </Badge>
 
         {/* Issue Title */}
-        <h3 className="text-foreground font-medium mb-2 leading-snug">{issue.message}</h3>
+        <h3 className="text-h3 text-foreground mb-2 leading-snug">{issue.message}</h3>
 
         {/* WCAG Reference */}
         <p className="text-xs text-muted-foreground mb-3">
@@ -62,7 +62,7 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
         <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{issue.description}</p>
 
         {/* Code Preview */}
-        <div className="bg-background rounded-lg p-3 mb-3 overflow-hidden">
+        <div className="bg-background rounded-lg p-3 mb-3 overflow-hidden border border-primary/10">
           <code className="text-xs text-primary-light font-mono block truncate">
             {truncateHtml(issue.element.html)}
           </code>

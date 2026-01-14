@@ -25,15 +25,15 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
       </div>
 
       <div className="px-5 py-4 border-b border-border">
-        <h2 className="text-xl font-semibold text-foreground">Settings</h2>
+        <h2 className="text-h1 text-foreground">Settings</h2>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-5 space-y-6">
         {/* WCAG Level */}
         <div>
-          <Label className="text-sm font-medium text-foreground">WCAG Conformance Level</Label>
-          <p className="text-xs text-muted-foreground mb-3">
+          <Label className="text-h3 text-foreground">WCAG Conformance Level</Label>
+          <p className="text-caption text-muted-foreground mb-3">
             Filter issues based on WCAG conformance level requirements.
           </p>
           <div className="flex gap-2">
@@ -54,8 +54,8 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-foreground">Show Incomplete Issues</Label>
-              <p className="text-xs text-muted-foreground">
+              <Label className="text-h3 text-foreground">Show Incomplete Issues</Label>
+              <p className="text-caption text-muted-foreground">
                 Include issues that need manual review.
               </p>
             </div>
@@ -70,8 +70,8 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div className="space-y-1">
-              <Label className="text-sm font-medium text-foreground">Auto-highlight on Hover</Label>
-              <p className="text-xs text-muted-foreground">
+              <Label className="text-h3 text-foreground">Auto-highlight on Hover</Label>
+              <p className="text-caption text-muted-foreground">
                 Highlight elements when hovering over issues.
               </p>
             </div>
@@ -85,7 +85,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-border">
-        <p className="text-xs text-muted-foreground text-center">WatchDog v1.0.0</p>
+        <p className="text-caption text-muted-foreground text-center">WatchDog v1.0.0</p>
       </div>
     </div>
   );

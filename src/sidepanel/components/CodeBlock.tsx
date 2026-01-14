@@ -21,7 +21,7 @@ export default function CodeBlock({ code, showCopy = false }: CodeBlockProps) {
   };
 
   return (
-    <div className="relative bg-card rounded-lg overflow-hidden">
+    <div className="relative bg-card rounded-lg overflow-hidden border border-primary/10">
       <pre className="p-4 text-xs overflow-x-auto">
         <code className="text-primary-light font-mono whitespace-pre-wrap break-words">{code}</code>
       </pre>
