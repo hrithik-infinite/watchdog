@@ -1,0 +1,54 @@
+/* WatchDog Highlight Styles */
+
+/* Critical - Red */
+.watchdog-highlight-critical {
+  outline: 3px solid #DC2626 !important;
+  outline-offset: 2px;
+  background-color: rgba(220, 38, 38, 0.1) !important;
+}
+
+/* Serious - Orange */
+.watchdog-highlight-serious {
+  outline: 3px solid #EA580C !important;
+  outline-offset: 2px;
+  background-color: rgba(234, 88, 12, 0.1) !important;
+}
+
+/* Moderate - Yellow */
+.watchdog-highlight-moderate {
+  outline: 3px solid #CA8A04 !important;
+  outline-offset: 2px;
+  background-color: rgba(202, 138, 4, 0.1) !important;
+}
+
+/* Minor - Blue */
+.watchdog-highlight-minor {
+  outline: 3px solid #2563EB !important;
+  outline-offset: 2px;
+  background-color: rgba(37, 99, 235, 0.1) !important;
+}
+
+/* Active/hover state - more prominent */
+.watchdog-highlight-active {
+  outline-width: 4px !important;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3) !important;
+  position: relative;
+  z-index: 9999;
+}
+
+/* Animation for highlighting */
+@keyframes watchdog-pulse {
+  0% {
+    outline-offset: 2px;
+  }
+  50% {
+    outline-offset: 4px;
+  }
+  100% {
+    outline-offset: 2px;
+  }
+}
+
+.watchdog-highlight-active {
+  animation: watchdog-pulse 1s ease-in-out 2;
+}

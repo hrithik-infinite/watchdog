@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<!-- Missing lang attribute - html-has-lang -->
+<head>
+  <!-- Missing title - document-title -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <!-- meta-viewport: zoom disabled -->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    .low-contrast {
+      color: #999;
+      background: #fff;
+    }
+    .hero {
+      padding: 40px;
+      background: #f5f5f5;
+      margin-bottom: 20px;
+    }
+    .form-section {
+      padding: 20px;
+      background: #fafafa;
+      margin: 20px 0;
+    }
+    button {
+      padding: 10px 20px;
+      cursor: pointer;
+    }
+    input {
+      padding: 8px;
+      margin: 5px 0;
+    }
+  </style>
+</head>
+<body>
+  <!-- Content not in landmark regions - region -->
+
+  <h1>Accessibility Test Page</h1>
+  <p>This page contains intentional accessibility issues for testing WatchDog.</p>
+
+  <!-- Image without alt text - image-alt -->
+  <div class="hero">
+    <img src="https://via.placeholder.com/400x200" width="400" height="200">
+    <h3>Welcome Section</h3>
+    <!-- Skipped heading level (h1 to h3) - heading-order -->
+    <p class="low-contrast">This text has low contrast and is hard to read.</p>
+    <!-- color-contrast issue -->
+  </div>
+
+  <!-- Form without labels - label -->
+  <div class="form-section">
+    <h4>Newsletter Signup</h4>
+    <input type="email" placeholder="Enter your email">
+    <input type="text" placeholder="Enter your name">
+    <button></button>
+    <!-- Empty button - button-name -->
+  </div>
+
+  <!-- Link without text - link-name -->
+  <p>Check out our <a href="https://example.com"></a> for more info.</p>
+
+  <!-- Duplicate IDs - duplicate-id -->
+  <div id="content">First content block</div>
+  <div id="content">Second content block with same ID</div>
+
+  <!-- Invalid ARIA - aria-valid-attr -->
+  <div aria-invalid-attribute="true">This has an invalid ARIA attribute</div>
+
+  <!-- Missing required ARIA - aria-required-attr -->
+  <div role="checkbox">Checkbox without aria-checked</div>
+
+  <!-- Invalid ARIA role - aria-roles -->
+  <div role="invalid-role">This has an invalid role</div>
+
+  <!-- Positive tabindex - tabindex -->
+  <button tabindex="5">Button with positive tabindex</button>
+  <button tabindex="10">Another button with positive tabindex</button>
+
+  <!-- Valid elements for comparison -->
+  <section>
+    <h2>Valid Section</h2>
+    <img src="https://via.placeholder.com/200x100" alt="Placeholder image for testing" width="200" height="100">
+    <p>This paragraph has proper contrast.</p>
+    <form>
+      <label for="valid-email">Email:</label>
+      <input type="email" id="valid-email">
+      <button type="submit">Subscribe</button>
+    </form>
+    <a href="https://example.com">Visit Example.com</a>
+  </section>
+
+  <footer>
+    <p>Test page for WatchDog accessibility checker</p>
+  </footer>
+</body>
+</html>
