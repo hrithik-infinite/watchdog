@@ -107,7 +107,7 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
 
   // Initial state
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-[#1C1C1E]">
+    <div className="flex flex-col items-center text-center animate-fade-in">
       <EyeIcon />
       <h2 className="text-h1 text-white mt-6 mb-2">Ready to Scan</h2>
       <p className="text-body text-[#8E8E93] max-w-xs">

@@ -89,14 +89,16 @@ export default function App() {
     );
   }
 
-  // Initial state - scan button at bottom
+  // Initial state - scan button below ready to scan content
   if (!error && !scanResult) {
     return (
       <div className="h-screen flex flex-col bg-[#1C1C1E]">
         <Header onSettingsClick={() => setShowSettings(true)} />
-        <EmptyState type="initial" />
-        <div className="px-5 pb-6">
-          <ScanButton isScanning={isScanning} onScan={scan} />
+        <div className="flex-1 flex flex-col items-center justify-center p-8">
+          <EmptyState type="initial" />
+          <div className="w-full max-w-xs mt-8">
+            <ScanButton isScanning={isScanning} onScan={scan} />
+          </div>
         </div>
       </div>
     );

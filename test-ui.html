@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WatchDog UI Test</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #000;
+      padding: 20px;
+    }
+    .phone-frame {
+      width: 420px;
+      height: 800px;
+      border: 3px solid #333;
+      border-radius: 24px;
+      overflow: hidden;
+      background: #1C1C1E;
+    }
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    .instructions {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      color: #888;
+      font-family: system-ui, sans-serif;
+      font-size: 14px;
+      max-width: 300px;
+    }
+    .instructions h3 {
+      color: #fff;
+      margin-bottom: 10px;
+    }
+    .instructions p {
+      margin-bottom: 8px;
+    }
+    .instructions code {
+      background: #333;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <div class="instructions">
+    <h3>WatchDog UI Test</h3>
+    <p>Run: <code>npm run dev</code></p>
+    <p>Then open this file in browser.</p>
+    <p>The sidepanel UI will load in the frame.</p>
+  </div>
+  <div class="phone-frame">
+    <iframe src="http://localhost:5173/src/sidepanel/index.html"></iframe>
+  </div>
+</body>
+</html>
