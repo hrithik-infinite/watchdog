@@ -24,6 +24,47 @@
   --color-wcag-border: #1e4976;
 }
 
+/* shadcn/ui CSS Variables */
+:root {
+  --background: 240 6% 12%;
+  --foreground: 0 0% 100%;
+  --card: 240 4% 18%;
+  --card-foreground: 0 0% 100%;
+  --popover: 240 4% 18%;
+  --popover-foreground: 0 0% 100%;
+  --primary: 211 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 240 3% 23%;
+  --secondary-foreground: 0 0% 100%;
+  --muted: 240 4% 18%;
+  --muted-foreground: 240 2% 57%;
+  --accent: 240 3% 23%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 4 90% 58%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 240 3% 23%;
+  --input: 240 3% 23%;
+  --ring: 211 100% 50%;
+  --radius: 0.5rem;
+
+  /* Chart colors */
+  --chart-1: 211 100% 50%;
+  --chart-2: 173 80% 40%;
+  --chart-3: 45 100% 50%;
+  --chart-4: 32 100% 50%;
+  --chart-5: 4 90% 58%;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
 @font-face {
   font-family: 'Inter';
   src: local('Inter'), local('Inter-Regular');

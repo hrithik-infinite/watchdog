@@ -1,5 +1,6 @@
 import type { Issue, Severity } from '@/shared/types';
 import CodeBlock from './CodeBlock';
+import { ChevronLeftIcon, ChevronRightIcon, InfoIcon, EyeViewIcon } from './icons';
 
 interface IssueDetailProps {
   issue: Issue;
@@ -48,14 +49,7 @@ export default function IssueDetail({
           onClick={onBack}
           className="flex items-center gap-2 text-[#007AFF] hover:text-[#66B2FF] transition-colors"
         >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
+          <ChevronLeftIcon className="w-5 h-5" />
           <span className="text-sm">Back to Issues</span>
         </button>
       </div>
@@ -76,19 +70,7 @@ export default function IssueDetail({
         {/* WCAG Info */}
         <div className="p-4 bg-[#0A2540] rounded-lg border border-[#1E4976]">
           <div className="flex items-center gap-2 mb-2">
-            <svg
-              className="w-4 h-4 text-[#007AFF]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+            <InfoIcon className="w-4 h-4 text-[#007AFF]" />
             <span className="text-sm font-medium text-[#66B2FF]">WCAG Info</span>
           </div>
           <p className="text-white font-medium mb-1">
@@ -105,20 +87,7 @@ export default function IssueDetail({
               onClick={onHighlight}
               className="flex items-center gap-1.5 px-3 py-1.5 bg-[#2C2C2E] hover:bg-[#3A3A3C] rounded-lg text-[#007AFF] text-sm transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                />
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                />
-              </svg>
+              <EyeViewIcon className="w-4 h-4" />
               Highlight
             </button>
           </div>
@@ -147,14 +116,7 @@ export default function IssueDetail({
           disabled={!hasPrev}
           className="flex items-center gap-1.5 text-sm text-[#007AFF] hover:text-[#66B2FF] disabled:text-[#3A3A3C] disabled:cursor-not-allowed transition-colors"
         >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M15 19l-7-7 7-7"
-            />
-          </svg>
+          <ChevronLeftIcon className="w-4 h-4" />
           Previous
         </button>
 
@@ -168,9 +130,7 @@ export default function IssueDetail({
           className="flex items-center gap-1.5 text-sm text-[#007AFF] hover:text-[#66B2FF] disabled:text-[#3A3A3C] disabled:cursor-not-allowed transition-colors"
         >
           Next
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
+          <ChevronRightIcon className="w-4 h-4" />
         </button>
       </div>
     </div>

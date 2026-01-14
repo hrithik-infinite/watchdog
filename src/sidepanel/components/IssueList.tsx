@@ -1,5 +1,6 @@
 import type { Issue, Severity } from '@/shared/types';
 import IssueCard from './IssueCard';
+import { SearchIcon } from './icons';
 
 interface IssueListProps {
   issues: Issue[];
@@ -18,19 +19,7 @@ export default function IssueList({
     return (
       <div className="flex-1 flex items-center justify-center p-8 text-center bg-[#1C1C1E]">
         <div>
-          <svg
-            className="w-16 h-16 mx-auto text-[#3A3A3C] mb-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
+          <SearchIcon className="w-16 h-16 mx-auto text-[#3A3A3C] mb-4" strokeWidth={1.5} />
           <p className="text-white font-medium mb-1">No issues match your filters</p>
           <p className="text-sm text-[#8E8E93]">Try adjusting your filter criteria</p>
         </div>
