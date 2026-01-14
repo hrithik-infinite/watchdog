@@ -28,6 +28,7 @@ export default defineConfig({
       input: {
         sidepanel: fileURLToPath(new URL('./src/sidepanel/index.html', import.meta.url)),
         popup: fileURLToPath(new URL('./src/popup/index.html', import.meta.url)),
+        index: fileURLToPath(new URL('./index.html', import.meta.url)),
       },
     },
   },
