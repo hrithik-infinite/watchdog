@@ -96,7 +96,7 @@ export default function App() {
 
       {/* Scan button */}
       <div className="px-4 py-4">
-        <ScanButton isScanning={isScanning} onScan={scan} />
+        <ScanButton isScanning={isScanning} onScan={scan} hasResults={!!scanResult} />
       </div>
 
       {/* Error state */}
@@ -109,7 +109,7 @@ export default function App() {
       {!error && scanResult && (
         <>
           {scanResult.issues.length === 0 ? (
-            <EmptyState type="no-issues" />
+            <EmptyState type="no-issues" onScan={scan} />
           ) : (
             <>
               <Summary

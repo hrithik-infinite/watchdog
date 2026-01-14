@@ -82,9 +82,25 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
       <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-[#1C1C1E]">
         <CheckIcon />
         <h2 className="text-h1 text-white mt-6 mb-2">No Issues Found!</h2>
-        <p className="text-body text-[#8E8E93] max-w-xs">
+        <p className="text-body text-[#8E8E93] max-w-xs mb-6">
           This page passed all accessibility checks. Great job!
         </p>
+        {onScan && (
+          <button
+            onClick={onScan}
+            className="px-6 py-3 bg-[#2C2C2E] hover:bg-[#3A3A3C] text-[#007AFF] font-medium rounded-full transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+              />
+            </svg>
+            Scan Again
+          </button>
+        )}
       </div>
     );
   }
