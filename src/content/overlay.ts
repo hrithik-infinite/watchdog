@@ -4,7 +4,7 @@ const HIGHLIGHT_CLASS_PREFIX = 'watchdog-highlight';
 const ACTIVE_CLASS = 'watchdog-highlight-active';
 
 // Track currently highlighted elements
-let highlightedElements: Set<Element> = new Set();
+const highlightedElements: Set<Element> = new Set();
 
 function getHighlightClass(severity: Severity): string {
   return `${HIGHLIGHT_CLASS_PREFIX}-${severity}`;
@@ -49,7 +49,9 @@ export function clearHighlights(): void {
   highlightedElements.clear();
 }
 
-export function highlightMultiple(selectors: Array<{ selector: string; severity: Severity }>): void {
+export function highlightMultiple(
+  selectors: Array<{ selector: string; severity: Severity }>
+): void {
   clearHighlights();
 
   for (const { selector, severity } of selectors) {

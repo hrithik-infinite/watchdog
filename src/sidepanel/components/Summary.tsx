@@ -36,21 +36,13 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
               key={severity}
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
               className={`flex flex-col items-center px-4 py-2 rounded-lg transition-all ${
-                isActive
-                  ? 'bg-[#2C2C2E] ring-1 ring-[#3A3A3C]'
-                  : 'hover:bg-[#2C2C2E]'
+                isActive ? 'bg-[#2C2C2E] ring-1 ring-[#3A3A3C]' : 'hover:bg-[#2C2C2E]'
               }`}
             >
-              <span
-                className="text-2xl font-bold"
-                style={{ color }}
-              >
+              <span className="text-2xl font-bold" style={{ color }}>
                 {count}
               </span>
-              <span
-                className="text-xs mt-1"
-                style={{ color: isActive ? color : '#8E8E93' }}
-              >
+              <span className="text-xs mt-1" style={{ color: isActive ? color : '#8E8E93' }}>
                 {SEVERITY_LABELS[severity]}
               </span>
             </button>

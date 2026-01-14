@@ -4,12 +4,7 @@
   "version": "1.0.0",
   "description": "Instant accessibility audits with visual highlighting",
 
-  "permissions": [
-    "activeTab",
-    "storage",
-    "sidePanel",
-    "scripting"
-  ],
+  "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
 
   "action": {
     "default_icon": {

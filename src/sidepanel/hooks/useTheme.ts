@@ -17,16 +17,19 @@ export function useTheme() {
   }, []);
 
   // Apply theme to document
-  const applyTheme = useCallback((newTheme: Theme) => {
-    const resolved = newTheme === 'system' ? getSystemTheme() : newTheme;
-    setResolvedTheme(resolved);
+  const applyTheme = useCallback(
+    (newTheme: Theme) => {
+      const resolved = newTheme === 'system' ? getSystemTheme() : newTheme;
+      setResolvedTheme(resolved);
 
-    if (resolved === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [getSystemTheme]);
+      if (resolved === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    },
+    [getSystemTheme]
+  );
 
   // Load theme on mount
   useEffect(() => {
@@ -49,11 +52,14 @@ export function useTheme() {
   }, [theme, applyTheme]);
 
   // Set theme
-  const setTheme = useCallback((newTheme: Theme) => {
-    setThemeState(newTheme);
-    applyTheme(newTheme);
-    chrome.storage.local.set({ [THEME_KEY]: newTheme });
-  }, [applyTheme]);
+  const setTheme = useCallback(
+    (newTheme: Theme) => {
+      setThemeState(newTheme);
+      applyTheme(newTheme);
+      chrome.storage.local.set({ [THEME_KEY]: newTheme });
+    },
+    [applyTheme]
+  );
 
   return {
     theme,

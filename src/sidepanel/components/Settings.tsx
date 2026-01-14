@@ -18,7 +18,12 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
           className="flex items-center gap-2 text-[#007AFF] hover:text-[#66B2FF] transition-colors"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M15 19l-7-7 7-7"
+            />
           </svg>
           <span className="text-sm">Back</span>
         </button>
@@ -58,12 +63,8 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         {/* Show Incomplete */}
         <div className="flex items-center justify-between p-4 bg-[#2C2C2E] rounded-lg">
           <div>
-            <label className="block text-sm font-medium text-white">
-              Show Incomplete Issues
-            </label>
-            <p className="text-xs text-[#8E8E93] mt-1">
-              Include issues that need manual review.
-            </p>
+            <label className="block text-sm font-medium text-white">Show Incomplete Issues</label>
+            <p className="text-xs text-[#8E8E93] mt-1">Include issues that need manual review.</p>
           </div>
           <button
             onClick={() => onUpdate({ showIncomplete: !settings.showIncomplete })}
@@ -84,9 +85,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         {/* Auto Highlight */}
         <div className="flex items-center justify-between p-4 bg-[#2C2C2E] rounded-lg">
           <div>
-            <label className="block text-sm font-medium text-white">
-              Auto-highlight on Hover
-            </label>
+            <label className="block text-sm font-medium text-white">Auto-highlight on Hover</label>
             <p className="text-xs text-[#8E8E93] mt-1">
               Highlight elements when hovering over issues.
             </p>
@@ -110,9 +109,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
 
       {/* Footer */}
       <div className="px-5 py-4 border-t border-[#3A3A3C]">
-        <p className="text-xs text-[#8E8E93] text-center">
-          WatchDog v1.0.0
-        </p>
+        <p className="text-xs text-[#8E8E93] text-center">WatchDog v1.0.0</p>
       </div>
     </div>
   );

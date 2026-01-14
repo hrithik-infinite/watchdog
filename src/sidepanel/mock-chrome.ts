@@ -10,9 +10,15 @@ const mockIssues: Issue[] = [
     severity: 'serious',
     category: 'color',
     message: 'Elements must meet minimum color contrast ratio thresholds',
-    description: 'Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds.',
+    description:
+      'Ensure the contrast between foreground and background colors meets WCAG 2 AA minimum contrast ratio thresholds.',
     helpUrl: 'https://dequeuniversity.com/rules/axe/4.4/color-contrast',
-    wcag: { id: '1.4.3', level: 'AA', name: 'Contrast (Minimum)', description: 'WCAG 1.4.3 - Contrast (Minimum)' },
+    wcag: {
+      id: '1.4.3',
+      level: 'AA',
+      name: 'Contrast (Minimum)',
+      description: 'WCAG 1.4.3 - Contrast (Minimum)',
+    },
     element: {
       selector: 'p.text-gray-500',
       html: '<p class="text-gray-500 hover:text-gray-600">Learn more</p>',
@@ -32,7 +38,12 @@ const mockIssues: Issue[] = [
     message: 'Image elements must have an alt attribute',
     description: 'Ensures <img> elements have alternate text or a role of none or presentation.',
     helpUrl: 'https://dequeuniversity.com/rules/axe/4.4/image-alt',
-    wcag: { id: '1.1.1', level: 'A', name: 'Non-text Content', description: 'WCAG 1.1.1 - Non-text Content' },
+    wcag: {
+      id: '1.1.1',
+      level: 'A',
+      name: 'Non-text Content',
+      description: 'WCAG 1.1.1 - Non-text Content',
+    },
     element: {
       selector: 'img.hero-image',
       html: '<img src="hero.jpg" class="hero-image">',
@@ -52,7 +63,12 @@ const mockIssues: Issue[] = [
     message: 'Buttons must have discernible text',
     description: 'Ensures buttons have discernible text.',
     helpUrl: 'https://dequeuniversity.com/rules/axe/4.4/button-name',
-    wcag: { id: '4.1.2', level: 'A', name: 'Name, Role, Value', description: 'WCAG 4.1.2 - Name, Role, Value' },
+    wcag: {
+      id: '4.1.2',
+      level: 'A',
+      name: 'Name, Role, Value',
+      description: 'WCAG 4.1.2 - Name, Role, Value',
+    },
     element: {
       selector: 'button.icon-btn',
       html: '<button class="icon-btn"><svg>...</svg></button>',
@@ -72,7 +88,12 @@ const mockIssues: Issue[] = [
     message: 'Form elements must have labels',
     description: 'Ensures every form element has a label.',
     helpUrl: 'https://dequeuniversity.com/rules/axe/4.4/label',
-    wcag: { id: '1.3.1', level: 'A', name: 'Info and Relationships', description: 'WCAG 1.3.1 - Info and Relationships' },
+    wcag: {
+      id: '1.3.1',
+      level: 'A',
+      name: 'Info and Relationships',
+      description: 'WCAG 1.3.1 - Info and Relationships',
+    },
     element: {
       selector: 'input#email',
       html: '<input type="email" id="email" placeholder="Enter email">',
@@ -92,7 +113,12 @@ const mockIssues: Issue[] = [
     message: 'Heading levels should only increase by one',
     description: 'Ensures the order of headings is semantically correct.',
     helpUrl: 'https://dequeuniversity.com/rules/axe/4.4/heading-order',
-    wcag: { id: '1.3.1', level: 'A', name: 'Info and Relationships', description: 'WCAG 1.3.1 - Info and Relationships' },
+    wcag: {
+      id: '1.3.1',
+      level: 'A',
+      name: 'Info and Relationships',
+      description: 'WCAG 1.3.1 - Info and Relationships',
+    },
     element: {
       selector: 'h4.section-title',
       html: '<h4 class="section-title">Features</h4>',
@@ -115,20 +141,20 @@ const mockScanResult: ScanResult = {
   summary: {
     total: mockIssues.length,
     bySeverity: {
-      critical: mockIssues.filter(i => i.severity === 'critical').length,
-      serious: mockIssues.filter(i => i.severity === 'serious').length,
-      moderate: mockIssues.filter(i => i.severity === 'moderate').length,
-      minor: mockIssues.filter(i => i.severity === 'minor').length,
+      critical: mockIssues.filter((i) => i.severity === 'critical').length,
+      serious: mockIssues.filter((i) => i.severity === 'serious').length,
+      moderate: mockIssues.filter((i) => i.severity === 'moderate').length,
+      minor: mockIssues.filter((i) => i.severity === 'minor').length,
     },
     byCategory: {
-      images: mockIssues.filter(i => i.category === 'images').length,
-      interactive: mockIssues.filter(i => i.category === 'interactive').length,
-      forms: mockIssues.filter(i => i.category === 'forms').length,
-      color: mockIssues.filter(i => i.category === 'color').length,
-      document: mockIssues.filter(i => i.category === 'document').length,
-      structure: mockIssues.filter(i => i.category === 'structure').length,
-      aria: mockIssues.filter(i => i.category === 'aria').length,
-      technical: mockIssues.filter(i => i.category === 'technical').length,
+      images: mockIssues.filter((i) => i.category === 'images').length,
+      interactive: mockIssues.filter((i) => i.category === 'interactive').length,
+      forms: mockIssues.filter((i) => i.category === 'forms').length,
+      color: mockIssues.filter((i) => i.category === 'color').length,
+      document: mockIssues.filter((i) => i.category === 'document').length,
+      structure: mockIssues.filter((i) => i.category === 'structure').length,
+      aria: mockIssues.filter((i) => i.category === 'aria').length,
+      technical: mockIssues.filter((i) => i.category === 'technical').length,
     },
   },
 };
@@ -140,6 +166,7 @@ if (!isExtensionContext) {
   console.log('Running in standalone mode with mock data');
 
   // Create mock chrome object
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).chrome = {
     runtime: {
       id: 'mock-extension-id',
@@ -150,6 +177,7 @@ if (!isExtensionContext) {
     },
     tabs: {
       query: () => Promise.resolve([{ id: 1, url: 'https://example.com' }]),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       sendMessage: (_tabId: number, message: any) => {
         return new Promise((resolve) => {
           // Simulate scan delay

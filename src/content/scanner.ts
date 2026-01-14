@@ -1,4 +1,11 @@
-import type { Issue, ScanResult, ScanSummary, Severity, Category, WCAGCriteria } from '@/shared/types';
+import type {
+  Issue,
+  ScanResult,
+  ScanSummary,
+  Severity,
+  Category,
+  WCAGCriteria,
+} from '@/shared/types';
 import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/shared/constants';
 import { generateFix } from '@/shared/fixes';
 

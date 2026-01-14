@@ -19,7 +19,15 @@ function EyeIcon() {
       <circle cx="55" cy="55" r="4" fill="white" fillOpacity="0.6" />
       {/* Magnifier */}
       <circle cx="85" cy="80" r="15" stroke="#66B2FF" strokeWidth="4" fill="#1C1C1E" />
-      <line x1="96" y1="91" x2="108" y2="103" stroke="#66B2FF" strokeWidth="4" strokeLinecap="round" />
+      <line
+        x1="96"
+        y1="91"
+        x2="108"
+        y2="103"
+        stroke="#66B2FF"
+        strokeWidth="4"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
@@ -45,12 +53,7 @@ function ErrorIcon() {
     <svg width="120" height="120" viewBox="0 0 120 120" fill="none">
       <circle cx="60" cy="60" r="50" fill="#FF3B30" fillOpacity="0.2" />
       <circle cx="60" cy="60" r="40" fill="#FF3B30" fillOpacity="0.3" />
-      <path
-        d="M60 40V65"
-        stroke="#FF3B30"
-        strokeWidth="6"
-        strokeLinecap="round"
-      />
+      <path d="M60 40V65" stroke="#FF3B30" strokeWidth="6" strokeLinecap="round" />
       <circle cx="60" cy="80" r="4" fill="#FF3B30" />
     </svg>
   );

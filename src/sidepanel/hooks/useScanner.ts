@@ -26,7 +26,11 @@ export function useScanner() {
       }
 
       // Check if this is a restricted page
-      if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://') || tab.url?.startsWith('about:')) {
+      if (
+        tab.url?.startsWith('chrome://') ||
+        tab.url?.startsWith('chrome-extension://') ||
+        tab.url?.startsWith('about:')
+      ) {
         throw new Error('Cannot scan browser internal pages');
       }
 

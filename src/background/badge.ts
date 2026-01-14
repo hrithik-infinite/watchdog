@@ -47,7 +47,7 @@ export async function clearBadge(tabId: number): Promise<void> {
       tabId,
       text: '',
     });
-  } catch (error) {
+  } catch {
     // Tab may already be closed, ignore error
   }
 }

@@ -19,9 +19,7 @@ const FIX_TEMPLATES: Record<RuleId, (element: ElementInfo) => FixSuggestion> = {
 
   'link-name': (el) => ({
     description: 'Add descriptive text content to the link',
-    code: el.html.includes('aria-label')
-      ? el.html
-      : el.html.replace('</a>', '[Link text]</a>'),
+    code: el.html.includes('aria-label') ? el.html : el.html.replace('</a>', '[Link text]</a>'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/link-name',
   }),
 
@@ -35,7 +33,7 @@ const FIX_TEMPLATES: Record<RuleId, (element: ElementInfo) => FixSuggestion> = {
     learnMoreUrl: 'https://webaim.org/resources/contrastchecker/',
   }),
 
-  'label': (el) => ({
+  label: (el) => ({
     description: 'Associate a label with the input using for/id or wrapping',
     code: `<label for="input-id">Label text</label>
 ${el.html.replace('<input', '<input id="input-id"')}`,
@@ -62,7 +60,7 @@ ${el.html.replace('<input', '<input id="input-id"')}`,
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/heading-order',
   }),
 
-  'region': (el) => ({
+  region: (el) => ({
     description: 'Wrap content in landmark regions (main, nav, header, footer, etc.)',
     code: `<main>
   ${el.html}
@@ -99,7 +97,7 @@ ${el.html}
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/meta-viewport',
   }),
 
-  'tabindex': (el) => ({
+  tabindex: (el) => ({
     description: 'Use tabindex="0" or "-1" instead of positive values',
     code: el.html.replace(/tabindex=["']\d+["']/, 'tabindex="0"'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/tabindex',

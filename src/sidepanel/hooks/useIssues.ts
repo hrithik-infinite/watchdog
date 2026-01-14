@@ -16,7 +16,9 @@ export function useIssues() {
 
   const filteredIssues = getFilteredIssues();
   const selectedIssue = selectedIssueId ? getIssueById(selectedIssueId) : null;
-  const adjacentIds = selectedIssueId ? getAdjacentIssueIds(selectedIssueId) : { prev: null, next: null };
+  const adjacentIds = selectedIssueId
+    ? getAdjacentIssueIds(selectedIssueId)
+    : { prev: null, next: null };
 
   const goToIssue = (id: string | null) => {
     selectIssue(id);

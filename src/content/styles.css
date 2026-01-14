@@ -2,28 +2,28 @@
 
 /* Critical - Red */
 .watchdog-highlight-critical {
-  outline: 3px solid #FF3B30 !important;
+  outline: 3px solid #ff3b30 !important;
   outline-offset: 2px;
   background-color: rgba(255, 59, 48, 0.15) !important;
 }
 
 /* Serious - Orange */
 .watchdog-highlight-serious {
-  outline: 3px solid #FF9500 !important;
+  outline: 3px solid #ff9500 !important;
   outline-offset: 2px;
   background-color: rgba(255, 149, 0, 0.15) !important;
 }
 
 /* Moderate - Yellow */
 .watchdog-highlight-moderate {
-  outline: 3px solid #FFCC00 !important;
+  outline: 3px solid #ffcc00 !important;
   outline-offset: 2px;
   background-color: rgba(255, 204, 0, 0.15) !important;
 }
 
 /* Minor - Teal */
 .watchdog-highlight-minor {
-  outline: 3px solid #00C7BE !important;
+  outline: 3px solid #00c7be !important;
   outline-offset: 2px;
   background-color: rgba(0, 199, 190, 0.15) !important;
 }
