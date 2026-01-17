@@ -15,7 +15,7 @@ export default function IssueList({
   selectedIssueId,
   onSelectIssue,
   onHighlightIssue,
-  canHighlight = true,
+  canHighlight = false,
 }: IssueListProps) {
   if (issues.length === 0) {
     return (

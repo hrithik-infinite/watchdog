@@ -186,7 +186,7 @@ export default function App() {
           }}
           hasPrev={adjacentIds.prev !== null}
           hasNext={adjacentIds.next !== null}
-          canHighlight={selectedAuditType === 'accessibility'}
+          canHighlight={selectedAuditTypes.includes('accessibility')}
         />
       </div>
     );
@@ -275,7 +275,7 @@ export default function App() {
                 selectedIssueId={null}
                 onSelectIssue={handleSelectIssue}
                 onHighlightIssue={handleHighlightIssue}
-                canHighlight={selectedAuditType === 'accessibility'}
+                canHighlight={selectedAuditTypes.includes('accessibility')}
               />
             </>
           )}

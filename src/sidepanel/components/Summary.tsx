@@ -1,6 +1,8 @@
 import { Button } from '@/sidepanel/components/ui/button';
 import type { ScanSummary, Severity } from '@/shared/types';
 import { cn } from '@/sidepanel/lib/utils';
+import { calculateScoreFromSummary } from '@/shared/scoring';
+import ScoreGauge from './ScoreGauge';
 
 interface SummaryProps {
   summary: ScanSummary;
@@ -24,10 +26,15 @@ const SEVERITY_LABELS: Record<Severity, string> = {
 
 export default function Summary({ summary, onFilterBySeverity, activeSeverity }: SummaryProps) {
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
+  const scoreResult = calculateScoreFromSummary(summary);
 
   return (
-    <div className="flex-1 animate-fade-in">
-      <div className="flex items-center gap-1">
+    <div className="flex items-center gap-4 animate-fade-in">
+      {/* Score Gauge */}
+      <ScoreGauge scoreResult={scoreResult} size="sm" showLabel={false} />
+
+      {/* Severity breakdown */}
+      <div className="flex items-center gap-1 flex-1">
         {severities.map((severity) => {
           const count = summary.bySeverity[severity] || 0;
           const isActive = activeSeverity === severity;

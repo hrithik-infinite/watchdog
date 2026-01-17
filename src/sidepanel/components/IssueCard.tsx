@@ -31,7 +31,7 @@ export default function IssueCard({
   isSelected,
   onSelect,
   onHighlight,
-  canHighlight = true,
+  canHighlight = false,
 }: IssueCardProps) {
   const truncateHtml = (html: string, maxLength: number = 80) => {
     const stripped = html.replace(/<[^>]*>/g, '').trim();

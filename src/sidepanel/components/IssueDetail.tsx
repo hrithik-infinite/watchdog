@@ -48,7 +48,7 @@ export default function IssueDetail({
   onIgnored,
   hasPrev,
   hasNext,
-  canHighlight = true,
+  canHighlight = false,
 }: IssueDetailProps) {
   const [showIgnoreModal, setShowIgnoreModal] = useState(false);
 
