@@ -67,7 +67,11 @@ describe('Settings', () => {
   });
 
   it('should validate boolean settings', () => {
-    const booleanSettings: (keyof Settings)[] = ['showIncomplete', 'autoHighlight', 'showFocusOrder'];
+    const booleanSettings: (keyof Settings)[] = [
+      'showIncomplete',
+      'autoHighlight',
+      'showFocusOrder',
+    ];
 
     booleanSettings.forEach((key) => {
       const value = DEFAULT_SETTINGS[key];

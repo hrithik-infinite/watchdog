@@ -28,10 +28,7 @@ const mockIssue: Issue = {
 
 describe('Issue filtering logic', () => {
   it('should filter issues by severity', () => {
-    const issues = [
-      mockIssue,
-      { ...mockIssue, id: 'issue-2', severity: 'minor' as const },
-    ];
+    const issues = [mockIssue, { ...mockIssue, id: 'issue-2', severity: 'minor' as const }];
 
     const criticalIssues = issues.filter((issue) => issue.severity === 'critical');
     expect(criticalIssues).toHaveLength(1);
@@ -39,10 +36,7 @@ describe('Issue filtering logic', () => {
   });
 
   it('should filter issues by category', () => {
-    const issues = [
-      mockIssue,
-      { ...mockIssue, id: 'issue-2', category: 'forms' as const },
-    ];
+    const issues = [mockIssue, { ...mockIssue, id: 'issue-2', category: 'forms' as const }];
 
     const imageIssues = issues.filter((issue) => issue.category === 'images');
     expect(imageIssues).toHaveLength(1);

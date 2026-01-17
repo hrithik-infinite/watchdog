@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
 describe('Overlay Manager', () => {
   beforeEach(() => {
@@ -62,11 +62,7 @@ describe('Overlay Manager', () => {
         </div>
       `;
 
-      const selectors = [
-        '#target',
-        '.parent .child span',
-        'div.parent > div.child > span#target',
-      ];
+      const selectors = ['#target', '.parent .child span', 'div.parent > div.child > span#target'];
 
       selectors.forEach((selector) => {
         const element = document.querySelector(selector);

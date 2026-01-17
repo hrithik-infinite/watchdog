@@ -1,4 +1,4 @@
-import { expect, afterEach, vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
@@ -20,7 +20,9 @@ global.chrome = {
   tabs: {
     query: vi.fn(() => Promise.resolve([])),
     sendMessage: vi.fn(() => Promise.resolve()),
-    captureVisibleTab: vi.fn((opts, callback) => callback && callback('data:image/png;base64,mock')),
+    captureVisibleTab: vi.fn(
+      (_opts, callback) => callback && callback('data:image/png;base64,mock')
+    ),
   },
   storage: {
     local: {

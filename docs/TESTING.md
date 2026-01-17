@@ -6,30 +6,40 @@ This document outlines testing procedures for the WatchDog accessibility extensi
 
 ### Unit Tests
 
-Run all unit tests:
+Run all unit tests (includes coverage report):
 ```bash
 npm test
 ```
 
-Run tests in watch mode:
-```bash
-npm test -- --watch
-```
-
-Run tests with coverage:
-```bash
-npm test:coverage
-```
+The test command automatically:
+- Runs all tests once and exits (no watch mode)
+- Generates coverage reports in multiple formats
+- Displays coverage summary in terminal
 
 ### Test Coverage
 
 Current test files:
-- `src/content/__tests__/scanner.test.ts` - Scanner logic tests
-- `src/content/__tests__/overlay.test.ts` - Overlay and highlighting tests
-- `src/sidepanel/hooks/__tests__/useSettings.test.tsx` - Settings management tests
-- `src/sidepanel/hooks/__tests__/useIssues.test.tsx` - Issue filtering tests
+- `src/content/__tests__/scanner.test.ts` - Scanner logic tests (5 tests)
+- `src/content/__tests__/overlay.test.ts` - Overlay and highlighting tests (6 tests)
+- `src/sidepanel/hooks/__tests__/useSettings.test.tsx` - Settings management tests (6 tests)
+- `src/sidepanel/hooks/__tests__/useIssues.test.tsx` - Issue filtering tests (7 tests)
 
-All tests currently passing: **24/24 ✅**
+**All tests currently passing: 24/24 ✅**
+
+### Coverage Reports
+
+Coverage reports are generated in the `coverage/` directory with multiple formats:
+- **HTML Report**: Open `coverage/index.html` in a browser for detailed coverage
+- **Text Report**: Displayed in terminal after running `npm run test:coverage`
+- **JSON Report**: `coverage/coverage-final.json` for CI/CD integration
+- **LCOV Report**: `coverage/lcov.info` for tools like Codecov or Coveralls
+
+**Coverage Focus Areas:**
+- Content scripts (`src/content/`)
+- Side panel hooks (`src/sidepanel/hooks/`)
+- Shared utilities (`src/shared/`)
+
+**Note:** UI components (`src/sidepanel/components/`) and shadcn components are excluded from coverage as they require integration testing.
 
 ## Manual Testing
 

@@ -7,14 +7,12 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "typecheck": "tsc --noEmit",
-    "test": "vitest",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
+    "test": "vitest run --coverage",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "lint:fix": "eslint src --ext ts,tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "preview": "vite preview",
-    "all": "npm run format && npm run lint:fix && npm run build"
+    "all": "npm run format && npm run lint:fix && npm run build && npm run test"
   },
   "keywords": [
     "accessibility",

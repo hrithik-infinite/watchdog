@@ -91,9 +91,16 @@ describe('Scanner', () => {
       ];
 
       categories.forEach((category) => {
-        expect(['images', 'interactive', 'forms', 'color', 'document', 'structure', 'aria', 'technical']).toContain(
-          category
-        );
+        expect([
+          'images',
+          'interactive',
+          'forms',
+          'color',
+          'document',
+          'structure',
+          'aria',
+          'technical',
+        ]).toContain(category);
       });
     });
   });
