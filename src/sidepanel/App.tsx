@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import Header from './components/Header';
 import ScanButton from './components/ScanButton';
 import Summary from './components/Summary';
@@ -10,18 +10,28 @@ import Settings from './components/Settings';
 import AuditSelector from './components/AuditSelector';
 import PostScanReminder from './components/PostScanReminder';
 import CopyDropdown from './components/CopyDropdown';
+import ScanComparisonView from './components/ScanComparison';
+import ScanHistory from './components/ScanHistory';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
 import { useSettings } from './hooks/useSettings';
+import { useScanHistory } from './hooks/useScanHistory';
 import { useScanStore } from './store';
 import type { AuditType } from './store';
+import { compareScanResults } from '@/shared/storage';
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
   const { isScanning, scanResult, error, scan, scanMultiple } = useScanner();
   const selectedAuditType = useScanStore((state) => state.selectedAuditType);
   const setSelectedAuditType = useScanStore((state) => state.setSelectedAuditType);
+
+  // Scan history
+  const { history, previousScan, saveToHistory, refresh: refreshHistory } = useScanHistory(
+    scanResult?.url
+  );
   const {
     filters,
     filteredIssues,
@@ -78,6 +88,17 @@ export default function App() {
     selectIssue(null);
     clearHighlights();
   }, [selectIssue, clearHighlights]);
+
+  // Save scan to history when completed
+  useEffect(() => {
+    if (scanResult && !isScanning) {
+      saveToHistory(scanResult, [selectedAuditType]);
+    }
+  }, [scanResult, isScanning, selectedAuditType, saveToHistory]);
+
+  // Get comparison data if previous scan exists
+  const comparison =
+    scanResult && previousScan ? compareScanResults(scanResult, previousScan) : null;
 
   // Settings view
   if (showSettings) {
@@ -170,6 +191,38 @@ export default function App() {
                   auditType={selectedAuditType}
                 />
               </div>
+
+              {/* Scan Comparison */}
+              {showComparison && comparison && (
+                <div className="px-4 py-2">
+                  <ScanComparisonView
+                    comparison={comparison}
+                    onClose={() => setShowComparison(false)}
+                  />
+                </div>
+              )}
+
+              {/* Compare to Previous Button */}
+              {!showComparison && previousScan && (
+                <div className="px-4 py-2">
+                  <button
+                    onClick={() => setShowComparison(true)}
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg transition-colors"
+                  >
+                    <span>Compare to Previous Scan</span>
+                    <span className="text-muted-foreground">
+                      ({previousScan.issueCount} issues)
+                    </span>
+                  </button>
+                </div>
+              )}
+
+              {/* Scan History */}
+              {history.length > 1 && (
+                <div className="px-4 py-2">
+                  <ScanHistory history={history} onRefresh={refreshHistory} />
+                </div>
+              )}
 
               <FilterBar
                 severityFilter={filters.severity}
