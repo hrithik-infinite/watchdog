@@ -68,11 +68,23 @@ export interface ScanResult {
   summary: ScanSummary;
 }
 
+// Vision simulation modes
+export type VisionMode =
+  | 'none'
+  | 'protanopia'
+  | 'deuteranopia'
+  | 'tritanopia'
+  | 'achromatopsia'
+  | 'blur-low'
+  | 'blur-medium'
+  | 'blur-high';
+
 // Settings configuration
 export interface Settings {
   wcagLevel: WCAGLevel;
   showIncomplete: boolean;
   autoHighlight: boolean;
+  visionMode: VisionMode;
 }
 
 // Filter state for issue list

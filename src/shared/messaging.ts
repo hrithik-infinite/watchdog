@@ -1,4 +1,4 @@
-import type { ScanResult, Settings, Severity } from './types';
+import type { ScanResult, Settings, Severity, VisionMode } from './types';
 
 // Message types for communication between extension parts
 export type MessageType =
@@ -7,6 +7,7 @@ export type MessageType =
   | 'SCAN_RESULT'
   | 'HIGHLIGHT_ELEMENT'
   | 'CLEAR_HIGHLIGHTS'
+  | 'APPLY_VISION_FILTER'
   | 'GET_SETTINGS'
   | 'UPDATE_SETTINGS'
   | 'OPEN_SIDEPANEL';
@@ -37,6 +38,13 @@ export interface ClearHighlightsMessage {
   type: 'CLEAR_HIGHLIGHTS';
 }
 
+export interface ApplyVisionFilterMessage {
+  type: 'APPLY_VISION_FILTER';
+  payload: {
+    mode: VisionMode;
+  };
+}
+
 export interface GetSettingsMessage {
   type: 'GET_SETTINGS';
 }
@@ -57,6 +65,7 @@ export type Message =
   | ScanResultMessage
   | HighlightElementMessage
   | ClearHighlightsMessage
+  | ApplyVisionFilterMessage
   | GetSettingsMessage
   | UpdateSettingsMessage
   | OpenSidePanelMessage;

@@ -115,4 +115,5 @@ export const DEFAULT_SETTINGS = {
   wcagLevel: 'AA' as const,
   showIncomplete: false,
   autoHighlight: true,
+  visionMode: 'none' as const,
 };

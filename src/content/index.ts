@@ -1,7 +1,8 @@
 import { scanPage } from './scanner';
 import { highlightElement, clearHighlights } from './overlay';
+import { applyVisionFilter, removeVisionFilter } from './vision-filters';
 import type { Message, ScanResponse } from '@/shared/messaging';
-import type { Severity } from '@/shared/types';
+import type { Severity, VisionMode } from '@/shared/types';
 
 // Listen for messages from the side panel and background
 chrome.runtime.onMessage.addListener(
@@ -59,14 +60,21 @@ async function handleMessage(message: Message): Promise<unknown> {
       return { success: true };
     }
 
+    case 'APPLY_VISION_FILTER': {
+      const { mode } = message.payload as { mode: VisionMode };
+      applyVisionFilter(mode);
+      return { success: true };
+    }
+
     default:
       return { success: false, error: 'Unknown message type' };
   }
 }
 
-// Clear highlights when page unloads
+// Clear highlights and vision filters when page unloads
 window.addEventListener('beforeunload', () => {
   clearHighlights();
+  removeVisionFilter();
 });
 
 console.log('WatchDog content script loaded');

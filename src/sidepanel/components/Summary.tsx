@@ -26,8 +26,8 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
 
   return (
-    <div className="px-4 py-3 bg-background border-b border-border animate-fade-in">
-      <div className="flex items-center justify-between">
+    <div className="px-4 py-2 bg-background border-b border-border animate-fade-in">
+      <div className="flex items-center gap-1">
         {severities.map((severity) => {
           const count = summary.bySeverity[severity] || 0;
           const isActive = activeSeverity === severity;
@@ -38,14 +38,16 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
               variant="ghost"
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
               className={cn(
-                'flex flex-col items-center h-auto px-3 py-1.5',
-                isActive && 'bg-card ring-1 ring-border'
+                'flex-1 flex flex-col items-center h-auto px-2 py-2 rounded-lg transition-all',
+                isActive && 'bg-card ring-2 ring-primary/20 shadow-sm'
               )}
             >
-              <span className={cn('text-h1', SEVERITY_CLASSES[severity])}>{count}</span>
+              <span className={cn('text-2xl font-bold leading-none', SEVERITY_CLASSES[severity])}>
+                {count}
+              </span>
               <span
                 className={cn(
-                  'text-caption mt-1',
+                  'text-xs font-medium mt-1.5 leading-none',
                   isActive ? SEVERITY_CLASSES[severity] : 'text-muted-foreground'
                 )}
               >

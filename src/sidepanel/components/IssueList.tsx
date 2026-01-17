@@ -19,7 +19,7 @@ export default function IssueList({
     return (
       <div className="flex-1 flex items-center justify-center p-8 text-center bg-background">
         <div>
-          <Search className="w-16 h-16 mx-auto text-muted mb-4" strokeWidth={1.5} />
+          <Search className="w-12 h-12 mx-auto text-muted mb-4" strokeWidth={1.5} />
           <p className="text-foreground font-medium mb-1">No issues match your filters</p>
           <p className="text-sm text-muted-foreground">Try adjusting your filter criteria</p>
         </div>

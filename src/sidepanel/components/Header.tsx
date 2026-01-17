@@ -8,7 +8,7 @@ interface HeaderProps {
 
 export default function Header({ onSettingsClick }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between px-4 py-2 bg-background border-b border-primary/10">
+    <header className="flex items-center justify-between p-2 bg-background border-b border-primary/10">
       <div className="flex items-center gap-2">
         <WatchDogLogo />
         <h1 className="text-h2 text-foreground">WatchDog</h1>
@@ -22,7 +22,7 @@ export default function Header({ onSettingsClick }: HeaderProps) {
           aria-label="Settings"
           className="text-muted-foreground hover:text-foreground"
         >
-          <Settings className="h-5 w-5" />
+          <Settings className="h-4 w-4" />
         </Button>
       )}
     </header>
