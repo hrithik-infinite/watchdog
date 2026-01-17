@@ -38,7 +38,7 @@ export default function App() {
   const handleStartScan = useCallback(
     (auditType: AuditType) => {
       setSelectedAuditType(auditType);
-      scan();
+      scan(auditType);
     },
     [setSelectedAuditType, scan]
   );
