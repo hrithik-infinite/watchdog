@@ -22,6 +22,7 @@ interface ScanState {
 
   // Audit type
   selectedAuditType: AuditType;
+  selectedAuditTypes: AuditType[]; // For multi-scan rescan
 
   // Filter state
   filters: FilterState;
@@ -42,6 +43,7 @@ interface ScanState {
   setScanResult: (result: ScanResult | null) => void;
   setError: (error: string | null) => void;
   setSelectedAuditType: (auditType: AuditType) => void;
+  setSelectedAuditTypes: (auditTypes: AuditType[]) => void;
   setFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
   resetFilters: () => void;
   selectIssue: (id: string | null) => void;
@@ -68,6 +70,7 @@ export const useScanStore = create<ScanState>((set, get) => ({
   scanResult: null,
   error: null,
   selectedAuditType: 'accessibility',
+  selectedAuditTypes: ['accessibility'],
   filters: initialFilters,
   hideIgnored: true,
   ignoredHashes: new Set(),
@@ -89,6 +92,8 @@ export const useScanStore = create<ScanState>((set, get) => ({
   setError: (error) => set({ error }),
 
   setSelectedAuditType: (auditType) => set({ selectedAuditType: auditType }),
+
+  setSelectedAuditTypes: (auditTypes) => set({ selectedAuditTypes: auditTypes }),
 
   setFilter: (key, value) =>
     set((state) => ({
@@ -149,6 +154,15 @@ export const useScanStore = create<ScanState>((set, get) => ({
           issue.ruleId.toLowerCase().includes(query)
       );
     }
+
+    // Sort by severity (critical > serious > moderate > minor)
+    const severityOrder: Record<string, number> = {
+      critical: 0,
+      serious: 1,
+      moderate: 2,
+      minor: 3,
+    };
+    issues.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
     return issues;
   },

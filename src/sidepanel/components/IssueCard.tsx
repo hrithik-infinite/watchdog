@@ -9,6 +9,7 @@ interface IssueCardProps {
   isSelected: boolean;
   onSelect: (id: string) => void;
   onHighlight: () => void;
+  canHighlight?: boolean;
 }
 
 const SEVERITY_VARIANTS: Record<Severity, 'critical' | 'serious' | 'moderate' | 'minor'> = {
@@ -25,7 +26,13 @@ const SEVERITY_LABELS: Record<Severity, string> = {
   minor: 'Minor',
 };
 
-export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: IssueCardProps) {
+export default function IssueCard({
+  issue,
+  isSelected,
+  onSelect,
+  onHighlight,
+  canHighlight = true,
+}: IssueCardProps) {
   const truncateHtml = (html: string, maxLength: number = 80) => {
     const stripped = html.replace(/<[^>]*>/g, '').trim();
     if (stripped.length <= maxLength) return html;
@@ -39,7 +46,7 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
         isSelected && 'ring-2 ring-primary'
       )}
       onClick={() => onSelect(issue.id)}
-      onMouseEnter={onHighlight}
+      onMouseEnter={canHighlight ? onHighlight : undefined}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onSelect(issue.id)}

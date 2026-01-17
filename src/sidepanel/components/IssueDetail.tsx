@@ -19,6 +19,7 @@ interface IssueDetailProps {
   onIgnored: () => void;
   hasPrev: boolean;
   hasNext: boolean;
+  canHighlight?: boolean;
 }
 
 const SEVERITY_VARIANTS: Record<Severity, 'critical' | 'serious' | 'moderate' | 'minor'> = {
@@ -47,6 +48,7 @@ export default function IssueDetail({
   onIgnored,
   hasPrev,
   hasNext,
+  canHighlight = true,
 }: IssueDetailProps) {
   const [showIgnoreModal, setShowIgnoreModal] = useState(false);
 
@@ -98,10 +100,12 @@ export default function IssueDetail({
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-h3 text-foreground">Current Element</h3>
             <div className="flex items-center gap-2">
-              <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
-                <Eye className="h-4 w-4" />
-                Highlight
-              </Button>
+              {canHighlight && (
+                <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
+                  <Eye className="h-4 w-4" />
+                  Highlight
+                </Button>
+              )}
               <Button
                 variant="outline"
                 size="sm"

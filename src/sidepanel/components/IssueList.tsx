@@ -7,6 +7,7 @@ interface IssueListProps {
   selectedIssueId: string | null;
   onSelectIssue: (id: string) => void;
   onHighlightIssue: (selector: string, severity: Severity) => void;
+  canHighlight?: boolean;
 }
 
 export default function IssueList({
@@ -14,6 +15,7 @@ export default function IssueList({
   selectedIssueId,
   onSelectIssue,
   onHighlightIssue,
+  canHighlight = true,
 }: IssueListProps) {
   if (issues.length === 0) {
     return (
@@ -36,6 +38,7 @@ export default function IssueList({
           isSelected={selectedIssueId === issue.id}
           onSelect={onSelectIssue}
           onHighlight={() => onHighlightIssue(issue.element.selector, issue.severity)}
+          canHighlight={canHighlight}
         />
       ))}
     </div>

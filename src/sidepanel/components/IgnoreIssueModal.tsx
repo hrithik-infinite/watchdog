@@ -48,18 +48,22 @@ export default function IgnoreIssueModal({
         selectedReason,
         selectedReason === 'other' ? customNote : undefined
       );
-      onIgnored();
+      // Close modal first, then trigger the callback
+      // This prevents double state updates causing flicker
       onClose();
+      // Small delay to let modal close animation complete
+      setTimeout(() => {
+        onIgnored();
+      }, 50);
     } catch (error) {
       console.error('Failed to ignore issue:', error);
-    } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 animate-fade-in">
-      <div className="w-full max-w-sm bg-card border border-border rounded-lg shadow-xl animate-scale-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+      <div className="w-full max-w-sm bg-card border border-border rounded-lg shadow-xl">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <div className="flex items-center gap-2">

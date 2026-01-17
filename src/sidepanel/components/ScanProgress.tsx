@@ -67,8 +67,8 @@ export default function ScanProgress({
     return () => clearInterval(interval);
   }, []);
 
-  const Icon = currentAuditType ? auditIcons[currentAuditType] : Eye;
-  const label = currentAuditType ? auditLabels[currentAuditType] : 'Accessibility';
+  const Icon = (currentAuditType && auditIcons[currentAuditType]) || Eye;
+  const label = (currentAuditType && auditLabels[currentAuditType]) || 'Accessibility';
   const progress = totalAudits > 0 ? ((currentAuditIndex + 1) / totalAudits) * 100 : 0;
   const isMultiScan = totalAudits > 1;
 

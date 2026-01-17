@@ -10,6 +10,9 @@ function getHighlightClass(severity: Severity): string {
   return `${HIGHLIGHT_CLASS_PREFIX}-${severity}`;
 }
 
+// Elements that shouldn't be highlighted (full-page elements)
+const SKIP_HIGHLIGHT_TAGS = ['body', 'html'];
+
 export function highlightElement(selector: string, severity: Severity): void {
   // Clear previous highlights first
   clearHighlights();
@@ -18,6 +21,13 @@ export function highlightElement(selector: string, severity: Severity): void {
     const element = document.querySelector(selector);
     if (!element) {
       console.warn(`WatchDog: Element not found for selector: ${selector}`);
+      return;
+    }
+
+    // Skip highlighting full-page elements
+    const tagName = element.tagName.toLowerCase();
+    if (SKIP_HIGHLIGHT_TAGS.includes(tagName)) {
+      console.info(`WatchDog: Skipping highlight for <${tagName}> element`);
       return;
     }
 
@@ -58,6 +68,11 @@ export function highlightMultiple(
     try {
       const element = document.querySelector(selector);
       if (element) {
+        // Skip highlighting full-page elements
+        const tagName = element.tagName.toLowerCase();
+        if (SKIP_HIGHLIGHT_TAGS.includes(tagName)) {
+          continue;
+        }
         element.classList.add(getHighlightClass(severity));
         highlightedElements.add(element);
       }

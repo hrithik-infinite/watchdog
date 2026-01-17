@@ -10,7 +10,7 @@ interface ScanButtonProps {
 export default function ScanButton({ isScanning, onScan, hasResults = false }: ScanButtonProps) {
   return (
     <Button
-      onClick={onScan}
+      onClick={() => onScan()}
       disabled={isScanning}
       className="w-full py-2.5 text-sm font-semibold rounded-full shadow-lg shadow-primary/25"
     >

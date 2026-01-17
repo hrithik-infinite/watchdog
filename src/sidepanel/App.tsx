@@ -10,46 +10,37 @@ import Settings from './components/Settings';
 import AuditSelector from './components/AuditSelector';
 import ScanProgress from './components/ScanProgress';
 import CopyDropdown from './components/CopyDropdown';
-import ScanComparisonView from './components/ScanComparison';
-import ScanHistory from './components/ScanHistory';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
 import { useSettings } from './hooks/useSettings';
-import { useScanHistory } from './hooks/useScanHistory';
 import { useIgnoredIssues } from './hooks/useIgnoredIssues';
 import { useScanStore } from './store';
 import type { AuditType } from './store';
-import { compareScanResults } from '@/shared/storage';
 import logger from '@/shared/logger';
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
-  const [showComparison, setShowComparison] = useState(false);
   const {
     scanResult,
     error,
     scan,
     scanMultiple,
+    clearResults,
     currentAuditIndex,
     totalAudits,
     currentAuditType,
   } = useScanner();
+
   // Subscribe directly to isScanning from store for reliable updates
   const isScanning = useScanStore((state) => state.isScanning);
   const selectedAuditType = useScanStore((state) => state.selectedAuditType);
+  const selectedAuditTypes = useScanStore((state) => state.selectedAuditTypes);
   const setSelectedAuditType = useScanStore((state) => state.setSelectedAuditType);
+  const setSelectedAuditTypes = useScanStore((state) => state.setSelectedAuditTypes);
   const setIgnoredHashes = useScanStore((state) => state.setIgnoredHashes);
   const hideIgnored = useScanStore((state) => state.hideIgnored);
   const setHideIgnored = useScanStore((state) => state.setHideIgnored);
-
-  // Scan history
-  const {
-    history,
-    previousScan,
-    saveToHistory,
-    refresh: refreshHistory,
-  } = useScanHistory(scanResult?.url);
 
   // Ignored issues
   const {
@@ -62,6 +53,7 @@ export default function App() {
   useEffect(() => {
     setIgnoredHashes(ignoredHashes);
   }, [ignoredHashes, setIgnoredHashes]);
+
   const {
     filters,
     filteredIssues,
@@ -82,9 +74,10 @@ export default function App() {
     (auditType: AuditType) => {
       logger.info('Starting scan', { auditType });
       setSelectedAuditType(auditType);
+      setSelectedAuditTypes([auditType]);
       scan(auditType);
     },
-    [setSelectedAuditType, scan]
+    [setSelectedAuditType, setSelectedAuditTypes, scan]
   );
 
   const handleStartMultipleScan = useCallback(
@@ -92,11 +85,24 @@ export default function App() {
       if (auditTypes.length > 0) {
         logger.info('Starting multiple scans', { auditTypes });
         setSelectedAuditType(auditTypes[0]);
+        setSelectedAuditTypes(auditTypes);
         scanMultiple(auditTypes);
       }
     },
-    [setSelectedAuditType, scanMultiple]
+    [setSelectedAuditType, setSelectedAuditTypes, scanMultiple]
   );
+
+  // Rescan using the previously selected audit types
+  const handleRescan = useCallback(() => {
+    if (selectedAuditTypes.length === 1) {
+      scan(selectedAuditTypes[0]);
+    } else if (selectedAuditTypes.length > 1) {
+      scanMultiple(selectedAuditTypes);
+    } else {
+      // Fallback to single audit type
+      scan(selectedAuditType);
+    }
+  }, [selectedAuditTypes, selectedAuditType, scan, scanMultiple]);
 
   const handleSelectIssue = useCallback(
     (id: string) => {
@@ -126,7 +132,13 @@ export default function App() {
     clearHighlights();
   }, [selectIssue, clearHighlights]);
 
-  // Save scan to history when completed
+  // Go back to the audit selector (home)
+  const handleBackToHome = useCallback(() => {
+    clearResults();
+    clearHighlights();
+  }, [clearResults, clearHighlights]);
+
+  // Log scan completion
   useEffect(() => {
     if (scanResult && !isScanning) {
       logger.info('Scan completed', {
@@ -135,13 +147,8 @@ export default function App() {
         duration: scanResult.duration,
         summary: scanResult.summary,
       });
-      saveToHistory(scanResult, [selectedAuditType]);
     }
-  }, [scanResult, isScanning, selectedAuditType, saveToHistory]);
-
-  // Get comparison data if previous scan exists
-  const comparison =
-    scanResult && previousScan ? compareScanResults(scanResult, previousScan) : null;
+  }, [scanResult, isScanning]);
 
   // Settings view
   if (showSettings) {
@@ -179,6 +186,7 @@ export default function App() {
           }}
           hasPrev={adjacentIds.prev !== null}
           hasNext={adjacentIds.next !== null}
+          canHighlight={selectedAuditType === 'accessibility'}
         />
       </div>
     );
@@ -215,21 +223,26 @@ export default function App() {
   // List view with results
   return (
     <div className="h-screen flex flex-col bg-bg-dark">
-      <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
+      <Header
+        showBackButton
+        onBackClick={handleBackToHome}
+        onSettingsClick={() => setShowSettings(true)}
+        scanResult={scanResult}
+      />
 
       {/* Scan button at top for results view */}
       <div className="px-4 py-2">
-        <ScanButton isScanning={isScanning} onScan={scan} hasResults={!!scanResult} />
+        <ScanButton isScanning={isScanning} onScan={handleRescan} hasResults={!!scanResult} />
       </div>
 
       {/* Error state */}
-      {error && <EmptyState type="error" error={error} onScan={scan} />}
+      {error && <EmptyState type="error" error={error} onScan={handleRescan} />}
 
       {/* Results */}
       {!error && scanResult && (
         <>
           {scanResult.issues.length === 0 ? (
-            <EmptyState type="no-issues" onScan={scan} />
+            <EmptyState type="no-issues" onScan={handleRescan} />
           ) : (
             <>
               <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
@@ -244,38 +257,6 @@ export default function App() {
                   auditType={selectedAuditType}
                 />
               </div>
-
-              {/* Scan Comparison */}
-              {showComparison && comparison && (
-                <div className="px-4 py-2">
-                  <ScanComparisonView
-                    comparison={comparison}
-                    onClose={() => setShowComparison(false)}
-                  />
-                </div>
-              )}
-
-              {/* Compare to Previous Button */}
-              {!showComparison && previousScan && (
-                <div className="px-4 py-2">
-                  <button
-                    onClick={() => setShowComparison(true)}
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-primary bg-primary/5 hover:bg-primary/10 border border-primary/20 rounded-lg transition-colors"
-                  >
-                    <span>Compare to Previous Scan</span>
-                    <span className="text-muted-foreground">
-                      ({previousScan.issueCount} issues)
-                    </span>
-                  </button>
-                </div>
-              )}
-
-              {/* Scan History */}
-              {history.length > 1 && (
-                <div className="px-4 py-2">
-                  <ScanHistory history={history} onRefresh={refreshHistory} />
-                </div>
-              )}
 
               <FilterBar
                 severityFilter={filters.severity}
@@ -294,6 +275,7 @@ export default function App() {
                 selectedIssueId={null}
                 onSelectIssue={handleSelectIssue}
                 onHighlightIssue={handleHighlightIssue}
+                canHighlight={selectedAuditType === 'accessibility'}
               />
             </>
           )}
