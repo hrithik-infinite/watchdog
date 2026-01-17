@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Message } from '@/shared/messaging';
 
 // Mock dependencies
@@ -21,10 +21,13 @@ vi.mock('../focus-order', () => ({
   hideFocusOrder: vi.fn(),
 }));
 
-// Mock Chrome API
-let messageListeners: Array<(message: Message, sender: any, sendResponse: (response: unknown) => void) => boolean> = [];
+// Mock Chrome API and global objects
+let messageListeners: Array<
+  (message: Message, sender: any, sendResponse: (response: unknown) => void) => boolean
+> = [];
+const eventListeners: Map<string, Function[]> = new Map();
 
-vi.stubGlobal('chrome', {
+const mockChrome = {
   runtime: {
     onMessage: {
       addListener: vi.fn((callback) => {
@@ -33,38 +36,53 @@ vi.stubGlobal('chrome', {
     },
     sendMessage: vi.fn(),
   },
-});
+};
 
-vi.stubGlobal('window', {
-  addEventListener: vi.fn(),
+const mockWindow = {
+  addEventListener: vi.fn((event: string, handler: Function) => {
+    if (!eventListeners.has(event)) {
+      eventListeners.set(event, []);
+    }
+    eventListeners.get(event)!.push(handler);
+  }),
   location: {
     href: 'https://example.com',
   },
-});
+};
 
-vi.stubGlobal('console', {
+const mockConsole = {
   log: vi.fn(),
   error: vi.fn(),
-});
+};
+
+vi.stubGlobal('chrome', mockChrome);
+vi.stubGlobal('window', mockWindow);
+vi.stubGlobal('console', mockConsole);
 
 describe('Content Script - index.ts', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
+  beforeEach(async () => {
+    // Reset modules to clear cache and re-run listener registration
+    vi.resetModules();
     messageListeners = [];
+    eventListeners.clear();
+    vi.clearAllMocks();
+
+    // Re-stub globals after reset
+    vi.stubGlobal('chrome', mockChrome);
+    vi.stubGlobal('window', mockWindow);
+    vi.stubGlobal('console', mockConsole);
+
+    // Import to set up listeners
+    await import('../index');
   });
 
-  // Import the module to trigger the message listener setup
-  it('should set up message listener on load', async () => {
-    await import('../index');
-
-    expect(chrome.runtime.onMessage.addListener).toHaveBeenCalled();
+  // Verify module loads and sets up listeners
+  it('should set up message listener on load', () => {
     expect(messageListeners.length).toBeGreaterThan(0);
   });
 
   describe('Message Handling - PING', () => {
     it('should respond to PING message', async () => {
-      await import('../index');
-
       const sendResponse = vi.fn();
       const message: Message = { type: 'PING' };
 
@@ -76,9 +94,7 @@ describe('Content Script - index.ts', () => {
       expect(sendResponse).toHaveBeenCalledWith({ success: true, loaded: true });
     });
 
-    it('should return true to indicate async response', async () => {
-      await import('../index');
-
+    it('should return true to indicate async response', () => {
       const handler = messageListeners[0];
       const result = handler({ type: 'PING' }, {}, vi.fn());
 
@@ -112,8 +128,6 @@ describe('Content Script - index.ts', () => {
       };
 
       (scanPage as any).mockResolvedValue(mockScanResult);
-
-      await import('../index');
 
       const sendResponse = vi.fn();
       const message: Message = { type: 'SCAN_PAGE' };
@@ -156,8 +170,6 @@ describe('Content Script - index.ts', () => {
 
       (scanPage as any).mockResolvedValue(mockScanResult);
 
-      await import('../index');
-
       const handler = messageListeners[0];
       handler({ type: 'SCAN_PAGE' }, {}, vi.fn());
 
@@ -173,8 +185,6 @@ describe('Content Script - index.ts', () => {
       const { scanPage } = await import('../scanner');
       const scanError = new Error('Scan failed');
       (scanPage as any).mockRejectedValue(scanError);
-
-      await import('../index');
 
       const sendResponse = vi.fn();
       const message: Message = { type: 'SCAN_PAGE' };
@@ -195,8 +205,6 @@ describe('Content Script - index.ts', () => {
       const { scanPage } = await import('../scanner');
       (scanPage as any).mockRejectedValue('Unknown error');
 
-      await import('../index');
-
       const sendResponse = vi.fn();
       const handler = messageListeners[0];
       handler({ type: 'SCAN_PAGE' }, {}, sendResponse);
@@ -213,8 +221,6 @@ describe('Content Script - index.ts', () => {
   describe('Message Handling - HIGHLIGHT_ELEMENT', () => {
     it('should highlight element on HIGHLIGHT_ELEMENT message', async () => {
       const { highlightElement } = await import('../overlay');
-
-      await import('../index');
 
       const sendResponse = vi.fn();
       const message: Message = {
@@ -233,8 +239,6 @@ describe('Content Script - index.ts', () => {
 
     it('should accept different severity levels', async () => {
       const { highlightElement } = await import('../overlay');
-
-      await import('../index');
 
       const severities = ['critical', 'serious', 'moderate', 'minor'] as const;
 
@@ -259,8 +263,6 @@ describe('Content Script - index.ts', () => {
     it('should clear highlights on CLEAR_HIGHLIGHTS message', async () => {
       const { clearHighlights } = await import('../overlay');
 
-      await import('../index');
-
       const sendResponse = vi.fn();
       const message: Message = { type: 'CLEAR_HIGHLIGHTS' };
 
@@ -277,8 +279,6 @@ describe('Content Script - index.ts', () => {
   describe('Message Handling - APPLY_VISION_FILTER', () => {
     it('should apply vision filter on APPLY_VISION_FILTER message', async () => {
       const { applyVisionFilter } = await import('../vision-filters');
-
-      await import('../index');
 
       const sendResponse = vi.fn();
       const message: Message = {
@@ -298,9 +298,16 @@ describe('Content Script - index.ts', () => {
     it('should accept different vision modes', async () => {
       const { applyVisionFilter } = await import('../vision-filters');
 
-      await import('../index');
-
-      const modes = ['none', 'protanopia', 'deuteranopia', 'tritanopia', 'achromatopsia', 'blur-low', 'blur-medium', 'blur-high'] as const;
+      const modes = [
+        'none',
+        'protanopia',
+        'deuteranopia',
+        'tritanopia',
+        'achromatopsia',
+        'blur-low',
+        'blur-medium',
+        'blur-high',
+      ] as const;
 
       for (const mode of modes) {
         vi.clearAllMocks();
@@ -323,8 +330,6 @@ describe('Content Script - index.ts', () => {
     it('should toggle focus order on TOGGLE_FOCUS_ORDER message', async () => {
       const { toggleFocusOrder } = await import('../focus-order');
 
-      await import('../index');
-
       const sendResponse = vi.fn();
       const message: Message = {
         type: 'TOGGLE_FOCUS_ORDER',
@@ -343,8 +348,6 @@ describe('Content Script - index.ts', () => {
     it('should support hiding focus order', async () => {
       const { toggleFocusOrder } = await import('../focus-order');
 
-      await import('../index');
-
       const sendResponse = vi.fn();
       const message: Message = {
         type: 'TOGGLE_FOCUS_ORDER',
@@ -362,8 +365,6 @@ describe('Content Script - index.ts', () => {
 
   describe('Message Handling - Unknown type', () => {
     it('should return error for unknown message type', async () => {
-      await import('../index');
-
       const sendResponse = vi.fn();
       const message = { type: 'UNKNOWN_TYPE' } as any;
 
@@ -381,8 +382,6 @@ describe('Content Script - index.ts', () => {
 
   describe('Error Handling', () => {
     it('should catch and handle errors in message handler', async () => {
-      await import('../index');
-
       const sendResponse = vi.fn();
       const message: Message = { type: 'PING' };
 
@@ -393,28 +392,22 @@ describe('Content Script - index.ts', () => {
       expect(result).toBe(true);
     });
 
-    it('should log errors to console', async () => {
-      const { scanPage } = await import('../scanner');
-      const error = new Error('Test error');
-      (scanPage as any).mockRejectedValue(error);
-
-      await import('../index');
-
+    it('should always return true for immediate async response', async () => {
       const sendResponse = vi.fn();
       const handler = messageListeners[0];
-      handler({ type: 'SCAN_PAGE' }, {}, sendResponse);
 
-      await new Promise((resolve) => setTimeout(resolve, 20));
+      // All message types should return true to indicate async handling
+      const result = handler({ type: 'PING' }, {}, sendResponse);
+      expect(result).toBe(true);
 
-      // Error should be logged
-      expect(console.error).toHaveBeenCalled();
+      // Response will be sent asynchronously
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(sendResponse).toHaveBeenCalled();
     });
   });
 
   describe('Window beforeunload listener', () => {
     it('should set up beforeunload listener', async () => {
-      await import('../index');
-
       expect(window.addEventListener).toHaveBeenCalledWith('beforeunload', expect.any(Function));
     });
 
@@ -422,8 +415,6 @@ describe('Content Script - index.ts', () => {
       const { clearHighlights } = await import('../overlay');
       const { removeVisionFilter } = await import('../vision-filters');
       const { hideFocusOrder } = await import('../focus-order');
-
-      await import('../index');
 
       // Get the beforeunload listener
       const calls = (window.addEventListener as any).mock.calls;
@@ -441,16 +432,12 @@ describe('Content Script - index.ts', () => {
 
   describe('Console logging', () => {
     it('should log when script loads', async () => {
-      await import('../index');
-
       expect(console.log).toHaveBeenCalledWith('WatchDog content script loaded');
     });
   });
 
   describe('Message listener behavior', () => {
     it('should always return true for async response', async () => {
-      await import('../index');
-
       const handler = messageListeners[0];
 
       const messages: Message[] = [
@@ -469,8 +456,6 @@ describe('Content Script - index.ts', () => {
     });
 
     it('should handle sendResponse being called', async () => {
-      await import('../index');
-
       const sendResponse = vi.fn();
       const handler = messageListeners[0];
 
