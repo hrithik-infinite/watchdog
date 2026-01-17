@@ -181,7 +181,7 @@ describe('useHighlight Hook', () => {
         await result.current.highlightElement('.test', 'critical');
       });
 
-      expect(errorSpy).toHaveBeenCalledWith('Failed to highlight element:', expect.any(Error));
+      expect(errorSpy).toHaveBeenCalledWith('[WatchDog]', 'Failed to highlight element', expect.objectContaining({ selector: '.test' }));
       errorSpy.mockRestore();
     });
 
@@ -196,7 +196,7 @@ describe('useHighlight Hook', () => {
         await result.current.highlightElement('.test', 'critical');
       });
 
-      expect(errorSpy).toHaveBeenCalledWith('Failed to highlight element:', expect.any(Error));
+      expect(errorSpy).toHaveBeenCalledWith('[WatchDog]', 'Failed to highlight element', expect.objectContaining({ selector: '.test' }));
       errorSpy.mockRestore();
     });
   });
@@ -269,7 +269,7 @@ describe('useHighlight Hook', () => {
         await result.current.clearHighlights();
       });
 
-      expect(errorSpy).toHaveBeenCalledWith('Failed to clear highlights:', expect.any(Error));
+      expect(errorSpy).toHaveBeenCalledWith('[WatchDog]', 'Failed to clear highlights', expect.any(Object));
       errorSpy.mockRestore();
     });
 
@@ -284,7 +284,7 @@ describe('useHighlight Hook', () => {
         await result.current.clearHighlights();
       });
 
-      expect(errorSpy).toHaveBeenCalledWith('Failed to clear highlights:', expect.any(Error));
+      expect(errorSpy).toHaveBeenCalledWith('[WatchDog]', 'Failed to clear highlights', expect.any(Object));
       errorSpy.mockRestore();
     });
   });

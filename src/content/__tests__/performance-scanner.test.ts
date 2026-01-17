@@ -1,4 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Use fake timers to speed up tests (performance scanner has 1s delay)
+vi.useFakeTimers();
 
 // Mock performance
 const mockPerformanceNow = vi.fn();
@@ -40,6 +43,14 @@ vi.stubGlobal('window', {
 
 import { scanPerformance } from '../performance-scanner';
 
+// Helper to run scanPerformance with fake timers
+async function runScanWithTimers() {
+  const scanPromise = scanPerformance();
+  // Advance timers to skip the 1-second delay in performance-scanner
+  await vi.advanceTimersByTimeAsync(1100);
+  return scanPromise;
+}
+
 describe('Performance Scanner', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -48,9 +59,13 @@ describe('Performance Scanner', () => {
     mockGetEntriesByName.mockReturnValue([]);
   });
 
+  afterEach(() => {
+    vi.clearAllTimers();
+  });
+
   describe('Scan execution', () => {
     it('should return a ScanResult object', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(result).toBeDefined();
       expect(result).toHaveProperty('url');
@@ -62,14 +77,14 @@ describe('Performance Scanner', () => {
     });
 
     it('should set correct URL', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(result.url).toBe('https://example.com');
     });
 
     it('should have current timestamp', async () => {
       const beforeScan = Date.now();
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
       const afterScan = Date.now();
 
       expect(result.timestamp).toBeGreaterThanOrEqual(beforeScan);
@@ -77,20 +92,20 @@ describe('Performance Scanner', () => {
     });
 
     it('should include wait time in duration', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(typeof result.duration).toBe('number');
       expect(Number.isNaN(result.duration)).toBe(false);
     });
 
     it('should have issues array', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
 
     it('should have empty incomplete array', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.incomplete)).toBe(true);
       expect(result.incomplete).toHaveLength(0);
@@ -99,7 +114,7 @@ describe('Performance Scanner', () => {
 
   describe('Summary generation', () => {
     it('should generate valid summary', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(result.summary.total).toBe(result.issues.length);
       expect(result.summary.bySeverity).toBeDefined();
@@ -107,7 +122,7 @@ describe('Performance Scanner', () => {
     });
 
     it('should have all severity categories', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(result.summary.bySeverity).toHaveProperty('critical');
       expect(result.summary.bySeverity).toHaveProperty('serious');
@@ -116,7 +131,7 @@ describe('Performance Scanner', () => {
     });
 
     it('should have all category breakdowns', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
       const categories = [
         'images',
         'interactive',
@@ -134,7 +149,7 @@ describe('Performance Scanner', () => {
     });
 
     it('should count severity correctly', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const totalSeverity = Object.values(result.summary.bySeverity).reduce(
         (a: number, b: number) => a + b,
@@ -146,7 +161,7 @@ describe('Performance Scanner', () => {
 
   describe('Issue validation', () => {
     it('should have valid issue structure', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       for (const issue of result.issues) {
         expect(issue).toHaveProperty('id');
@@ -159,7 +174,7 @@ describe('Performance Scanner', () => {
     });
 
     it('should have unique issue IDs', async () => {
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
       const ids = result.issues.map((i) => i.id);
       const uniqueIds = new Set(ids);
 
@@ -170,7 +185,7 @@ describe('Performance Scanner', () => {
   describe('TTFB (Time to First Byte) metrics', () => {
     it('should detect good TTFB', async () => {
       // TTFB = responseStart - requestStart = 1800 - 1300 = 500ms (good)
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const ttfbIssues = result.issues.filter((i) => i.message?.includes('Time to First Byte'));
       // Should not have issues for good TTFB
@@ -183,7 +198,7 @@ describe('Performance Scanner', () => {
       mockPerformanceAPI.timing.requestStart = 1300;
       // TTFB = 4000 - 1300 = 2700ms (poor, >1800)
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const ttfbIssues = result.issues.filter((i) => i.message?.includes('Time to First Byte'));
       if (ttfbIssues.length > 0) {
@@ -199,7 +214,7 @@ describe('Performance Scanner', () => {
     it('should detect FCP when available', async () => {
       mockGetEntriesByName.mockReturnValue([{ startTime: 1500 }]);
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const fcpIssues = result.issues.filter((i) => i.message?.includes('First Contentful Paint'));
       expect(fcpIssues.length).toBeGreaterThanOrEqual(0);
@@ -208,7 +223,7 @@ describe('Performance Scanner', () => {
     it('should handle missing FCP', async () => {
       mockGetEntriesByName.mockReturnValue([]);
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
       expect(result.duration).toBeGreaterThanOrEqual(0);
@@ -217,7 +232,7 @@ describe('Performance Scanner', () => {
     it('should detect poor FCP', async () => {
       mockGetEntriesByName.mockReturnValue([{ startTime: 3500 }]);
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const fcpIssues = result.issues.filter((i) => i.message?.includes('First Contentful Paint'));
       if (fcpIssues.length > 0) {
@@ -235,7 +250,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const lcpIssues = result.issues.filter((i) =>
         i.message?.includes('Largest Contentful Paint')
@@ -255,7 +270,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
@@ -263,7 +278,7 @@ describe('Performance Scanner', () => {
     it('should handle missing LCP', async () => {
       mockGetEntriesByType.mockReturnValue([]);
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
@@ -272,7 +287,7 @@ describe('Performance Scanner', () => {
   describe('DOM Content Loaded metrics', () => {
     it('should calculate DOM Content Loaded time', async () => {
       // domContentLoadedEventEnd - domContentLoadedEventStart = 3200 - 3100 = 100ms (good)
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
@@ -282,7 +297,7 @@ describe('Performance Scanner', () => {
       mockPerformanceAPI.timing.domContentLoadedEventEnd = 4500;
       // DOM Content Loaded = 4500 - 2000 = 2500ms (poor, >2000)
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const dcIssues = result.issues.filter((i) => i.message?.includes('DOM Content Loaded'));
       if (dcIssues.length > 0) {
@@ -298,7 +313,7 @@ describe('Performance Scanner', () => {
   describe('Page Load Time metrics', () => {
     it('should calculate page load time', async () => {
       // loadEventEnd - navigationStart = 5000 - 1000 = 4000ms
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
@@ -308,7 +323,7 @@ describe('Performance Scanner', () => {
       mockPerformanceAPI.timing.loadEventEnd = 2500;
       // Page Load Time = 2500 - 1000 = 1500ms (good, <2000)
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const plIssues = result.issues.filter((i) => i.message?.includes('Page Load Time'));
       if (plIssues.length > 0) {
@@ -325,7 +340,7 @@ describe('Performance Scanner', () => {
       mockPerformanceAPI.timing.loadEventEnd = 6000;
       // Page Load Time = 6000 - 1000 = 5000ms (poor, >4000)
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const plIssues = result.issues.filter((i) => i.message?.includes('Page Load Time'));
       if (plIssues.length > 0) {
@@ -352,7 +367,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const resourceIssues = result.issues.filter((i) => i.message?.includes('Total Resources'));
       expect(resourceIssues.length).toBeGreaterThanOrEqual(0);
@@ -370,7 +385,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const sizeIssues = result.issues.filter((i) => i.message?.includes('Total Resource Size'));
       expect(sizeIssues.length).toBeGreaterThanOrEqual(0);
@@ -389,7 +404,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const imageIssues = result.issues.filter((i) => i.message?.includes('Image Size'));
       expect(imageIssues.length).toBeGreaterThanOrEqual(0);
@@ -408,7 +423,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const jsIssues = result.issues.filter((i) => i.message?.includes('JavaScript Size'));
       expect(jsIssues.length).toBeGreaterThanOrEqual(0);
@@ -426,7 +441,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
       expect(result.duration).toBeGreaterThanOrEqual(0);
@@ -444,7 +459,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
@@ -461,7 +476,7 @@ describe('Performance Scanner', () => {
         return [];
       });
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       const resourceIssues = result.issues.filter((i) => i.message?.includes('Total Resources'));
       if (resourceIssues.length > 0) {
@@ -473,28 +488,28 @@ describe('Performance Scanner', () => {
   describe('Navigation timing metrics', () => {
     it('should collect DNS time', async () => {
       // DNS time = domainLookupEnd - domainLookupStart = 1200 - 1100 = 100ms
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
 
     it('should collect connection time', async () => {
       // Connection time = connectEnd - connectStart = 1300 - 1200 = 100ms
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
 
     it('should collect request time', async () => {
       // Request time = responseStart - requestStart = 1800 - 1300 = 500ms
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
 
     it('should collect response time', async () => {
       // Response time = responseEnd - responseStart = 2000 - 1800 = 200ms
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
@@ -502,8 +517,8 @@ describe('Performance Scanner', () => {
 
   describe('Performance scanner specifics', () => {
     it('should be callable multiple times', async () => {
-      const result1 = await scanPerformance();
-      const result2 = await scanPerformance();
+      const result1 = await runScanWithTimers();
+      const result2 = await runScanWithTimers();
 
       expect(result1).toBeDefined();
       expect(result2).toBeDefined();
@@ -515,7 +530,7 @@ describe('Performance Scanner', () => {
       const originalTiming = mockPerformanceAPI.timing;
       mockPerformanceAPI.timing = null as any;
 
-      const result = await scanPerformance();
+      const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
 
