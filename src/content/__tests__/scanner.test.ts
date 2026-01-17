@@ -1,185 +1,638 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { SEVERITY_MAP, RULE_CATEGORIES, WCAG_CRITERIA } from '@/shared/constants';
+import type { Issue } from '@/shared/types';
 
-// Mock axe-core for scanPage test
+// Mock axe-core before importing scanner
+const mockAxeRun = vi.fn();
+
 vi.mock('axe-core', () => ({
   default: {
-    run: vi.fn(),
+    run: mockAxeRun,
   },
 }));
 
-// Import functions to test (we'll test the internal logic)
-// Since these are not exported, we test through the module's behavior
-describe('Scanner - Internal Functions', () => {
-  describe('mapSeverity', () => {
-    it('should map impact values to severity levels', () => {
-      // Test the SEVERITY_MAP directly since mapSeverity uses it
-      expect(SEVERITY_MAP['critical']).toBe('critical');
-      expect(SEVERITY_MAP['serious']).toBe('serious');
-      expect(SEVERITY_MAP['moderate']).toBe('moderate');
-      expect(SEVERITY_MAP['minor']).toBe('minor');
-    });
+// Mock the messaging module
+vi.mock('@/shared/messaging', () => ({
+  onMessage: vi.fn(),
+}));
 
-    it('should handle null/undefined by returning minor', () => {
-      // SEVERITY_MAP fallback behavior
-      expect(SEVERITY_MAP['unknown'] || 'minor').toBe('minor');
-    });
+// Mock fixes module
+vi.mock('@/shared/fixes', () => ({
+  generateFix: vi.fn(() => ({
+    description: 'Fix description',
+    code: '<fixed code>',
+    learnMoreUrl: 'https://example.com/learn',
+  })),
+}));
+
+// Mock window and performance
+const mockPerformanceNow = vi.fn();
+const mockWindowLocation = { href: 'https://example.com' };
+
+vi.stubGlobal('window', {
+  location: mockWindowLocation,
+  matchMedia: vi.fn(),
+});
+
+vi.stubGlobal('performance', {
+  now: mockPerformanceNow,
+});
+
+import { scanPage } from '../scanner';
+
+describe('Scanner - scanPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPerformanceNow.mockReturnValueOnce(0).mockReturnValueOnce(100);
   });
 
-  describe('mapCategory', () => {
-    it('should map rule IDs to categories', () => {
-      expect(RULE_CATEGORIES['image-alt']).toBe('images');
-      expect(RULE_CATEGORIES['button-name']).toBe('interactive');
-      expect(RULE_CATEGORIES['label']).toBe('forms');
-      expect(RULE_CATEGORIES['color-contrast']).toBe('color');
-    });
-
-    it('should have all rules mapped to valid categories', () => {
-      const validCategories = [
-        'images',
-        'interactive',
-        'forms',
-        'color',
-        'document',
-        'structure',
-        'aria',
-        'technical',
-      ];
-
-      Object.values(RULE_CATEGORIES).forEach((category) => {
-        expect(validCategories).toContain(category);
+  describe('Basic scanning', () => {
+    it('should scan page and return scan result', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
       });
+
+      const result = await scanPage();
+
+      expect(result).toBeDefined();
+      expect(result.url).toBe('https://example.com');
+      expect(result.timestamp).toBeDefined();
+      expect(result.duration).toBe(100);
+      expect(result.issues).toEqual([]);
+      expect(result.incomplete).toEqual([]);
     });
 
-    it('should fallback to technical for unknown rules', () => {
-      // Testing fallback behavior
-      expect(RULE_CATEGORIES['unknown-rule'] || 'technical').toBe('technical');
-    });
-  });
-
-  describe('extractWcag', () => {
-    it('should extract WCAG criteria for known rules', () => {
-      const wcag = WCAG_CRITERIA['image-alt'];
-      expect(wcag).toBeDefined();
-      expect(wcag?.id).toBe('1.1.1');
-      expect(wcag?.level).toBe('A');
-    });
-
-    it('should have valid WCAG data for all rules', () => {
-      Object.values(WCAG_CRITERIA).forEach((wcag) => {
-        expect(wcag.id).toBeDefined();
-        expect(['A', 'AA', 'AAA']).toContain(wcag.level);
-        expect(wcag.name).toBeDefined();
+    it('should set correct URL from window.location', async () => {
+      mockWindowLocation.href = 'https://mywebsite.com/page';
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
       });
+
+      const result = await scanPage();
+
+      expect(result.url).toBe('https://mywebsite.com/page');
+    });
+
+    it('should measure scan duration correctly', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      // Duration should be end time (100) - start time (0) = 100
+      expect(result.duration).toBe(100);
+      expect(typeof result.duration).toBe('number');
+      expect(result.duration).toBeGreaterThan(0);
+    });
+
+    it('should set current timestamp', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
+      });
+
+      const beforeScan = Date.now();
+      const result = await scanPage();
+      const afterScan = Date.now();
+
+      expect(result.timestamp).toBeGreaterThanOrEqual(beforeScan);
+      expect(result.timestamp).toBeLessThanOrEqual(afterScan);
     });
   });
 
   describe('Violation transformation', () => {
-    it('should transform violation with simple selector', () => {
-      const mockViolation = {
-        id: 'image-alt',
-        impact: 'critical',
-        help: 'Images must have alt text',
-        description: 'All images must have alternative text',
-        helpUrl: 'https://example.com/help',
-        nodes: [
+    it('should transform axe violations to issues', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
           {
-            target: ['img.hero'],
-            html: '<img class="hero" src="test.jpg">',
-            failureSummary: 'Element has no alt attribute',
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Images must have alt text',
+            description: 'All images must have alternative text',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              {
+                target: ['img.hero'],
+                html: '<img class="hero">',
+                failureSummary: 'Element has no alt attribute',
+              },
+            ],
           },
         ],
-      };
+        incomplete: [],
+      });
 
-      // Verify the structure that would be created
-      expect(mockViolation.nodes[0].target).toHaveLength(1);
-      expect(mockViolation.nodes[0].html).toBeDefined();
+      const result = await scanPage();
+
+      expect(result.issues).toHaveLength(1);
+      const issue = result.issues[0];
+      expect(issue.id).toBeDefined();
+      expect(issue.ruleId).toBe('image-alt');
+      expect(issue.severity).toBe('critical');
+      expect(issue.message).toBe('Images must have alt text');
     });
 
-    it('should handle complex CSS selectors', () => {
-      const mockViolation = {
-        id: 'button-name',
-        impact: 'serious',
-        help: 'Button must have text content',
-        description: 'Buttons must have accessible text',
-        helpUrl: 'https://example.com/help',
-        nodes: [
+    it('should handle multiple nodes per violation', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
           {
-            target: [['body', 'main', 'button.submit-btn']],
-            html: '<button class="submit-btn"></button>',
-            failureSummary: 'Button has no accessible name',
+            id: 'button-name',
+            impact: 'serious',
+            help: 'Button must have accessible name',
+            description: 'Buttons must have accessible names',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              {
+                target: ['button.btn1'],
+                html: '<button class="btn1"></button>',
+                failureSummary: 'Button has no accessible name',
+              },
+              {
+                target: ['button.btn2'],
+                html: '<button class="btn2"></button>',
+                failureSummary: 'Button has no accessible name',
+              },
+            ],
           },
         ],
-      };
+        incomplete: [],
+      });
 
-      // Verify handling of complex selector
-      expect(Array.isArray(mockViolation.nodes[0].target[0])).toBe(true);
+      const result = await scanPage();
+
+      expect(result.issues).toHaveLength(2);
+      expect(result.issues[0].element.selector).toBe('button.btn1');
+      expect(result.issues[1].element.selector).toBe('button.btn2');
+    });
+
+    it('should handle complex CSS selectors', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'label',
+            impact: 'moderate',
+            help: 'Form field must have label',
+            description: 'Form fields must have labels',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              {
+                target: [['body', 'main', 'form', 'input.email']],
+                html: '<input class="email">',
+                failureSummary: 'Form field has no label',
+              },
+            ],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      expect(result.issues).toHaveLength(1);
+      expect(result.issues[0].element.selector).toBe('body main form input.email');
+    });
+
+    it('should extract element information', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Images must have alt text',
+            description: 'All images must have alternative text',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              {
+                target: ['img.hero'],
+                html: '<img class="hero" src="test.jpg">',
+                failureSummary: 'Element has no alt attribute',
+              },
+            ],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+      const issue = result.issues[0];
+
+      expect(issue.element.selector).toBe('img.hero');
+      expect(issue.element.html).toBe('<img class="hero" src="test.jpg">');
+      expect(issue.element.failureSummary).toBe('Element has no alt attribute');
+    });
+
+    it('should map violation severity correctly', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'rule1',
+            impact: 'critical',
+            help: 'Critical issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'rule2',
+            impact: 'serious',
+            help: 'Serious issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'rule3',
+            impact: 'moderate',
+            help: 'Moderate issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'rule4',
+            impact: 'minor',
+            help: 'Minor issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      expect(result.issues).toHaveLength(4);
+      expect(result.issues[0].severity).toBe('critical');
+      expect(result.issues[1].severity).toBe('serious');
+      expect(result.issues[2].severity).toBe('moderate');
+      expect(result.issues[3].severity).toBe('minor');
+    });
+
+    it('should map violation categories correctly', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Image issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'button-name',
+            impact: 'critical',
+            help: 'Button issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'label',
+            impact: 'critical',
+            help: 'Form issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      expect(result.issues[0].category).toBe('images');
+      expect(result.issues[1].category).toBe('interactive');
+      expect(result.issues[2].category).toBe('forms');
+    });
+
+    it('should extract WCAG criteria', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Images must have alt text',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+      const issue = result.issues[0];
+
+      expect(issue.wcag).toBeDefined();
+      expect(issue.wcag.id).toBe('1.1.1');
+      expect(issue.wcag.level).toBe('A');
+      expect(issue.wcag.name).toBeDefined();
+    });
+
+    it('should use fallback WCAG criteria for unknown rules', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'unknown-rule-xyz',
+            impact: 'critical',
+            help: 'Unknown issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+      const issue = result.issues[0];
+
+      expect(issue.wcag.id).toBe('N/A');
+      expect(issue.wcag.name).toBe('Unknown');
+    });
+
+    it('should generate unique issue IDs', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Issue 1',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              { target: ['selector1'], html: '<div>', failureSummary: 'test' },
+              { target: ['selector2'], html: '<div>', failureSummary: 'test' },
+            ],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      expect(result.issues[0].id).not.toBe(result.issues[1].id);
+      expect(result.issues[0].id).toMatch(/^issue-/);
+      expect(result.issues[1].id).toMatch(/^issue-/);
+    });
+  });
+
+  describe('Incomplete violations', () => {
+    it('should handle incomplete violations', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [
+          {
+            id: 'color-contrast',
+            impact: 'serious',
+            help: 'Color contrast may be insufficient',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              {
+                target: ['p.text'],
+                html: '<p class="text">Text</p>',
+                failureSummary: 'Color contrast may be insufficient',
+              },
+            ],
+          },
+        ],
+      });
+
+      const result = await scanPage();
+
+      expect(result.incomplete).toHaveLength(1);
+      expect(result.incomplete[0].ruleId).toBe('color-contrast');
+    });
+
+    it('should include both violations and incomplete', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Image issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [
+          {
+            id: 'color-contrast',
+            impact: 'serious',
+            help: 'Contrast issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+      });
+
+      const result = await scanPage();
+
+      expect(result.issues).toHaveLength(1);
+      expect(result.incomplete).toHaveLength(1);
     });
   });
 
   describe('Summary generation', () => {
-    it('should generate correct summary for multiple issues', () => {
-      const issues = [
-        { severity: 'critical', category: 'images' },
-        { severity: 'critical', category: 'interactive' },
-        { severity: 'serious', category: 'forms' },
-        { severity: 'moderate', category: 'color' },
-        { severity: 'minor', category: 'document' },
-      ];
+    it('should generate correct summary', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Issue 1',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'button-name',
+            impact: 'serious',
+            help: 'Issue 2',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
 
-      const summary = {
-        total: issues.length,
-        bySeverity: {
-          critical: issues.filter((i) => i.severity === 'critical').length,
-          serious: issues.filter((i) => i.severity === 'serious').length,
-          moderate: issues.filter((i) => i.severity === 'moderate').length,
-          minor: issues.filter((i) => i.severity === 'minor').length,
-        },
-        byCategory: {
-          images: issues.filter((i) => i.category === 'images').length,
-          interactive: issues.filter((i) => i.category === 'interactive').length,
-          forms: issues.filter((i) => i.category === 'forms').length,
-          color: issues.filter((i) => i.category === 'color').length,
-          document: issues.filter((i) => i.category === 'document').length,
-          structure: issues.filter((i) => i.category === 'structure').length,
-          aria: issues.filter((i) => i.category === 'aria').length,
-          technical: issues.filter((i) => i.category === 'technical').length,
-        },
-      };
+      const result = await scanPage();
 
-      expect(summary.total).toBe(5);
-      expect(summary.bySeverity.critical).toBe(2);
-      expect(summary.bySeverity.serious).toBe(1);
-      expect(summary.bySeverity.moderate).toBe(1);
-      expect(summary.bySeverity.minor).toBe(1);
-      expect(summary.byCategory.images).toBe(1);
-      expect(summary.byCategory.interactive).toBe(1);
+      expect(result.summary.total).toBe(2);
+      expect(result.summary.bySeverity.critical).toBe(1);
+      expect(result.summary.bySeverity.serious).toBe(1);
+      expect(result.summary.bySeverity.moderate).toBe(0);
+      expect(result.summary.bySeverity.minor).toBe(0);
     });
 
-    it('should handle empty issues array', () => {
-      const issues: typeof Array = [];
-      const summary = {
-        total: issues.length,
-        bySeverity: {
-          critical: 0,
-          serious: 0,
-          moderate: 0,
-          minor: 0,
-        },
-        byCategory: {
-          images: 0,
-          interactive: 0,
-          forms: 0,
-          color: 0,
-          document: 0,
-          structure: 0,
-          aria: 0,
-          technical: 0,
-        },
-      };
+    it('should count issues by category in summary', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Image issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'button-name',
+            impact: 'critical',
+            help: 'Button issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+          {
+            id: 'label',
+            impact: 'critical',
+            help: 'Form issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
 
-      expect(summary.total).toBe(0);
-      expect(Object.values(summary.bySeverity).every((v) => v === 0)).toBe(true);
+      const result = await scanPage();
+
+      expect(result.summary.byCategory.images).toBe(1);
+      expect(result.summary.byCategory.interactive).toBe(1);
+      expect(result.summary.byCategory.forms).toBe(1);
+      expect(result.summary.byCategory.color).toBe(0);
+    });
+
+    it('should have zero counts when no issues found', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      expect(result.summary.total).toBe(0);
+      expect(result.summary.bySeverity.critical).toBe(0);
+      expect(result.summary.bySeverity.serious).toBe(0);
+      expect(result.summary.bySeverity.moderate).toBe(0);
+      expect(result.summary.bySeverity.minor).toBe(0);
+      expect(result.summary.byCategory.images).toBe(0);
+      expect(result.summary.byCategory.interactive).toBe(0);
+      expect(result.summary.byCategory.forms).toBe(0);
+    });
+
+    it('should sum multiple issues in same severity/category', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Issue 1',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              { target: ['selector1'], html: '<div>', failureSummary: 'test' },
+              { target: ['selector2'], html: '<div>', failureSummary: 'test' },
+            ],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      expect(result.summary.total).toBe(2);
+      expect(result.summary.bySeverity.critical).toBe(2);
+      expect(result.summary.byCategory.images).toBe(2);
+    });
+  });
+
+  describe('Axe configuration', () => {
+    it('should call axe.run with document and configuration', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
+      });
+
+      await scanPage();
+
+      expect(mockAxeRun).toHaveBeenCalled();
+      const [doc, config] = mockAxeRun.mock.calls[0];
+      expect(doc).toBe(document);
+      expect(config).toBeDefined();
+      expect(config.runOnly).toBeDefined();
+      expect(config.runOnly.type).toBe('rule');
+      expect(Array.isArray(config.runOnly.values)).toBe(true);
+    });
+
+    it('should request violations and incomplete results', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
+      });
+
+      await scanPage();
+
+      const config = mockAxeRun.mock.calls[0][1];
+      expect(config.resultTypes).toContain('violations');
+      expect(config.resultTypes).toContain('incomplete');
+    });
+  });
+
+  describe('Error handling', () => {
+    it('should handle axe.run errors', async () => {
+      mockAxeRun.mockRejectedValue(new Error('Axe error'));
+
+      await expect(scanPage()).rejects.toThrow('Axe error');
+    });
+
+    it('should handle response with violations and incomplete', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [],
+      });
+
+      // Should work fine with empty arrays
+      const result = await scanPage();
+      expect(result.issues).toHaveLength(0);
+      expect(result.incomplete).toHaveLength(0);
+    });
+  });
+
+  describe('Fix generation', () => {
+    it('should generate fix suggestions for issues', async () => {
+      const { generateFix } = await import('@/shared/fixes');
+
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage();
+
+      expect(generateFix).toHaveBeenCalled();
+      expect(result.issues[0].fix).toBeDefined();
+      expect(result.issues[0].fix.description).toBe('Fix description');
+      expect(result.issues[0].fix.code).toBe('<fixed code>');
     });
   });
 });

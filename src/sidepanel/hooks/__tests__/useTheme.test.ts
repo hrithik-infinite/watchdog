@@ -16,7 +16,7 @@ describe('useTheme Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     document.documentElement.classList.remove('dark');
-    (chrome.storage.local.get as any).mockResolvedValue({});
+    (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
     (chrome.storage.local.set as any).mockResolvedValue(undefined);
   });
 
@@ -70,7 +70,7 @@ describe('useTheme Hook', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -89,7 +89,7 @@ describe('useTheme Hook', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -125,7 +125,7 @@ describe('useTheme Hook', () => {
 
   describe('setTheme function', () => {
     it('should update theme to light', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -151,7 +151,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should update theme to system', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -165,7 +165,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should persist theme to Chrome storage', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -181,7 +181,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should apply dark class to documentElement for dark theme', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -209,7 +209,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should update isDark flag', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -223,7 +223,7 @@ describe('useTheme Hook', () => {
 
   describe('DOM class manipulation', () => {
     it('should add dark class when applying dark theme', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -247,7 +247,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should toggle dark class on theme changes', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -281,7 +281,7 @@ describe('useTheme Hook', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       renderHook(() => useTheme());
 
@@ -303,7 +303,7 @@ describe('useTheme Hook', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { unmount } = renderHook(() => useTheme());
 
@@ -332,7 +332,7 @@ describe('useTheme Hook', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -364,7 +364,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should save theme to storage when changed', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -380,7 +380,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should handle missing storage data', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -407,7 +407,7 @@ describe('useTheme Hook', () => {
       const originalMatchMedia = window.matchMedia;
       (window.matchMedia as any) = undefined;
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -418,7 +418,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should handle multiple theme toggles', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -427,6 +427,8 @@ describe('useTheme Hook', () => {
       for (const theme of themes) {
         await act(async () => {
           result.current.setTheme(theme);
+          // Wait for effects to settle
+          await new Promise((resolve) => setTimeout(resolve, 0));
         });
       }
 
@@ -447,7 +449,7 @@ describe('useTheme Hook', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -472,7 +474,7 @@ describe('useTheme Hook', () => {
         dispatchEvent: vi.fn(),
       }));
 
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 
@@ -486,7 +488,7 @@ describe('useTheme Hook', () => {
     });
 
     it('should immediately resolve explicit theme', async () => {
-      (chrome.storage.local.get as any).mockResolvedValue({});
+      (chrome.storage.local.get as any).mockResolvedValue({ watchdog_theme: 'system' });
 
       const { result } = renderHook(() => useTheme());
 

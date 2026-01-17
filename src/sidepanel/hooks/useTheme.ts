@@ -33,11 +33,18 @@ export function useTheme() {
 
   // Load theme on mount
   useEffect(() => {
-    chrome.storage.local.get(THEME_KEY).then((result) => {
-      const savedTheme = (result[THEME_KEY] as Theme) || 'system';
-      setThemeState(savedTheme);
-      applyTheme(savedTheme);
-    });
+    chrome.storage.local
+      .get(THEME_KEY)
+      .then((result) => {
+        if (result) {
+          const savedTheme = (result[THEME_KEY] as Theme) || 'system';
+          setThemeState(savedTheme);
+          applyTheme(savedTheme);
+        }
+      })
+      .catch(() => {
+        // Silently handle storage errors, use default theme
+      });
 
     // Listen for system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
