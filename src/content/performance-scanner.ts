@@ -21,11 +21,362 @@ interface PerformanceMetric {
   unit: string;
 }
 
+interface LayoutShiftEntry extends PerformanceEntry {
+  value: number;
+  hadRecentInput: boolean;
+  sources?: Array<{
+    node?: Node;
+    previousRect: DOMRectReadOnly;
+    currentRect: DOMRectReadOnly;
+  }>;
+}
+
+interface CLSResult {
+  value: number;
+  rating: 'good' | 'needs-improvement' | 'poor';
+  shiftingElements: Array<{
+    selector: string;
+    shift: number;
+  }>;
+}
+
+interface INPResult {
+  value: number;
+  rating: 'good' | 'needs-improvement' | 'poor';
+  worstInteraction: {
+    type: string;
+    target: string;
+    duration: number;
+  } | null;
+}
+
+interface TBTResult {
+  value: number;
+  rating: 'good' | 'needs-improvement' | 'poor';
+  longTasks: Array<{
+    duration: number;
+    blockingTime: number;
+    startTime: number;
+  }>;
+}
+
+interface PerformanceEventTiming extends PerformanceEntry {
+  processingStart: number;
+  processingEnd: number;
+  interactionId: number;
+  target?: Element;
+}
+
+interface LongTaskEntry extends PerformanceEntry {
+  attribution: Array<{
+    name: string;
+    entryType: string;
+    startTime: number;
+    duration: number;
+    containerType: string;
+    containerSrc: string;
+    containerId: string;
+    containerName: string;
+  }>;
+}
+
+// Helper function to get a CSS selector for an element
+function getSelector(element: Element): string {
+  if (element.id) {
+    return `#${element.id}`;
+  }
+
+  if (element.className && typeof element.className === 'string') {
+    const classes = element.className.trim().split(/\s+/).slice(0, 2).join('.');
+    if (classes) {
+      const selector = `${element.tagName.toLowerCase()}.${classes}`;
+      // Verify selector is unique enough
+      if (document.querySelectorAll(selector).length <= 3) {
+        return selector;
+      }
+    }
+  }
+
+  // Fallback to tag with nth-child
+  const parent = element.parentElement;
+  if (parent) {
+    const siblings = Array.from(parent.children);
+    const index = siblings.indexOf(element) + 1;
+    const tagName = element.tagName.toLowerCase();
+    return `${getSelector(parent)} > ${tagName}:nth-child(${index})`;
+  }
+
+  return element.tagName.toLowerCase();
+}
+
+// Measure Cumulative Layout Shift (CLS)
+async function measureCLS(): Promise<CLSResult> {
+  return new Promise((resolve) => {
+    let clsValue = 0;
+    const shiftingElements: Map<string, number> = new Map();
+
+    // Check if PerformanceObserver supports layout-shift
+    if (!('PerformanceObserver' in window)) {
+      resolve({
+        value: 0,
+        rating: 'good',
+        shiftingElements: [],
+      });
+      return;
+    }
+
+    // First, check for buffered layout-shift entries
+    const bufferedEntries = performance.getEntriesByType('layout-shift') as LayoutShiftEntry[];
+
+    for (const entry of bufferedEntries) {
+      // Only count shifts without recent user input
+      if (!entry.hadRecentInput) {
+        clsValue += entry.value;
+
+        // Track which elements are causing shifts
+        if (entry.sources) {
+          for (const source of entry.sources) {
+            if (source.node && source.node instanceof Element) {
+              const selector = getSelector(source.node);
+              const currentShift = shiftingElements.get(selector) || 0;
+              shiftingElements.set(selector, currentShift + entry.value);
+            }
+          }
+        }
+      }
+    }
+
+    // Also observe for any new shifts during measurement period
+    let observer: PerformanceObserver | null = null;
+
+    try {
+      observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries() as LayoutShiftEntry[]) {
+          if (!entry.hadRecentInput) {
+            clsValue += entry.value;
+
+            if (entry.sources) {
+              for (const source of entry.sources) {
+                if (source.node && source.node instanceof Element) {
+                  const selector = getSelector(source.node);
+                  const currentShift = shiftingElements.get(selector) || 0;
+                  shiftingElements.set(selector, currentShift + entry.value);
+                }
+              }
+            }
+          }
+        }
+      });
+
+      observer.observe({ type: 'layout-shift', buffered: true });
+    } catch {
+      // layout-shift not supported
+    }
+
+    // Wait for a short period to capture any additional shifts
+    setTimeout(() => {
+      if (observer) {
+        observer.disconnect();
+      }
+
+      // Convert map to array and sort by shift value
+      const shiftingElementsArray = Array.from(shiftingElements.entries())
+        .map(([selector, shift]) => ({ selector, shift }))
+        .sort((a, b) => b.shift - a.shift)
+        .slice(0, 5); // Top 5 shifting elements
+
+      resolve({
+        value: clsValue,
+        rating: getRating(clsValue, THRESHOLDS.CLS),
+        shiftingElements: shiftingElementsArray,
+      });
+    }, 500); // Wait 500ms for additional shifts
+  });
+}
+
+// Measure Interaction to Next Paint (INP)
+async function measureINP(): Promise<INPResult> {
+  return new Promise((resolve) => {
+    const interactions: Map<number, { duration: number; type: string; target: string }> = new Map();
+
+    // Check if PerformanceObserver supports event timing
+    if (!('PerformanceObserver' in window)) {
+      resolve({
+        value: 0,
+        rating: 'good',
+        worstInteraction: null,
+      });
+      return;
+    }
+
+    // Get buffered event timing entries
+    try {
+      const entries = performance.getEntriesByType('event') as PerformanceEventTiming[];
+
+      for (const entry of entries) {
+        if (entry.interactionId && entry.interactionId > 0) {
+          const duration = entry.duration;
+          const existing = interactions.get(entry.interactionId);
+
+          if (!existing || duration > existing.duration) {
+            interactions.set(entry.interactionId, {
+              duration,
+              type: entry.name,
+              target: entry.target ? getSelector(entry.target) : 'unknown',
+            });
+          }
+        }
+      }
+    } catch {
+      // event timing not supported
+    }
+
+    // Also observe for new interactions
+    let observer: PerformanceObserver | null = null;
+
+    try {
+      observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries() as PerformanceEventTiming[]) {
+          if (entry.interactionId && entry.interactionId > 0) {
+            const duration = entry.duration;
+            const existing = interactions.get(entry.interactionId);
+
+            if (!existing || duration > existing.duration) {
+              interactions.set(entry.interactionId, {
+                duration,
+                type: entry.name,
+                target: entry.target ? getSelector(entry.target) : 'unknown',
+              });
+            }
+          }
+        }
+      });
+
+      observer.observe({ type: 'event', buffered: true });
+    } catch {
+      // event timing not supported
+    }
+
+    // Wait for measurement period
+    setTimeout(() => {
+      if (observer) {
+        observer.disconnect();
+      }
+
+      // Calculate INP (98th percentile of interactions)
+      const durations = Array.from(interactions.values())
+        .map((i) => i.duration)
+        .sort((a, b) => b - a);
+
+      let inpValue = 0;
+      let worstInteraction: INPResult['worstInteraction'] = null;
+
+      if (durations.length > 0) {
+        // Use the worst interaction for simplicity (approximation of p98)
+        const worstIdx = Math.min(Math.floor(durations.length * 0.02), durations.length - 1);
+        inpValue = durations[worstIdx] || durations[0];
+
+        // Find the worst interaction details
+        const worst = Array.from(interactions.values()).find((i) => i.duration === inpValue);
+        if (worst) {
+          worstInteraction = {
+            type: worst.type,
+            target: worst.target,
+            duration: worst.duration,
+          };
+        }
+      }
+
+      resolve({
+        value: inpValue,
+        rating: getRating(inpValue, THRESHOLDS.INP),
+        worstInteraction,
+      });
+    }, 500);
+  });
+}
+
+// Measure Total Blocking Time (TBT)
+async function measureTBT(): Promise<TBTResult> {
+  return new Promise((resolve) => {
+    const longTasks: TBTResult['longTasks'] = [];
+    let totalBlockingTime = 0;
+
+    // Check if PerformanceObserver is available
+    if (!('PerformanceObserver' in window)) {
+      resolve({
+        value: 0,
+        rating: 'good',
+        longTasks: [],
+      });
+      return;
+    }
+
+    // Get buffered long task entries
+    try {
+      const entries = performance.getEntriesByType('longtask') as LongTaskEntry[];
+
+      for (const entry of entries) {
+        const blockingTime = Math.max(0, entry.duration - 50); // Blocking = duration - 50ms
+        totalBlockingTime += blockingTime;
+
+        longTasks.push({
+          duration: entry.duration,
+          blockingTime,
+          startTime: entry.startTime,
+        });
+      }
+    } catch {
+      // longtask not supported
+    }
+
+    // Also observe for new long tasks
+    let observer: PerformanceObserver | null = null;
+
+    try {
+      observer = new PerformanceObserver((list) => {
+        for (const entry of list.getEntries() as LongTaskEntry[]) {
+          const blockingTime = Math.max(0, entry.duration - 50);
+          totalBlockingTime += blockingTime;
+
+          longTasks.push({
+            duration: entry.duration,
+            blockingTime,
+            startTime: entry.startTime,
+          });
+        }
+      });
+
+      observer.observe({ type: 'longtask', buffered: true });
+    } catch {
+      // longtask not supported
+    }
+
+    // Wait for measurement period
+    setTimeout(() => {
+      if (observer) {
+        observer.disconnect();
+      }
+
+      // Sort by blocking time (worst first)
+      longTasks.sort((a, b) => b.blockingTime - a.blockingTime);
+
+      resolve({
+        value: totalBlockingTime,
+        rating: getRating(totalBlockingTime, THRESHOLDS.TBT),
+        longTasks: longTasks.slice(0, 5), // Top 5 worst long tasks
+      });
+    }, 500);
+  });
+}
+
 // Core Web Vitals thresholds (from Google)
 const THRESHOLDS = {
   LCP: { good: 2500, poor: 4000 }, // Largest Contentful Paint (ms)
-  FID: { good: 100, poor: 300 }, // First Input Delay (ms)
+  FID: { good: 100, poor: 300 }, // First Input Delay (ms) - deprecated, replaced by INP
+  INP: { good: 200, poor: 500 }, // Interaction to Next Paint (ms)
   CLS: { good: 0.1, poor: 0.25 }, // Cumulative Layout Shift
+  TBT: { good: 200, poor: 600 }, // Total Blocking Time (ms)
   FCP: { good: 1800, poor: 3000 }, // First Contentful Paint (ms)
   TTFB: { good: 800, poor: 1800 }, // Time to First Byte (ms)
   TTI: { good: 3800, poor: 7300 }, // Time to Interactive (ms)
@@ -195,6 +546,285 @@ function getResourceMetrics(): PerformanceMetric[] {
   return metrics;
 }
 
+// Convert CLS result to issues
+function clsToIssues(clsResult: CLSResult): Issue[] {
+  const issues: Issue[] = [];
+
+  // Only create an issue if CLS is not good
+  if (clsResult.rating === 'good') {
+    return issues;
+  }
+
+  const severity = mapRatingToSeverity(clsResult.rating);
+  const valueFormatted = clsResult.value.toFixed(3);
+
+  // Main CLS issue
+  const mainIssue: Issue = {
+    id: generateId(),
+    ruleId: 'performance-cls',
+    severity,
+    category: 'technical' as Category,
+    message: `CLS (Cumulative Layout Shift): ${valueFormatted}`,
+    description: `Cumulative Layout Shift measures visual stability. Your score of ${valueFormatted} is rated as "${clsResult.rating}". Good: ≤0.1, Needs improvement: ≤0.25, Poor: >0.25`,
+    helpUrl: 'https://web.dev/cls/',
+    wcag: {
+      id: 'Performance',
+      level: 'AA',
+      name: 'Visual Stability',
+      description: 'Cumulative Layout Shift - measures unexpected layout shifts',
+    } as WCAGCriteria,
+    element: {
+      selector: 'body',
+      html: '<body>...</body>',
+      failureSummary: `CLS is ${valueFormatted}, which indicates ${clsResult.rating === 'poor' ? 'poor' : 'moderate'} visual stability`,
+    },
+    fix: {
+      description:
+        'Reduce Cumulative Layout Shift by adding explicit dimensions to images/videos, avoiding inserting content above existing content, and using transform animations instead of properties that trigger layout.',
+      code: `<!-- Always include width and height on images -->
+<img src="image.jpg" width="800" height="600" alt="...">
+
+<!-- Reserve space for dynamic content -->
+<div style="min-height: 200px;">
+  <!-- Dynamic content loads here -->
+</div>
+
+<!-- Use CSS aspect-ratio for responsive images -->
+<img src="image.jpg" style="aspect-ratio: 16/9; width: 100%;">`,
+      learnMoreUrl: 'https://web.dev/cls/',
+    },
+  };
+
+  issues.push(mainIssue);
+
+  // Create individual issues for each shifting element
+  for (const shiftingElement of clsResult.shiftingElements) {
+    if (shiftingElement.shift > 0.01) {
+      // Only report significant shifts
+      issues.push({
+        id: generateId(),
+        ruleId: 'performance-cls-element',
+        severity: shiftingElement.shift > 0.1 ? 'serious' : 'moderate',
+        category: 'technical' as Category,
+        message: `Layout shift detected: ${shiftingElement.shift.toFixed(3)}`,
+        description: `This element contributed ${shiftingElement.shift.toFixed(3)} to the total CLS score. Consider adding explicit dimensions or reserving space for this element.`,
+        helpUrl: 'https://web.dev/cls/',
+        wcag: {
+          id: 'Performance',
+          level: 'AA',
+          name: 'Visual Stability',
+          description: 'Element causing layout shift',
+        } as WCAGCriteria,
+        element: {
+          selector: shiftingElement.selector,
+          html: getElementHtml(shiftingElement.selector),
+          failureSummary: `This element shifted by ${shiftingElement.shift.toFixed(3)}`,
+        },
+        fix: {
+          description:
+            'Add explicit width and height attributes, use CSS aspect-ratio, or reserve space for this element to prevent layout shifts.',
+          code: `<!-- Add explicit dimensions -->
+<${getTagFromSelector(shiftingElement.selector)} width="..." height="...">
+
+<!-- Or use CSS -->
+.element {
+  aspect-ratio: 16/9;
+  width: 100%;
+}`,
+          learnMoreUrl: 'https://web.dev/optimize-cls/',
+        },
+      });
+    }
+  }
+
+  return issues;
+}
+
+// Helper to get element HTML from selector
+function getElementHtml(selector: string): string {
+  try {
+    const element = document.querySelector(selector);
+    if (element) {
+      const html = element.outerHTML;
+      // Truncate if too long
+      if (html.length > 200) {
+        return html.substring(0, 200) + '...>';
+      }
+      return html;
+    }
+  } catch {
+    // Invalid selector
+  }
+  return `<element selector="${selector}">...</element>`;
+}
+
+// Helper to extract tag name from selector
+function getTagFromSelector(selector: string): string {
+  const match = selector.match(/^([a-z0-9]+)/i);
+  return match ? match[1] : 'div';
+}
+
+// Convert INP result to issues
+function inpToIssues(inpResult: INPResult): Issue[] {
+  const issues: Issue[] = [];
+
+  // Only create an issue if INP is not good
+  if (inpResult.rating === 'good' || inpResult.value === 0) {
+    return issues;
+  }
+
+  const severity = mapRatingToSeverity(inpResult.rating);
+  const valueFormatted = Math.round(inpResult.value);
+
+  const mainIssue: Issue = {
+    id: generateId(),
+    ruleId: 'performance-inp',
+    severity,
+    category: 'technical' as Category,
+    message: `INP (Interaction to Next Paint): ${valueFormatted}ms`,
+    description: `Interaction to Next Paint measures responsiveness. Your score of ${valueFormatted}ms is rated as "${inpResult.rating}". Good: ≤200ms, Needs improvement: ≤500ms, Poor: >500ms`,
+    helpUrl: 'https://web.dev/inp/',
+    wcag: {
+      id: 'Performance',
+      level: 'AA',
+      name: 'Responsiveness',
+      description: 'Interaction to Next Paint - measures input responsiveness',
+    } as WCAGCriteria,
+    element: {
+      selector: inpResult.worstInteraction?.target || 'body',
+      html: inpResult.worstInteraction
+        ? getElementHtml(inpResult.worstInteraction.target)
+        : '<body>...</body>',
+      failureSummary: inpResult.worstInteraction
+        ? `Slowest interaction: ${inpResult.worstInteraction.type} on ${inpResult.worstInteraction.target} took ${Math.round(inpResult.worstInteraction.duration)}ms`
+        : `INP is ${valueFormatted}ms, indicating slow response to user interactions`,
+    },
+    fix: {
+      description:
+        'Improve INP by breaking up long tasks, optimizing event handlers, reducing JavaScript execution time, and using web workers for heavy computations.',
+      code: `// Break up long tasks with scheduler.yield()
+async function handleClick() {
+  doFirstPart();
+  await scheduler.yield(); // Let browser update
+  doSecondPart();
+}
+
+// Or use setTimeout to break up work
+function processLargeArray(items) {
+  const chunk = items.splice(0, 100);
+  processChunk(chunk);
+  if (items.length > 0) {
+    setTimeout(() => processLargeArray(items), 0);
+  }
+}
+
+// Debounce rapid interactions
+const debouncedHandler = debounce(handler, 100);`,
+      learnMoreUrl: 'https://web.dev/optimize-inp/',
+    },
+  };
+
+  issues.push(mainIssue);
+
+  return issues;
+}
+
+// Convert TBT result to issues
+function tbtToIssues(tbtResult: TBTResult): Issue[] {
+  const issues: Issue[] = [];
+
+  // Only create an issue if TBT is not good
+  if (tbtResult.rating === 'good' || tbtResult.value === 0) {
+    return issues;
+  }
+
+  const severity = mapRatingToSeverity(tbtResult.rating);
+  const valueFormatted = Math.round(tbtResult.value);
+
+  const mainIssue: Issue = {
+    id: generateId(),
+    ruleId: 'performance-tbt',
+    severity,
+    category: 'technical' as Category,
+    message: `TBT (Total Blocking Time): ${valueFormatted}ms`,
+    description: `Total Blocking Time measures how long the main thread was blocked. Your score of ${valueFormatted}ms is rated as "${tbtResult.rating}". Good: ≤200ms, Needs improvement: ≤600ms, Poor: >600ms`,
+    helpUrl: 'https://web.dev/tbt/',
+    wcag: {
+      id: 'Performance',
+      level: 'AA',
+      name: 'Main Thread',
+      description: 'Total Blocking Time - measures main thread blocking',
+    } as WCAGCriteria,
+    element: {
+      selector: 'body',
+      html: '<body>...</body>',
+      failureSummary: `${tbtResult.longTasks.length} long task(s) blocked the main thread for a total of ${valueFormatted}ms`,
+    },
+    fix: {
+      description:
+        'Reduce TBT by breaking up long JavaScript tasks, removing unused JavaScript, minimizing main thread work, and deferring non-critical scripts.',
+      code: `<!-- Defer non-critical scripts -->
+<script src="analytics.js" defer></script>
+
+<!-- Use async for independent scripts -->
+<script src="widget.js" async></script>
+
+// Code split with dynamic imports
+const module = await import('./heavy-module.js');
+
+// Move heavy work to Web Worker
+const worker = new Worker('worker.js');
+worker.postMessage(largeData);`,
+      learnMoreUrl: 'https://web.dev/optimize-tbt/',
+    },
+  };
+
+  issues.push(mainIssue);
+
+  // Add issues for individual long tasks if significant
+  for (const task of tbtResult.longTasks) {
+    if (task.blockingTime > 100) {
+      // Only report significant blocking
+      issues.push({
+        id: generateId(),
+        ruleId: 'performance-long-task',
+        severity: task.blockingTime > 300 ? 'serious' : 'moderate',
+        category: 'technical' as Category,
+        message: `Long task detected: ${Math.round(task.duration)}ms (${Math.round(task.blockingTime)}ms blocking)`,
+        description: `A task running for ${Math.round(task.duration)}ms blocked the main thread for ${Math.round(task.blockingTime)}ms. Tasks over 50ms are considered long tasks.`,
+        helpUrl: 'https://web.dev/long-tasks-devtools/',
+        wcag: {
+          id: 'Performance',
+          level: 'AA',
+          name: 'Long Task',
+          description: 'JavaScript task that blocked the main thread',
+        } as WCAGCriteria,
+        element: {
+          selector: 'body',
+          html: '<script>...</script>',
+          failureSummary: `Long task at ${Math.round(task.startTime)}ms blocked for ${Math.round(task.blockingTime)}ms`,
+        },
+        fix: {
+          description:
+            'Break up this long task into smaller chunks using requestIdleCallback, setTimeout, or scheduler.yield().',
+          code: `// Use requestIdleCallback for non-urgent work
+requestIdleCallback((deadline) => {
+  while (deadline.timeRemaining() > 0 && tasks.length > 0) {
+    performTask(tasks.shift());
+  }
+});
+
+// Or use scheduler API
+await scheduler.yield();`,
+          learnMoreUrl: 'https://web.dev/optimize-long-tasks/',
+        },
+      });
+    }
+  }
+
+  return issues;
+}
+
 // Convert performance metrics to issues
 function metricsToIssues(metrics: PerformanceMetric[]): Issue[] {
   const issues: Issue[] = [];
@@ -241,6 +871,9 @@ function metricsToIssues(metrics: PerformanceMetric[]): Issue[] {
 function getFixDescription(metric: PerformanceMetric): string {
   const name = metric.name.toLowerCase();
 
+  if (name.includes('cls') || name.includes('layout shift')) {
+    return 'Reduce Cumulative Layout Shift by adding explicit dimensions to images/videos, avoiding inserting content above existing content, and using transform animations instead of properties that trigger layout.';
+  }
   if (name.includes('lcp')) {
     return 'Optimize Largest Contentful Paint by reducing server response times, eliminating render-blocking resources, optimizing images, and using lazy loading.';
   }
@@ -268,6 +901,25 @@ function getFixDescription(metric: PerformanceMetric): string {
 
 function getFixCode(metric: PerformanceMetric): string {
   const name = metric.name.toLowerCase();
+
+  if (name.includes('cls') || name.includes('layout shift')) {
+    return `<!-- Always include width and height on images -->
+<img src="image.jpg" width="800" height="600" alt="...">
+
+<!-- Reserve space for dynamic content -->
+<div style="min-height: 200px;">
+  <!-- Dynamic content loads here -->
+</div>
+
+<!-- Use CSS aspect-ratio for responsive images -->
+<img src="image.jpg" style="aspect-ratio: 16/9; width: 100%;">
+
+<!-- Use transform for animations instead of top/left -->
+.animate {
+  transform: translateY(10px); /* Good */
+  /* top: 10px; Bad - causes layout shift */
+}`;
+  }
 
   if (name.includes('image')) {
     return `<!-- Use modern image formats and lazy loading -->
@@ -350,6 +1002,11 @@ function generateSummary(issues: Issue[]): ScanSummary {
 export async function scanPerformance(): Promise<ScanResult> {
   const startTime = performance.now();
 
+  // Measure Core Web Vitals in parallel
+  const clsPromise = measureCLS();
+  const inpPromise = measureINP();
+  const tbtPromise = measureTBT();
+
   // Wait a bit to ensure metrics are collected
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
@@ -358,8 +1015,17 @@ export async function scanPerformance(): Promise<ScanResult> {
   const resourceMetrics = getResourceMetrics();
   const allMetrics = [...navigationMetrics, ...resourceMetrics];
 
+  // Wait for Core Web Vitals measurements to complete
+  const [clsResult, inpResult, tbtResult] = await Promise.all([clsPromise, inpPromise, tbtPromise]);
+
   // Convert metrics to issues
-  const issues = metricsToIssues(allMetrics);
+  const metricIssues = metricsToIssues(allMetrics);
+  const clsIssues = clsToIssues(clsResult);
+  const inpIssues = inpToIssues(inpResult);
+  const tbtIssues = tbtToIssues(tbtResult);
+
+  // Combine all issues
+  const issues = [...metricIssues, ...clsIssues, ...inpIssues, ...tbtIssues];
 
   const duration = performance.now() - startTime;
 

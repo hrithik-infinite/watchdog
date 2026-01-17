@@ -3,7 +3,7 @@
  * Displays a circular score gauge similar to Lighthouse
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ScoreResult } from '@/shared/scoring';
 import { cn } from '@/sidepanel/lib/utils';
 
@@ -46,13 +46,16 @@ export default function ScoreGauge({
   animate = true,
   className,
 }: ScoreGaugeProps) {
-  const [displayScore, setDisplayScore] = useState(animate ? 0 : scoreResult.score);
+  const [animatedScore, setAnimatedScore] = useState(0);
+  const animationRef = useRef<number | null>(null);
   const config = SIZE_CONFIG[size];
 
-  // Animate score on mount
+  // Determine the score to display: animated value or actual score
+  const displayScore = animate ? animatedScore : scoreResult.score;
+
+  // Animate score on mount (only when animate is true)
   useEffect(() => {
     if (!animate) {
-      setDisplayScore(scoreResult.score);
       return;
     }
 
@@ -61,7 +64,7 @@ export default function ScoreGauge({
     const startScore = 0;
     const endScore = scoreResult.score;
 
-    const animateScore = () => {
+    const runAnimation = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
@@ -69,14 +72,20 @@ export default function ScoreGauge({
       const eased = 1 - Math.pow(1 - progress, 3);
       const currentScore = Math.round(startScore + (endScore - startScore) * eased);
 
-      setDisplayScore(currentScore);
+      setAnimatedScore(currentScore);
 
       if (progress < 1) {
-        requestAnimationFrame(animateScore);
+        animationRef.current = requestAnimationFrame(runAnimation);
       }
     };
 
-    requestAnimationFrame(animateScore);
+    animationRef.current = requestAnimationFrame(runAnimation);
+
+    return () => {
+      if (animationRef.current !== null) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
   }, [scoreResult.score, animate]);
 
   // Calculate SVG circle properties

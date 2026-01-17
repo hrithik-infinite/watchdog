@@ -85,7 +85,11 @@ export function calculateScoreFromSummary(summary: ScanSummary): ScoreResult {
 /**
  * Get grade, color, and label based on score
  */
-function getGradeInfo(score: number): { grade: ScoreResult['grade']; color: string; label: string } {
+function getGradeInfo(score: number): {
+  grade: ScoreResult['grade'];
+  color: string;
+  label: string;
+} {
   if (score >= 90) {
     return { grade: 'A', color: '#00C853', label: 'Excellent' };
   } else if (score >= 75) {
