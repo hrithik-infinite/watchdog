@@ -45,15 +45,15 @@ export default function IssueDetail({
   return (
     <div className="flex flex-col h-full animate-slide-in bg-background">
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-        <Button variant="ghost" onClick={onBack} className="gap-2 text-primary">
-          <ChevronLeft className="h-5 w-5" />
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 text-primary -ml-2">
+          <ChevronLeft className="h-4 w-4" />
           <span className="text-sm">Back to Issues</span>
         </Button>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-5">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Title and Severity */}
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-h2 text-foreground flex-1">{issue.message}</h2>
@@ -78,7 +78,7 @@ export default function IssueDetail({
 
         {/* Current Element */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <h3 className="text-h3 text-foreground">Current Element</h3>
             <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
               <Eye className="h-4 w-4" />
@@ -91,20 +91,20 @@ export default function IssueDetail({
         {/* How to Fix */}
         <div>
           <h3 className="text-h3 text-foreground mb-2">How to Fix</h3>
-          <p className="text-body text-muted-foreground mb-3">{issue.fix.description}</p>
+          <p className="text-body text-muted-foreground mb-2">{issue.fix.description}</p>
         </div>
 
         {/* Suggested Fix */}
         {issue.fix.code && (
           <div>
-            <h3 className="text-h3 text-foreground mb-3">Suggested Fix</h3>
+            <h3 className="text-h3 text-foreground mb-2">Suggested Fix</h3>
             <CodeBlock code={issue.fix.code} showCopy />
           </div>
         )}
       </div>
 
       {/* Navigation Footer */}
-      <div className="flex items-center justify-between px-5 py-4 border-t border-border bg-card">
+      <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-card">
         <Button variant="ghost" size="sm" onClick={onPrev} disabled={!hasPrev} className="gap-1.5">
           <ChevronLeft className="h-4 w-4" />
           Previous

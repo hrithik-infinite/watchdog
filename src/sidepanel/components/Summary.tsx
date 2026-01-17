@@ -26,7 +26,7 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
 
   return (
-    <div className="px-5 py-4 bg-background border-b border-border animate-fade-in">
+    <div className="px-4 py-3 bg-background border-b border-border animate-fade-in">
       <div className="flex items-center justify-between">
         {severities.map((severity) => {
           const count = summary.bySeverity[severity] || 0;
@@ -38,7 +38,7 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
               variant="ghost"
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
               className={cn(
-                'flex flex-col items-center h-auto px-4 py-2',
+                'flex flex-col items-center h-auto px-3 py-1.5',
                 isActive && 'bg-card ring-1 ring-border'
               )}
             >

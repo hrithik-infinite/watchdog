@@ -35,7 +35,7 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
   return (
     <Card
       className={cn(
-        'mb-3 cursor-pointer transition-all animate-fade-in hover:bg-accent',
+        'mb-2 cursor-pointer transition-all animate-fade-in hover:bg-accent',
         isSelected && 'ring-2 ring-primary'
       )}
       onClick={() => onSelect(issue.id)}
@@ -44,17 +44,17 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onSelect(issue.id)}
     >
-      <CardContent className="p-4">
+      <CardContent className="p-3">
         {/* Severity Badge */}
-        <Badge variant={SEVERITY_VARIANTS[issue.severity]} className="mb-3">
+        <Badge variant={SEVERITY_VARIANTS[issue.severity]} className="mb-2">
           {SEVERITY_LABELS[issue.severity]}
         </Badge>
 
         {/* Issue Title */}
-        <h3 className="text-h3 text-foreground mb-2 leading-snug">{issue.message}</h3>
+        <h3 className="text-h3 text-foreground mb-1.5 leading-snug">{issue.message}</h3>
 
         {/* WCAG Reference */}
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2 mb-2">
           <span className="text-mono text-[10px] text-muted-foreground tracking-wider px-2 py-0.5 bg-muted/30 rounded border border-border/50">
             WCAG {issue.wcag.id}
           </span>
@@ -62,10 +62,10 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
         </div>
 
         {/* Description */}
-        <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{issue.description}</p>
+        <p className="text-sm text-muted-foreground mb-2 line-clamp-2">{issue.description}</p>
 
         {/* Code Preview */}
-        <div className="bg-background/50 rounded-md p-3 mb-3 overflow-hidden border border-primary/20 backdrop-blur-sm relative group">
+        <div className="bg-background/50 rounded-md p-2 mb-2 overflow-hidden border border-primary/20 backdrop-blur-sm relative group">
           <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <span className="text-mono text-[9px] text-muted-foreground/50 tracking-wider">
               HTML

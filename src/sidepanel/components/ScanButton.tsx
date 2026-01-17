@@ -12,17 +12,16 @@ export default function ScanButton({ isScanning, onScan, hasResults = false }: S
     <Button
       onClick={onScan}
       disabled={isScanning}
-      size="lg"
-      className="w-full py-6 text-lg font-semibold rounded-full shadow-lg shadow-primary/25"
+      className="w-full py-2.5 text-sm font-semibold rounded-full shadow-lg shadow-primary/25"
     >
       {isScanning ? (
         <>
-          <Loader2 className="h-5 w-5 animate-spin" />
+          <Loader2 className="h-4 w-4 animate-spin" />
           Scanning...
         </>
       ) : (
         <>
-          {hasResults && <RefreshCw className="h-5 w-5" />}
+          {hasResults && <RefreshCw className="h-4 w-4" />}
           {hasResults ? 'Rescan Page' : 'Start Scan'}
         </>
       )}

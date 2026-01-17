@@ -17,26 +17,26 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center gap-2 px-5 py-4 border-b border-border">
-        <Button variant="ghost" onClick={onClose} className="gap-2 text-primary">
-          <ChevronLeft className="h-5 w-5" />
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
+        <Button variant="ghost" size="sm" onClick={onClose} className="gap-1 text-primary -ml-2">
+          <ChevronLeft className="h-4 w-4" />
           <span className="text-sm">Back</span>
         </Button>
       </div>
 
-      <div className="px-5 py-4 border-b border-border">
+      <div className="px-4 py-4 border-b border-border">
         <h2 className="text-h1 text-foreground">Settings</h2>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-5 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {/* WCAG Level */}
         <div>
-          <Label className="text-h3 text-foreground">WCAG Conformance Level</Label>
-          <p className="text-caption text-muted-foreground mb-3">
+          <Label className="text-h3 text-foreground mb-2 block">WCAG Conformance Level</Label>
+          <p className="text-sm text-muted-foreground mb-3">
             Filter issues based on WCAG conformance level requirements.
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-2 mt-3">
             {wcagLevels.map((level) => (
               <Button
                 key={level}
@@ -53,9 +53,9 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         {/* Show Incomplete */}
         <Card>
           <CardContent className="flex items-center justify-between p-4">
-            <div className="space-y-1">
-              <Label className="text-h3 text-foreground">Show Incomplete Issues</Label>
-              <p className="text-caption text-muted-foreground">
+            <div className="space-y-1 pr-4">
+              <Label className="text-h3 text-foreground block">Show Incomplete Issues</Label>
+              <p className="text-sm text-muted-foreground">
                 Include issues that need manual review.
               </p>
             </div>
@@ -69,9 +69,9 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         {/* Auto Highlight */}
         <Card>
           <CardContent className="flex items-center justify-between p-4">
-            <div className="space-y-1">
-              <Label className="text-h3 text-foreground">Auto-highlight on Hover</Label>
-              <p className="text-caption text-muted-foreground">
+            <div className="space-y-1 pr-4">
+              <Label className="text-h3 text-foreground block">Auto-highlight on Hover</Label>
+              <p className="text-sm text-muted-foreground">
                 Highlight elements when hovering over issues.
               </p>
             </div>
@@ -84,7 +84,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
       </div>
 
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-border">
+      <div className="px-4 py-4 border-t border-border">
         <p className="text-caption text-muted-foreground text-center">WatchDog v1.0.0</p>
       </div>
     </div>

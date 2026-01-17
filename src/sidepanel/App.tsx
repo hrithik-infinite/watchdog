@@ -110,7 +110,7 @@ export default function App() {
       <Header onSettingsClick={() => setShowSettings(true)} />
 
       {/* Scan button at top for results view */}
-      <div className="px-5 py-4">
+      <div className="px-4 py-2">
         <ScanButton isScanning={isScanning} onScan={scan} hasResults={!!scanResult} />
       </div>
 

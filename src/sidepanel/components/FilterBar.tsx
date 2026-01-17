@@ -67,7 +67,7 @@ export default function FilterBar({
   };
 
   return (
-    <div className="px-5 py-3 bg-background border-b border-border space-y-3">
+    <div className="px-4 py-2 bg-background border-b border-border space-y-2">
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
