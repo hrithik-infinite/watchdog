@@ -1,210 +1,37 @@
-# WatchDog - Final Project Plan
+# WatchDog - Technical Documentation
 
 > A browser extension that helps developers identify and fix accessibility issues with a clean side panel UI and visual highlighting.
 
+**For project progress tracking, see:** [PROJECT_TRACKER.md](./PROJECT_TRACKER.md)
+
 ---
 
-## Decisions Summary
+## Architecture Overview
 
-| Decision | Choice |
-|----------|--------|
-| MVP Rules | 15 rules |
-| UI Approach | Side panel + element highlighting |
-| Component Library | shadcn/ui (Radix UI + Tailwind) |
-| Vision Simulators | ✅ v1.1 COMPLETED |
-| Focus Order Viz | ✅ v1.1 COMPLETED |
-| Report Export | ✅ v1.1 COMPLETED |
-| Rule Engine | Hybrid (axe-core + custom UI/overlays) |
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| MVP Rules | 15 curated rules | Focus on high-impact issues |
+| UI Approach | Side panel + element highlighting | Non-intrusive, professional workflow |
+| Component Library | shadcn/ui (Radix UI + Tailwind) | Accessible, customizable, modern |
+| Rule Engine | Hybrid (axe-core + custom UI) | Industry-standard detection + custom UX |
+| State Management | Zustand | Lightweight, TypeScript-friendly |
+| Styling | Tailwind CSS v4 | Utility-first, modern design system |
+| Testing | Vitest + React Testing Library | Fast, modern, well-integrated |
 
 ---
 
 ## Table of Contents
 
-1. [Task List Overview](#task-list-overview)
-2. [MVP Feature Set](#mvp-feature-set)
-3. [The 15 MVP Rules](#the-15-mvp-rules)
-4. [Side Panel UI Design](#side-panel-ui-design)
-5. [Technical Architecture](#technical-architecture)
-6. [shadcn/ui Setup & Components](#shadcnui-setup--components)
-7. [Hybrid axe-core Integration](#hybrid-axe-core-integration)
-8. [Project Structure](#project-structure)
-9. [Development Phases](#development-phases)
-10. [v1.1 Roadmap](#v11-roadmap)
+1. [Feature Set](#feature-set)
+2. [The 15 MVP Rules](#the-15-mvp-rules)
+3. [Technical Architecture](#technical-architecture)
+4. [shadcn/ui Components](#shadcnui-components)
+5. [Project Structure](#project-structure)
+6. [Commands & Quick Reference](#commands--quick-reference)
 
 ---
 
-## Task List Overview
-
-### 🚀 Project Setup & Configuration
-- [x] Initialize project with Vite + CRXJS + React + TypeScript
-- [x] Configure Tailwind CSS and PostCSS
-- [x] Initialize shadcn/ui (`npx shadcn-ui@latest init`)
-- [x] Install core shadcn components (Button, Card, Badge, Tabs, ScrollArea, etc.)
-- [x] Set up ESLint and Prettier
-- [x] Create project folder structure
-- [x] Create manifest.json (MV3)
-- [x] Set up git repository and initial commit
-
-### 🎨 UI Foundation
-- [x] Create theme provider for dark mode support
-- [x] Set up Tailwind configuration with shadcn/ui variables
-- [x] Create base layout components (Header, Footer)
-- [x] Implement empty state components
-- [x] Create loading skeleton components
-
-### 🧩 Extension Components
-
-**Popup**
-- [x] Create popup HTML and entry point
-- [x] Build "Open Side Panel" button UI
-- [x] Implement side panel opening logic
-- [x] Add extension icon and branding
-
-**Side Panel**
-- [x] Create side panel HTML and React entry point
-- [x] Build Header component with settings button
-- [x] Create ScanButton component with loading states
-- [x] Build Summary component (severity breakdown cards)
-- [x] Create FilterBar component with tabs
-- [x] Build IssueList component with scroll area
-- [x] Create IssueCard component
-- [x] Build IssueDetail component (full issue view)
-- [x] Create CodeBlock component with syntax highlighting
-- [x] Build Settings panel component
-
-**Background Service Worker**
-- [x] Create background service worker entry point
-- [x] Implement badge count management
-- [x] Set up Chrome storage helpers
-- [x] Create message routing system
-
-**Content Script**
-- [x] Create content script entry point
-- [x] Set up message listener infrastructure
-- [x] Implement element highlighting system
-- [x] Create overlay manager
-- [x] Build element selector utility
-- [x] Add injected CSS for highlights
-
-### 🔍 Scanner Implementation
-- [x] Install and configure axe-core
-- [x] Create scanner.ts with axe integration
-- [x] Configure 15-rule filter
-- [x] Implement result transformation to Issue type
-- [x] Create severity mapping logic
-- [x] Build category mapping
-- [x] Add WCAG tag extraction
-- [x] Implement scan result caching
-
-### 🎯 Highlighting System
-- [x] Create highlight style classes (critical, serious, moderate, minor)
-- [x] Implement highlight injection on page
-- [x] Build click issue → highlight element flow
-- [x] Add hover issue → preview highlight
-- [x] Implement click element → show issues
-- [x] Create element badges on highlighted items
-- [x] Add clear highlights functionality
-- [x] Handle dynamic content and DOM changes
-
-### 🛠️ Fix Suggestions
-- [x] Create fix suggestion template system
-- [x] Write fix templates for all 15 rules:
-  - [x] image-alt
-  - [x] button-name
-  - [x] link-name
-  - [x] color-contrast
-  - [x] label
-  - [x] html-has-lang
-  - [x] document-title
-  - [x] heading-order
-  - [x] region
-  - [x] aria-valid-attr
-  - [x] aria-required-attr
-  - [x] aria-roles
-  - [x] meta-viewport
-  - [x] tabindex
-  - [x] duplicate-id
-- [x] Add code syntax highlighting for fixes
-- [x] Implement copy-to-clipboard functionality
-- [x] Add "Learn More" links to WCAG documentation
-
-### ⚙️ Settings & State Management
-- [x] Set up Zustand store
-- [x] Create useScanner hook
-- [x] Build useIssues hook with filtering
-- [x] Create useHighlight hook
-- [x] Build useSettings hook
-- [x] Implement WCAG level selection (A, AA, AAA)
-- [x] Add dark mode toggle
-- [x] Create settings persistence with Chrome storage
-
-### 🧪 Testing & Quality
-- [ ] Write scanner unit tests
-- [ ] Create overlay manager tests
-- [ ] Test on 20+ real websites
-- [ ] Test with various WCAG violations
-- [ ] Verify all 15 rules detect correctly
-- [ ] Test highlighting on dynamic content
-- [ ] Check memory usage and performance
-- [ ] Test dark mode across all components
-- [ ] Verify message passing between components
-- [ ] Test edge cases and error handling
-
-### 🎨 Polish & UX
-- [x] Add smooth animations and transitions
-- [x] Implement toast notifications for errors/success
-- [x] Create proper loading states
-- [x] Add keyboard navigation support
-- [x] Optimize for performance
-- [x] Add tooltips for better UX
-- [x] Ensure responsive design in side panel
-- [x] Add proper ARIA labels (dogfooding!)
-
-### 📦 Build & Deploy
-- [x] Test production build
-- [x] Create extension icons (16, 32, 48, 128)
-- [ ] Write README.md with usage instructions
-- [ ] Create privacy policy
-- [ ] Take screenshots for Chrome Web Store (1280x800)
-- [ ] Create promotional images
-- [ ] Write compelling store description
-- [ ] Set up Chrome Web Store developer account
-- [ ] Submit extension for review
-- [ ] Monitor for review feedback
-
-### ✅ v1.1 Features (COMPLETED)
-- [x] Vision simulators (colorblind filters)
-  - [x] Create vision-filters.ts with SVG color matrix filters
-  - [x] Implement protanopia, deuteranopia, tritanopia, achromatopsia modes
-  - [x] Add TOGGLE_VISION_FILTER message type
-  - [x] Create separate dropdown in Settings UI
-- [x] Blur simulation
-  - [x] Implement blur-low, blur-medium, blur-high levels
-  - [x] Add vision acuity descriptions (20/40, 20/70, 20/200)
-  - [x] Create separate dropdown in Settings UI
-- [x] Focus order visualization
-  - [x] Create focus-order.ts with badge rendering
-  - [x] Implement getFocusableElements with tabindex sorting
-  - [x] Add numbered blue badges with positioning
-  - [x] Handle scroll/resize updates
-  - [x] Add toggle switch in Settings UI
-- [x] Report export (PDF, JSON, CSV, HTML)
-  - [x] Create export.ts utility functions
-  - [x] Install jsPDF for PDF generation
-  - [x] Implement JSON export for CI/CD
-  - [x] Implement CSV export for spreadsheets
-  - [x] Implement HTML export with professional styling
-  - [x] Implement PDF export with screenshot capture
-  - [x] Create ExportButton component with dropdown menu
-  - [x] Add export button to Header component
-
-### 🚧 v1.2 Features (Future)
-- [ ] Historical scan comparison
-- [ ] Real-time monitoring mode
-
----
-
-## MVP Feature Set
+## Feature Set
 
 ### What's IN MVP ✅
 
@@ -1169,65 +996,79 @@ export function showFocusOrder(): void {
 
 ---
 
-## Quick Reference
+## Commands & Quick Reference
 
-### Key Files to Build First
-
-1. Initialize shadcn/ui and install core components
-2. `src/shared/types.ts` - All TypeScript interfaces
-3. `src/sidepanel/lib/utils.ts` - shadcn cn() utility
-4. `src/content/scanner.ts` - axe-core wrapper
-5. `src/sidepanel/store/index.ts` - Zustand state
-6. `src/sidepanel/components/IssueList.tsx` - Main UI using shadcn components
-7. `src/content/overlay.ts` - Highlighting
-
-### Commands
+### Development Commands
 
 ```bash
 # Development
-npm run dev          # Start dev server with HMR
-
-# Build
-npm run build        # Production build
-
-# Test
-npm run test         # Run tests
-
-# Lint
-npm run lint         # ESLint check
+npm run dev              # Start dev server with HMR
+npm run build            # Production build
+npm run typecheck        # TypeScript type checking
+npm run test             # Run unit tests
+npm test:coverage        # Run tests with coverage
+npm run lint             # ESLint check
+npm run lint:fix         # Auto-fix linting issues
+npm run format           # Format code with Prettier
 
 # shadcn/ui
-npx shadcn-ui@latest init              # Initialize shadcn/ui
-npx shadcn-ui@latest add [component]   # Add a component
+npx shadcn@latest init              # Initialize shadcn/ui
+npx shadcn@latest add [component]   # Add a component
 ```
 
 ### Chrome Extension Loading
 
-1. Build: `npm run build`
-2. Open: `chrome://extensions`
-3. Enable: "Developer mode"
-4. Click: "Load unpacked"
-5. Select: `dist` folder
+1. Build the extension: `npm run build`
+2. Open Chrome: `chrome://extensions`
+3. Enable "Developer mode" toggle (top right)
+4. Click "Load unpacked"
+5. Select the `dist` folder
+6. Extension is now loaded!
+
+### Key Files Reference
+
+| File | Purpose |
+|------|---------|
+| `src/shared/types.ts` | TypeScript interfaces and types |
+| `src/shared/constants.ts` | Rules, categories, WCAG mappings |
+| `src/shared/messaging.ts` | Message types for extension communication |
+| `src/content/scanner.ts` | axe-core integration and scanning logic |
+| `src/content/overlay.ts` | Element highlighting system |
+| `src/content/focus-order.ts` | Focus order visualization |
+| `src/content/vision-filters.ts` | Colorblind and blur simulators |
+| `src/sidepanel/store/index.ts` | Zustand state management |
+| `src/sidepanel/lib/export.ts` | Report export utilities (PDF, JSON, CSV, HTML) |
+| `src/sidepanel/hooks/useScanner.ts` | Scan orchestration hook |
+| `src/sidepanel/hooks/useIssues.ts` | Issue filtering and selection |
+| `src/sidepanel/hooks/useSettings.ts` | Settings management |
+| `src/background/index.ts` | Service worker for badge updates |
+
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Watch mode
+npm test -- --watch
+
+# Coverage report
+npm test:coverage
+
+# Specific test file
+npm test -- src/content/__tests__/scanner.test.ts
+```
+
+See [TESTING.md](./TESTING.md) for comprehensive testing documentation.
 
 ---
 
-## Questions Resolved ✅
+## Additional Documentation
 
-| Question | Decision | Status |
-|----------|----------|--------|
-| MVP rules count | 15 rules | ✅ Implemented |
-| UI approach | Side panel + highlighting | ✅ Implemented |
-| Component library | shadcn/ui (Radix UI + Tailwind) | ✅ Implemented |
-| Vision simulators | v1.1 | ✅ Completed |
-| Focus order viz | v1.1 | ✅ Completed |
-| Report export | v1.1 | ✅ Completed |
-| Rule engine | Hybrid (axe-core + custom UI) | ✅ Implemented |
-| Timeline | Flexible | Ongoing |
+- **[PROJECT_TRACKER.md](./PROJECT_TRACKER.md)** - Progress tracking and task completion status
+- **[TESTING.md](./TESTING.md)** - Comprehensive testing guide and checklists
+- **README.md** - User-facing documentation (to be written)
 
 ---
 
-## Project Status 🎉
-
-**MVP:** ✅ COMPLETE
-**v1.1 Features:** ✅ COMPLETE (Vision Simulators, Focus Order, Report Export)
-**Next:** v1.2 Features (Historical Comparison, Real-time Monitoring)
+**Last Updated:** 2026-01-17
