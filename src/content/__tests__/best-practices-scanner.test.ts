@@ -364,13 +364,13 @@ describe('Best Practices Scanner', () => {
     it('should detect excessive error handlers', async () => {
       const pageWithErrorHandlers = new JSDOM(
         '<!DOCTYPE html><html><head></head><body>' +
-        '<img onerror="alert(1)">' +
-        '<img onerror="alert(2)">' +
-        '<img onerror="alert(3)">' +
-        '<img onerror="alert(4)">' +
-        '<img onerror="alert(5)">' +
-        '<img onerror="alert(6)">' +
-        '</body></html>'
+          '<img onerror="alert(1)">' +
+          '<img onerror="alert(2)">' +
+          '<img onerror="alert(3)">' +
+          '<img onerror="alert(4)">' +
+          '<img onerror="alert(5)">' +
+          '<img onerror="alert(6)">' +
+          '</body></html>'
       );
       vi.stubGlobal('document', pageWithErrorHandlers.window.document);
       vi.stubGlobal('window', pageWithErrorHandlers.window);
@@ -384,9 +384,9 @@ describe('Best Practices Scanner', () => {
     it('should accept pages with few error handlers', async () => {
       const pageWithFewHandlers = new JSDOM(
         '<!DOCTYPE html><html><head></head><body>' +
-        '<img onerror="alert(1)">' +
-        '<img onerror="alert(2)">' +
-        '</body></html>'
+          '<img onerror="alert(1)">' +
+          '<img onerror="alert(2)">' +
+          '</body></html>'
       );
       vi.stubGlobal('document', pageWithFewHandlers.window.document);
       vi.stubGlobal('window', pageWithFewHandlers.window);

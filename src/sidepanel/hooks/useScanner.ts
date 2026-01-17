@@ -1,7 +1,7 @@
-import { useCallback } from 'react';
-import { useScanStore } from '../store';
+import { useCallback, useState } from 'react';
+import { useScanStore, type AuditType } from '../store';
 import { getCurrentTab } from '@/shared/messaging';
-import type { ScanResult } from '@/shared/types';
+import type { ScanResult, Issue, ScanSummary, Severity, Category } from '@/shared/types';
 
 async function checkContentScriptLoaded(tabId: number): Promise<boolean> {
   try {
@@ -12,17 +12,74 @@ async function checkContentScriptLoaded(tabId: number): Promise<boolean> {
   }
 }
 
+// Generate combined summary from issues
+function generateCombinedSummary(issues: Issue[]): ScanSummary {
+  const bySeverity: Record<Severity, number> = {
+    critical: 0,
+    serious: 0,
+    moderate: 0,
+    minor: 0,
+  };
+
+  const byCategory: Record<Category, number> = {
+    images: 0,
+    interactive: 0,
+    forms: 0,
+    color: 0,
+    document: 0,
+    structure: 0,
+    aria: 0,
+    technical: 0,
+  };
+
+  issues.forEach((issue) => {
+    bySeverity[issue.severity]++;
+    byCategory[issue.category]++;
+  });
+
+  return {
+    total: issues.length,
+    bySeverity,
+    byCategory,
+  };
+}
+
 export function useScanner() {
   const { isScanning, scanResult, error, selectedAuditType, setScanning, setScanResult, setError } =
     useScanStore();
+
+  // Multi-scan progress state
+  const [currentAuditIndex, setCurrentAuditIndex] = useState<number>(0);
+  const [totalAudits, setTotalAudits] = useState<number>(0);
+  const [currentAuditType, setCurrentAuditType] = useState<AuditType | null>(null);
+
+  // Single scan implementation
+  const scanSingle = useCallback(
+    async (auditType: string, tabId: number): Promise<ScanResult> => {
+      const response = await chrome.tabs.sendMessage(tabId, {
+        type: 'SCAN_PAGE',
+        payload: { auditType },
+      });
+
+      if (response?.success && response.result) {
+        return response.result as ScanResult;
+      } else {
+        throw new Error(response?.error || `${auditType} scan failed`);
+      }
+    },
+    []
+  );
 
   const scan = useCallback(
     async (auditTypeOverride?: string) => {
       setScanning(true);
       setError(null);
+      setCurrentAuditIndex(0);
+      setTotalAudits(1);
 
       // Use override if provided, otherwise use store value
       const auditType = auditTypeOverride || selectedAuditType;
+      setCurrentAuditType(auditType as AuditType);
 
       try {
         const tab = await getCurrentTab();
@@ -45,16 +102,105 @@ export function useScanner() {
           throw new Error('Please refresh the page and try again');
         }
 
-        // Send scan message to content script with audit type
-        const response = await chrome.tabs.sendMessage(tab.id, {
-          type: 'SCAN_PAGE',
-          payload: { auditType },
-        });
+        const result = await scanSingle(auditType, tab.id);
+        setScanResult(result);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Unknown error occurred';
+        setError(message);
+        setScanResult(null);
+      } finally {
+        setScanning(false);
+        setCurrentAuditType(null);
+      }
+    },
+    [selectedAuditType, setScanning, setScanResult, setError, scanSingle]
+  );
 
-        if (response?.success && response.result) {
-          setScanResult(response.result as ScanResult);
-        } else {
-          throw new Error(response?.error || 'Scan failed');
+  // Multi-scan: runs multiple audit types sequentially and combines results
+  const scanMultiple = useCallback(
+    async (auditTypes: AuditType[]) => {
+      if (auditTypes.length === 0) return;
+
+      // If only one audit, use regular scan
+      if (auditTypes.length === 1) {
+        await scan(auditTypes[0]);
+        return;
+      }
+
+      setScanning(true);
+      setError(null);
+      setTotalAudits(auditTypes.length);
+      setCurrentAuditIndex(0);
+
+      try {
+        const tab = await getCurrentTab();
+        if (!tab?.id) {
+          throw new Error('No active tab found');
+        }
+
+        // Check if this is a restricted page
+        if (
+          tab.url?.startsWith('chrome://') ||
+          tab.url?.startsWith('chrome-extension://') ||
+          tab.url?.startsWith('about:')
+        ) {
+          throw new Error('Cannot scan browser internal pages');
+        }
+
+        // Check if content script is loaded
+        const isLoaded = await checkContentScriptLoaded(tab.id);
+        if (!isLoaded) {
+          throw new Error('Please refresh the page and try again');
+        }
+
+        const allIssues: Issue[] = [];
+        const allIncomplete: Issue[] = [];
+        const errors: string[] = [];
+        let totalDuration = 0;
+
+        // Run each audit sequentially
+        for (let i = 0; i < auditTypes.length; i++) {
+          const auditType = auditTypes[i];
+          setCurrentAuditIndex(i);
+          setCurrentAuditType(auditType);
+
+          try {
+            const result = await scanSingle(auditType, tab.id);
+            totalDuration += result.duration;
+
+            // Tag issues with audit type (add to id to make unique)
+            const taggedIssues = result.issues.map((issue) => ({
+              ...issue,
+              id: `${auditType}-${issue.id}`,
+            }));
+
+            const taggedIncomplete = result.incomplete.map((issue) => ({
+              ...issue,
+              id: `${auditType}-${issue.id}`,
+            }));
+
+            allIssues.push(...taggedIssues);
+            allIncomplete.push(...taggedIncomplete);
+          } catch (err) {
+            const message = err instanceof Error ? err.message : 'Unknown error';
+            errors.push(`${auditType}: ${message}`);
+          }
+        }
+
+        // Combine results
+        const combinedResult: ScanResult = {
+          url: tab.url || '',
+          timestamp: Date.now(),
+          duration: totalDuration,
+          issues: allIssues,
+          incomplete: allIncomplete,
+          summary: generateCombinedSummary(allIssues),
+        };
+
+        setScanResult(combinedResult);
+
+        if (errors.length > 0) {
+          setError(`Some audits failed: ${errors.join('; ')}`);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error occurred';
@@ -62,9 +208,12 @@ export function useScanner() {
         setScanResult(null);
       } finally {
         setScanning(false);
+        setCurrentAuditType(null);
+        setCurrentAuditIndex(0);
+        setTotalAudits(0);
       }
     },
-    [selectedAuditType, setScanning, setScanResult, setError]
+    [setScanning, setScanResult, setError, scanSingle, scan]
   );
 
   const clearResults = useCallback(() => {
@@ -77,6 +226,11 @@ export function useScanner() {
     scanResult,
     error,
     scan,
+    scanMultiple,
     clearResults,
+    // Progress info for multi-scan
+    currentAuditIndex,
+    totalAudits,
+    currentAuditType,
   };
 }

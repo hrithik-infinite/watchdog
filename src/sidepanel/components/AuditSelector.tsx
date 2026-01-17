@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone, Sparkles, Info } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone, Sparkles, Info, Check } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
 import {
@@ -42,7 +42,13 @@ const auditTypes: AuditTypeConfig[] = [
     ruleCount: 15,
     highPriority: true,
     keyboardShortcut: '1',
-    checks: ['WCAG 2.1 AA', 'Screen reader compatibility', 'Color contrast', 'Form labels', 'ARIA attributes'],
+    checks: [
+      'WCAG 2.1 AA',
+      'Screen reader compatibility',
+      'Color contrast',
+      'Form labels',
+      'ARIA attributes',
+    ],
     doesNotCheck: ['SEO', 'Performance', 'Security', 'PWA', 'Best Practices'],
   },
   {
@@ -84,7 +90,13 @@ const auditTypes: AuditTypeConfig[] = [
     icon: CheckCircle2,
     ruleCount: 15,
     keyboardShortcut: '5',
-    checks: ['HTML validity', 'Deprecated elements', 'Duplicate IDs', 'DOCTYPE', 'Character encoding'],
+    checks: [
+      'HTML validity',
+      'Deprecated elements',
+      'Duplicate IDs',
+      'DOCTYPE',
+      'Character encoding',
+    ],
     doesNotCheck: ['Accessibility', 'Performance', 'SEO', 'Security', 'PWA'],
   },
   {
@@ -108,47 +120,89 @@ interface AuditSelectorProps {
   isScanning: boolean;
 }
 
-export default function AuditSelector({ onStartScan, onStartMultipleScan, isScanning }: AuditSelectorProps) {
-  const [selectedAudit, setSelectedAudit] = useState<AuditType>('accessibility');
+export default function AuditSelector({
+  onStartScan,
+  onStartMultipleScan,
+  isScanning,
+}: AuditSelectorProps) {
+  // Multi-select state - default to accessibility selected
+  const [selectedAudits, setSelectedAudits] = useState<Set<AuditType>>(
+    () => new Set(['accessibility'])
+  );
   const [hoveredAudit, setHoveredAudit] = useState<AuditType | null>(null);
+
+  // Toggle audit selection
+  const toggleAudit = useCallback(
+    (auditType: AuditType) => {
+      if (isScanning) return;
+      setSelectedAudits((prev) => {
+        const next = new Set(prev);
+        if (next.has(auditType)) {
+          next.delete(auditType);
+        } else {
+          next.add(auditType);
+        }
+        return next;
+      });
+    },
+    [isScanning]
+  );
+
+  // Select all audits
+  const selectAll = useCallback(() => {
+    if (isScanning) return;
+    setSelectedAudits(new Set(auditTypes.map((a) => a.id)));
+  }, [isScanning]);
+
+  // Clear all selections
+  const clearAll = useCallback(() => {
+    if (isScanning) return;
+    setSelectedAudits(new Set());
+  }, [isScanning]);
 
   // Handler for scanning all high priority audits
   const handleScanAllHighPriority = useCallback(() => {
-    if (!isScanning && onStartMultipleScan) {
-      const highPriorityIds = highPriorityAudits.map((a) => a.id);
+    if (isScanning) return;
+    const highPriorityIds = highPriorityAudits.map((a) => a.id);
+    if (onStartMultipleScan) {
       onStartMultipleScan(highPriorityIds);
-    } else if (!isScanning) {
-      // Fallback: run high priority audits sequentially via single scan
-      // This will be replaced with proper multi-scan in US-001
-      onStartScan('accessibility');
+    } else {
+      // Fallback: run first high priority audit
+      onStartScan(highPriorityIds[0]);
     }
   }, [isScanning, onStartMultipleScan, onStartScan]);
 
-  const handleSelect = (auditType: AuditType) => {
-    if (!isScanning) {
-      setSelectedAudit(auditType);
-    }
-  };
-
+  // Start scan with selected audits
   const handleStartScan = useCallback(() => {
-    if (!isScanning) {
-      onStartScan(selectedAudit);
+    if (isScanning || selectedAudits.size === 0) return;
+
+    const auditsArray = Array.from(selectedAudits);
+
+    if (auditsArray.length === 1) {
+      // Single audit - use regular scan
+      onStartScan(auditsArray[0]);
+    } else if (onStartMultipleScan) {
+      // Multiple audits - use multi-scan
+      onStartMultipleScan(auditsArray);
+    } else {
+      // Fallback: just run first selected
+      onStartScan(auditsArray[0]);
     }
-  }, [isScanning, selectedAudit, onStartScan]);
+  }, [isScanning, selectedAudits, onStartScan, onStartMultipleScan]);
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Check for Cmd/Ctrl + number keys
+      // Check for Cmd/Ctrl + number keys to toggle
       if ((e.metaKey || e.ctrlKey) && !isScanning) {
         const audit = auditTypes.find((a) => a.keyboardShortcut === e.key);
         if (audit) {
           e.preventDefault();
-          setSelectedAudit(audit.id);
+          toggleAudit(audit.id);
         }
       }
       // Enter key to scan
-      if (e.key === 'Enter' && !isScanning) {
+      if (e.key === 'Enter' && !isScanning && selectedAudits.size > 0) {
         e.preventDefault();
         handleStartScan();
       }
@@ -156,20 +210,60 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
 
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isScanning, selectedAudit, handleStartScan]);
+  }, [isScanning, selectedAudits, handleStartScan, toggleAudit]);
 
-  const selectedConfig = auditTypes.find((a) => a.id === selectedAudit);
+  // Compute total checks for selected audits
+  const totalChecks = useMemo(() => {
+    return Array.from(selectedAudits).reduce((sum, auditId) => {
+      const audit = auditTypes.find((a) => a.id === auditId);
+      return sum + (audit?.ruleCount || 0);
+    }, 0);
+  }, [selectedAudits]);
+
+  // Get button text based on selection
+  const buttonText = useMemo(() => {
+    if (isScanning) return null; // Will show spinner
+    if (selectedAudits.size === 0) return 'Select audits to scan';
+    if (selectedAudits.size === 1) {
+      const auditId = Array.from(selectedAudits)[0];
+      const audit = auditTypes.find((a) => a.id === auditId);
+      return `Start ${audit?.label} Scan`;
+    }
+    if (selectedAudits.size === auditTypes.length) {
+      return `Start Full Audit (${selectedAudits.size})`;
+    }
+    return `Start ${selectedAudits.size} Audits`;
+  }, [isScanning, selectedAudits]);
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
       {/* Header Section */}
       <div className="px-4 py-3 border-b border-border/40">
-        <h2 className="text-h2 text-foreground mb-1.5">Choose Audit Type</h2>
+        <div className="flex items-center justify-between mb-1.5">
+          <h2 className="text-h2 text-foreground">Choose Audit Types</h2>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={selectAll}
+              disabled={isScanning || selectedAudits.size === auditTypes.length}
+              className="text-xs text-primary hover:text-primary/80 disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors"
+            >
+              Select All
+            </button>
+            <span className="text-muted-foreground/40">|</span>
+            <button
+              onClick={clearAll}
+              disabled={isScanning || selectedAudits.size === 0}
+              className="text-xs text-muted-foreground hover:text-foreground disabled:text-muted-foreground/50 disabled:cursor-not-allowed transition-colors"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
         <p className="text-body text-muted-foreground text-sm">
-          Select which aspects of your page to analyze
+          Select multiple audits to run together
         </p>
         <p className="text-xs text-muted-foreground/60 mt-1">
-          Tip: Use ⌘1-6 for quick selection, Enter to scan
+          Tip: Use ⌘1-6 to toggle selection, Enter to scan
         </p>
 
         {/* Quick Actions */}
@@ -195,19 +289,19 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
         <div className="grid grid-cols-2 gap-2.5">
           {auditTypes.map((audit, index) => {
             const Icon = audit.icon;
-            const isSelected = selectedAudit === audit.id;
+            const isSelected = selectedAudits.has(audit.id);
             const isHovered = hoveredAudit === audit.id;
 
             return (
               <button
                 key={audit.id}
-                onClick={() => handleSelect(audit.id)}
+                onClick={() => toggleAudit(audit.id)}
                 onMouseEnter={() => setHoveredAudit(audit.id)}
                 onMouseLeave={() => setHoveredAudit(null)}
                 disabled={isScanning}
-                aria-label={`${audit.label} audit - ${audit.description}. Press ${audit.keyboardShortcut ? `Command ${audit.keyboardShortcut}` : 'to select'}`}
+                aria-label={`${audit.label} audit - ${audit.description}. Press ${audit.keyboardShortcut ? `Command ${audit.keyboardShortcut}` : ''} to toggle`}
                 aria-pressed={isSelected}
-                role="radio"
+                role="checkbox"
                 aria-checked={isSelected}
                 tabIndex={0}
                 className={cn(
@@ -216,15 +310,29 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
                   'animate-fade-in cursor-pointer',
                   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                   isSelected
-                    ? 'border-[#007aff] shadow-lg shadow-[#007aff]/20 scale-[1.02]'
+                    ? 'border-[#007aff] bg-primary/5 shadow-md shadow-[#007aff]/10'
                     : 'border-border/40 hover:border-border hover:scale-[1.01]'
                 )}
                 style={{
                   animationDelay: `${index * 50}ms`,
                 }}
               >
+                {/* Checkbox indicator - top right */}
+                <div className="absolute top-2 right-2">
+                  <div
+                    className={cn(
+                      'h-5 w-5 rounded border-2 flex items-center justify-center transition-all',
+                      isSelected
+                        ? 'bg-primary border-primary'
+                        : 'border-muted-foreground/30 group-hover:border-muted-foreground/50'
+                    )}
+                  >
+                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                  </div>
+                </div>
+
                 {/* Scan line effect on hover */}
-                {isHovered && (
+                {isHovered && !isSelected && (
                   <div className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
                     <div
                       className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-30"
@@ -236,7 +344,7 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
                 )}
 
                 {/* Icon and Label Row */}
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 pr-6">
                   <Icon
                     className={cn(
                       'h-5 w-5 flex-shrink-0 transition-transform duration-200',
@@ -255,12 +363,16 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
                   >
                     {audit.label}
                   </h3>
-                  {audit.highPriority && (
-                    <span className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
+                </div>
+
+                {/* High Priority Badge */}
+                {audit.highPriority && (
+                  <div className="mb-2">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
                       High Priority
                     </span>
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {/* Description */}
                 <p className="text-xs leading-relaxed text-muted-foreground mb-2">
@@ -292,12 +404,20 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
                         <TooltipContent side="top" className="max-w-xs p-3">
                           <div className="space-y-2">
                             <div>
-                              <p className="text-xs font-semibold text-foreground mb-1">✓ Checks:</p>
-                              <p className="text-xs text-muted-foreground">{audit.checks.join(', ')}</p>
+                              <p className="text-xs font-semibold text-foreground mb-1">
+                                ✓ Checks:
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {audit.checks.join(', ')}
+                              </p>
                             </div>
                             <div>
-                              <p className="text-xs font-semibold text-foreground mb-1">✗ Does NOT check:</p>
-                              <p className="text-xs text-muted-foreground">{audit.doesNotCheck.join(', ')}</p>
+                              <p className="text-xs font-semibold text-foreground mb-1">
+                                ✗ Does NOT check:
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {audit.doesNotCheck.join(', ')}
+                              </p>
                             </div>
                           </div>
                         </TooltipContent>
@@ -310,13 +430,6 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
                     </kbd>
                   )}
                 </div>
-
-                {/* Selection Indicator */}
-                {isSelected && (
-                  <div className="absolute top-2 right-2">
-                    <div className="h-2 w-2 rounded-full bg-primary animate-pulse-slow" />
-                  </div>
-                )}
               </button>
             );
           })}
@@ -325,29 +438,46 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
 
       {/* Footer with Scan Button */}
       <div className="px-4 py-3 border-t border-border/40 bg-card/50 backdrop-blur-sm space-y-3">
-        {selectedConfig && (
+        {/* Selected audits summary */}
+        {selectedAudits.size > 0 && (
           <div className="bg-card/80 rounded-lg p-3 border border-primary/20">
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-slow" />
-              <span className="font-semibold text-foreground text-sm">{selectedConfig.label}</span>
-              <span className="text-muted-foreground text-xs">•</span>
-              <span className="text-primary text-xs font-medium">
-                {selectedConfig.ruleCount} checks
-              </span>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse-slow" />
+                <span className="font-semibold text-foreground text-sm">
+                  {selectedAudits.size === 1
+                    ? auditTypes.find((a) => selectedAudits.has(a.id))?.label
+                    : `${selectedAudits.size} Audits Selected`}
+                </span>
+              </div>
+              <span className="text-primary text-xs font-medium">{totalChecks} total checks</span>
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground pl-3.5">
-              {selectedConfig.description}
+              {Array.from(selectedAudits)
+                .map((id) => auditTypes.find((a) => a.id === id)?.label)
+                .filter(Boolean)
+                .join(', ')}
+            </p>
+          </div>
+        )}
+
+        {/* Empty state when nothing selected */}
+        {selectedAudits.size === 0 && (
+          <div className="bg-muted/30 rounded-lg p-3 border border-border/40">
+            <p className="text-xs text-muted-foreground text-center">
+              Select one or more audits to scan your page
             </p>
           </div>
         )}
 
         <Button
           onClick={handleStartScan}
-          disabled={isScanning}
+          disabled={isScanning || selectedAudits.size === 0}
           className={cn(
             'w-full py-3 text-base font-semibold rounded-lg shadow-xl transition-all duration-200',
             'bg-primary hover:bg-primary-dark hover:scale-[1.02]',
-            'border-2 border-primary/30'
+            'border-2 border-primary/30',
+            selectedAudits.size === 0 && 'opacity-50 cursor-not-allowed'
           )}
         >
           {isScanning ? (
@@ -356,7 +486,7 @@ export default function AuditSelector({ onStartScan, onStartMultipleScan, isScan
               <span>Scanning Page...</span>
             </div>
           ) : (
-            <span>Start {selectedConfig?.label} Scan</span>
+            <span>{buttonText}</span>
           )}
         </Button>
       </div>

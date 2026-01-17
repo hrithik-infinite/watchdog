@@ -19,7 +19,7 @@ import type { AuditType } from './store';
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
-  const { isScanning, scanResult, error, scan } = useScanner();
+  const { isScanning, scanResult, error, scan, scanMultiple } = useScanner();
   const selectedAuditType = useScanStore((state) => state.selectedAuditType);
   const setSelectedAuditType = useScanStore((state) => state.setSelectedAuditType);
   const {
@@ -44,6 +44,16 @@ export default function App() {
       scan(auditType);
     },
     [setSelectedAuditType, scan]
+  );
+
+  const handleStartMultipleScan = useCallback(
+    (auditTypes: AuditType[]) => {
+      if (auditTypes.length > 0) {
+        setSelectedAuditType(auditTypes[0]);
+        scanMultiple(auditTypes);
+      }
+    },
+    [setSelectedAuditType, scanMultiple]
   );
 
   const handleSelectIssue = useCallback(
@@ -109,7 +119,11 @@ export default function App() {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
         <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
-        <AuditSelector onStartScan={handleStartScan} isScanning={isScanning} />
+        <AuditSelector
+          onStartScan={handleStartScan}
+          onStartMultipleScan={handleStartMultipleScan}
+          isScanning={isScanning}
+        />
       </div>
     );
   }
