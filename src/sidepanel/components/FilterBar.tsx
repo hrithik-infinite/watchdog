@@ -1,5 +1,6 @@
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Input } from '@/sidepanel/components/ui/input';
+import { Button } from '@/sidepanel/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -56,6 +57,15 @@ export default function FilterBar({
     'technical',
   ];
 
+  const hasActiveFilters =
+    severityFilter !== 'all' || categoryFilter !== 'all' || searchQuery.trim() !== '';
+
+  const clearAllFilters = () => {
+    onSeverityChange('all');
+    onCategoryChange('all');
+    onSearchChange('');
+  };
+
   return (
     <div className="px-5 py-3 bg-background border-b border-border space-y-3">
       {/* Search */}
@@ -71,7 +81,7 @@ export default function FilterBar({
       </div>
 
       {/* Filters */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 items-end">
         <div className="flex-1">
           <label className="block text-caption text-muted-foreground mb-1">Severity</label>
           <Select value={severityFilter} onValueChange={onSeverityChange}>
@@ -105,6 +115,20 @@ export default function FilterBar({
             </SelectContent>
           </Select>
         </div>
+
+        {/* Clear Filters Button */}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearAllFilters}
+            className="gap-2 text-muted-foreground hover:text-foreground"
+            aria-label="Clear all filters"
+          >
+            <X className="h-4 w-4" />
+            Clear
+          </Button>
+        )}
       </div>
     </div>
   );
