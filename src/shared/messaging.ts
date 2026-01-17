@@ -1,4 +1,4 @@
-import type { ScanResult, Settings } from './types';
+import type { ScanResult, Settings, Severity } from './types';
 
 // Message types for communication between extension parts
 export type MessageType =
@@ -29,7 +29,7 @@ export interface HighlightElementMessage {
   type: 'HIGHLIGHT_ELEMENT';
   payload: {
     selector: string;
-    severity: string;
+    severity: Severity;
   };
 }
 
