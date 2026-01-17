@@ -25,7 +25,7 @@ vi.mock('../focus-order', () => ({
 let messageListeners: Array<
   (message: Message, sender: any, sendResponse: (response: unknown) => void) => boolean
 > = [];
-const eventListeners: Map<string, Function[]> = new Map();
+const eventListeners: Map<string, Array<(...args: unknown[]) => void>> = new Map();
 
 const mockChrome = {
   runtime: {
@@ -39,7 +39,7 @@ const mockChrome = {
 };
 
 const mockWindow = {
-  addEventListener: vi.fn((event: string, handler: Function) => {
+  addEventListener: vi.fn((event: string, handler: (...args: unknown[]) => void) => {
     if (!eventListeners.has(event)) {
       eventListeners.set(event, []);
     }
