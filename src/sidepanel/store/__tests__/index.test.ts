@@ -210,12 +210,14 @@ describe('Scan Store (Zustand)', () => {
       expect(useScanStore.getState().error).toBe(null);
     });
 
-    it('should set scanning to false when error occurs', () => {
+    it('should not change isScanning when error is set', () => {
       const { setScanning, setError } = useScanStore.getState();
 
       setScanning(true);
       setError('Error occurred');
-      expect(useScanStore.getState().isScanning).toBe(false);
+      // setError should not change isScanning - that's handled by the caller
+      expect(useScanStore.getState().isScanning).toBe(true);
+      expect(useScanStore.getState().error).toBe('Error occurred');
     });
   });
 
@@ -730,7 +732,7 @@ describe('Scan Store (Zustand)', () => {
       state.setFilter('severity', 'critical');
 
       const newState = useScanStore.getState();
-      expect(newState.isScanning).toBe(false); // setError sets it to false
+      expect(newState.isScanning).toBe(true); // setError does not change isScanning
       expect(newState.error).toBe('Error');
       expect(newState.filters.severity).toBe('critical');
     });

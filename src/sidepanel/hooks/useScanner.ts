@@ -6,9 +6,7 @@ import logger from '@/shared/logger';
 
 async function checkContentScriptLoaded(tabId: number): Promise<boolean> {
   try {
-    logger.debug('Checking content script loaded', { tabId });
     await chrome.tabs.sendMessage(tabId, { type: 'PING' });
-    logger.debug('Content script is loaded');
     return true;
   } catch {
     logger.warn('Content script not loaded', { tabId });
@@ -49,8 +47,16 @@ function generateCombinedSummary(issues: Issue[]): ScanSummary {
 }
 
 export function useScanner() {
-  const { isScanning, scanResult, error, selectedAuditType, setScanning, setScanResult, setError } =
-    useScanStore();
+  // Use selectors for state values
+  const isScanning = useScanStore((state) => state.isScanning);
+  const scanResult = useScanStore((state) => state.scanResult);
+  const error = useScanStore((state) => state.error);
+  const selectedAuditType = useScanStore((state) => state.selectedAuditType);
+
+  // Get actions directly from store (these are stable references)
+  const setScanning = useScanStore((state) => state.setScanning);
+  const setScanResult = useScanStore((state) => state.setScanResult);
+  const setError = useScanStore((state) => state.setError);
 
   // Multi-scan progress state
   const [currentAuditIndex, setCurrentAuditIndex] = useState<number>(0);
@@ -59,7 +65,6 @@ export function useScanner() {
 
   // Single scan implementation
   const scanSingle = useCallback(async (auditType: string, tabId: number): Promise<ScanResult> => {
-    logger.debug('Sending scan message to content script', { auditType, tabId });
     logger.time(`scan-${auditType}`);
 
     const response = await chrome.tabs.sendMessage(tabId, {
@@ -70,14 +75,8 @@ export function useScanner() {
     logger.timeEnd(`scan-${auditType}`);
 
     if (response?.success && response.result) {
-      logger.debug('Scan response received', {
-        auditType,
-        issueCount: response.result.issues?.length,
-        duration: response.result.duration,
-      });
       return response.result as ScanResult;
     } else {
-      logger.error('Scan failed', { auditType, error: response?.error });
       throw new Error(response?.error || `${auditType} scan failed`);
     }
   }, []);
@@ -93,12 +92,13 @@ export function useScanner() {
       const auditType = auditTypeOverride || selectedAuditType;
       setCurrentAuditType(auditType as AuditType);
 
+      // Allow React to render the loading state before continuing
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
       logger.group(`Scan: ${auditType}`);
-      logger.info('Starting single scan', { auditType });
 
       try {
         const tab = await getCurrentTab();
-        logger.debug('Current tab', { tabId: tab?.id, url: tab?.url });
 
         if (!tab?.id) {
           throw new Error('No active tab found');
@@ -120,14 +120,16 @@ export function useScanner() {
         }
 
         const result = await scanSingle(auditType, tab.id);
-        logger.info('Scan completed successfully', {
+        logger.info('Scan completed', {
+          auditType,
           issueCount: result.issues.length,
           duration: `${result.duration}ms`,
         });
         setScanResult(result);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error occurred';
-        logger.error('Scan failed', { error: message });
+        const stack = err instanceof Error ? err.stack : undefined;
+        logger.error('Scan failed', { error: message, stack });
         setError(message);
         setScanResult(null);
       } finally {
@@ -156,11 +158,10 @@ export function useScanner() {
       setCurrentAuditIndex(0);
 
       logger.group('Multi-Scan');
-      logger.info('Starting multiple scans', { auditTypes, count: auditTypes.length });
+      logger.info('Starting multi-scan', { auditTypes, count: auditTypes.length });
 
       try {
         const tab = await getCurrentTab();
-        logger.debug('Current tab', { tabId: tab?.id, url: tab?.url });
 
         if (!tab?.id) {
           throw new Error('No active tab found');
@@ -192,8 +193,6 @@ export function useScanner() {
           setCurrentAuditIndex(i);
           setCurrentAuditType(auditType);
 
-          logger.info(`Running audit ${i + 1}/${auditTypes.length}`, { auditType });
-
           try {
             const result = await scanSingle(auditType, tab.id);
             totalDuration += result.duration;
@@ -211,11 +210,10 @@ export function useScanner() {
 
             allIssues.push(...taggedIssues);
             allIncomplete.push(...taggedIncomplete);
-
-            logger.debug(`Audit ${auditType} completed`, { issueCount: result.issues.length });
           } catch (err) {
             const message = err instanceof Error ? err.message : 'Unknown error';
-            logger.error(`Audit ${auditType} failed`, { error: message });
+            const stack = err instanceof Error ? err.stack : undefined;
+            logger.error(`Audit ${auditType} failed`, { error: message, stack });
             errors.push(`${auditType}: ${message}`);
           }
         }
@@ -243,7 +241,8 @@ export function useScanner() {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error occurred';
-        logger.error('Multi-scan failed', { error: message });
+        const stack = err instanceof Error ? err.stack : undefined;
+        logger.error('Multi-scan failed', { error: message, stack });
         setError(message);
         setScanResult(null);
       } finally {

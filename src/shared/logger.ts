@@ -3,7 +3,8 @@
  * All logs are stripped out in production builds by Vite
  */
 
-const isDev = import.meta.env.DEV;
+// const isDev = import.meta.env.DEV;
+const isDev = true;
 
 type LogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 

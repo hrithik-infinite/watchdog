@@ -8,7 +8,7 @@ import IssueDetail from './components/IssueDetail';
 import EmptyState from './components/EmptyState';
 import Settings from './components/Settings';
 import AuditSelector from './components/AuditSelector';
-import PostScanReminder from './components/PostScanReminder';
+import ScanProgress from './components/ScanProgress';
 import CopyDropdown from './components/CopyDropdown';
 import ScanComparisonView from './components/ScanComparison';
 import ScanHistory from './components/ScanHistory';
@@ -26,7 +26,17 @@ import logger from '@/shared/logger';
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
-  const { isScanning, scanResult, error, scan, scanMultiple } = useScanner();
+  const {
+    scanResult,
+    error,
+    scan,
+    scanMultiple,
+    currentAuditIndex,
+    totalAudits,
+    currentAuditType,
+  } = useScanner();
+  // Subscribe directly to isScanning from store for reliable updates
+  const isScanning = useScanStore((state) => state.isScanning);
   const selectedAuditType = useScanStore((state) => state.selectedAuditType);
   const setSelectedAuditType = useScanStore((state) => state.setSelectedAuditType);
   const setIgnoredHashes = useScanStore((state) => state.setIgnoredHashes);
@@ -174,6 +184,20 @@ export default function App() {
     );
   }
 
+  // Scanning state - show progress
+  if (isScanning) {
+    return (
+      <div className="h-screen flex flex-col bg-bg-dark">
+        <Header scanResult={scanResult} />
+        <ScanProgress
+          currentAuditType={currentAuditType}
+          currentAuditIndex={currentAuditIndex}
+          totalAudits={totalAudits}
+        />
+      </div>
+    );
+  }
+
   // Initial state - show audit type selector
   if (!error && !scanResult) {
     return (
@@ -197,16 +221,6 @@ export default function App() {
       <div className="px-4 py-2">
         <ScanButton isScanning={isScanning} onScan={scan} hasResults={!!scanResult} />
       </div>
-
-      {/* Post-scan reminder for other audit types */}
-      {!isScanning && scanResult && selectedAuditType && (
-        <PostScanReminder
-          completedAuditType={selectedAuditType}
-          onRunRemaining={() => {
-            // TODO: Implement multi-scan in US-001
-          }}
-        />
-      )}
 
       {/* Error state */}
       {error && <EmptyState type="error" error={error} onScan={scan} />}

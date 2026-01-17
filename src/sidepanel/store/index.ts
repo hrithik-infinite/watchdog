@@ -86,7 +86,7 @@ export const useScanStore = create<ScanState>((set, get) => ({
       view: 'list',
     }),
 
-  setError: (error) => set({ error, isScanning: false }),
+  setError: (error) => set({ error }),
 
   setSelectedAuditType: (auditType) => set({ selectedAuditType: auditType }),
 

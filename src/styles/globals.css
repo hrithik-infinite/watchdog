@@ -219,6 +219,23 @@
     }
   }
 
+  @keyframes scan-vertical {
+    0% {
+      top: -10%;
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      top: 110%;
+      opacity: 0;
+    }
+  }
+
   @keyframes cardPop {
     0% {
       transform: scale(0.95);
