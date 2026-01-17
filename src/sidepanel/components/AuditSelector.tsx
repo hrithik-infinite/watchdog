@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone } from 'lucide-react';
+import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone, Sparkles, Info } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/sidepanel/components/ui/tooltip';
 
 export type AuditType =
   | 'accessibility'
@@ -21,8 +27,10 @@ interface AuditTypeConfig {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   ruleCount: number;
-  essential?: boolean;
+  highPriority?: boolean;
   keyboardShortcut?: string;
+  checks: string[];
+  doesNotCheck: string[];
 }
 
 const auditTypes: AuditTypeConfig[] = [
@@ -32,8 +40,10 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'WCAG compliance & screen reader support',
     icon: Eye,
     ruleCount: 15,
-    essential: true,
+    highPriority: true,
     keyboardShortcut: '1',
+    checks: ['WCAG 2.1 AA', 'Screen reader compatibility', 'Color contrast', 'Form labels', 'ARIA attributes'],
+    doesNotCheck: ['SEO', 'Performance', 'Security', 'PWA', 'Best Practices'],
   },
   {
     id: 'performance',
@@ -41,8 +51,10 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'Core Web Vitals & loading metrics',
     icon: Zap,
     ruleCount: 12,
-    essential: true,
+    highPriority: true,
     keyboardShortcut: '2',
+    checks: ['Core Web Vitals (LCP, FCP, CLS)', 'Page load time', 'Resource sizes', 'TTFB'],
+    doesNotCheck: ['Accessibility', 'SEO', 'Security', 'PWA', 'Best Practices'],
   },
   {
     id: 'seo',
@@ -50,8 +62,10 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'Meta tags, structured data, rankings',
     icon: Search,
     ruleCount: 20,
-    essential: true,
+    highPriority: true,
     keyboardShortcut: '3',
+    checks: ['Meta tags', 'Open Graph', 'Heading hierarchy', 'Canonical URLs', 'Structured data'],
+    doesNotCheck: ['Accessibility', 'Performance', 'Security', 'PWA', 'Best Practices'],
   },
   {
     id: 'security',
@@ -60,6 +74,8 @@ const auditTypes: AuditTypeConfig[] = [
     icon: Shield,
     ruleCount: 12,
     keyboardShortcut: '4',
+    checks: ['HTTPS', 'Security headers', 'Mixed content', 'Cookie security', 'CSRF protection'],
+    doesNotCheck: ['Accessibility', 'Performance', 'SEO', 'PWA', 'Best Practices'],
   },
   {
     id: 'best-practices',
@@ -68,6 +84,8 @@ const auditTypes: AuditTypeConfig[] = [
     icon: CheckCircle2,
     ruleCount: 15,
     keyboardShortcut: '5',
+    checks: ['HTML validity', 'Deprecated elements', 'Duplicate IDs', 'DOCTYPE', 'Character encoding'],
+    doesNotCheck: ['Accessibility', 'Performance', 'SEO', 'Security', 'PWA'],
   },
   {
     id: 'pwa',
@@ -76,17 +94,35 @@ const auditTypes: AuditTypeConfig[] = [
     icon: Smartphone,
     ruleCount: 7,
     keyboardShortcut: '6',
+    checks: ['Web manifest', 'Service worker', 'HTTPS', 'App icons', 'Theme color'],
+    doesNotCheck: ['Accessibility', 'Performance', 'SEO', 'Security', 'Best Practices'],
   },
 ];
 
+// Get high priority audit types for quick action
+const highPriorityAudits = auditTypes.filter((a) => a.highPriority);
+
 interface AuditSelectorProps {
   onStartScan: (auditType: AuditType) => void;
+  onStartMultipleScan?: (auditTypes: AuditType[]) => void;
   isScanning: boolean;
 }
 
-export default function AuditSelector({ onStartScan, isScanning }: AuditSelectorProps) {
+export default function AuditSelector({ onStartScan, onStartMultipleScan, isScanning }: AuditSelectorProps) {
   const [selectedAudit, setSelectedAudit] = useState<AuditType>('accessibility');
   const [hoveredAudit, setHoveredAudit] = useState<AuditType | null>(null);
+
+  // Handler for scanning all high priority audits
+  const handleScanAllHighPriority = useCallback(() => {
+    if (!isScanning && onStartMultipleScan) {
+      const highPriorityIds = highPriorityAudits.map((a) => a.id);
+      onStartMultipleScan(highPriorityIds);
+    } else if (!isScanning) {
+      // Fallback: run high priority audits sequentially via single scan
+      // This will be replaced with proper multi-scan in US-001
+      onStartScan('accessibility');
+    }
+  }, [isScanning, onStartMultipleScan, onStartScan]);
 
   const handleSelect = (auditType: AuditType) => {
     if (!isScanning) {
@@ -135,6 +171,23 @@ export default function AuditSelector({ onStartScan, isScanning }: AuditSelector
         <p className="text-xs text-muted-foreground/60 mt-1">
           Tip: Use ⌘1-6 for quick selection, Enter to scan
         </p>
+
+        {/* Quick Actions */}
+        <div className="mt-3 pt-3 border-t border-border/30">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleScanAllHighPriority}
+            disabled={isScanning}
+            className="w-full gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10 hover:border-primary/30"
+          >
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span>Scan All High Priority ({highPriorityAudits.length})</span>
+          </Button>
+          <p className="text-[11px] text-muted-foreground/60 mt-1.5 text-center">
+            Runs Accessibility, Performance & SEO together
+          </p>
+        </div>
       </div>
 
       {/* Audit Grid - Scrollable */}
@@ -202,9 +255,9 @@ export default function AuditSelector({ onStartScan, isScanning }: AuditSelector
                   >
                     {audit.label}
                   </h3>
-                  {audit.essential && (
+                  {audit.highPriority && (
                     <span className="text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                      Essential
+                      High Priority
                     </span>
                   )}
                 </div>
@@ -214,16 +267,43 @@ export default function AuditSelector({ onStartScan, isScanning }: AuditSelector
                   {audit.description}
                 </p>
 
-                {/* Rule Count and Keyboard Shortcut */}
+                {/* Rule Count, Info Tooltip and Keyboard Shortcut */}
                 <div className="flex items-center justify-between text-xs">
-                  <span
-                    className={cn(
-                      'font-medium',
-                      isSelected ? 'text-primary' : 'text-muted-foreground'
-                    )}
-                  >
-                    {audit.ruleCount} checks
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={cn(
+                        'font-medium',
+                        isSelected ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                    >
+                      {audit.ruleCount} checks
+                    </span>
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="p-0.5 rounded hover:bg-muted/50 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs p-3">
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-xs font-semibold text-foreground mb-1">✓ Checks:</p>
+                              <p className="text-xs text-muted-foreground">{audit.checks.join(', ')}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-foreground mb-1">✗ Does NOT check:</p>
+                              <p className="text-xs text-muted-foreground">{audit.doesNotCheck.join(', ')}</p>
+                            </div>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   {audit.keyboardShortcut && (
                     <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground text-[11px] font-mono">
                       ⌘{audit.keyboardShortcut}
