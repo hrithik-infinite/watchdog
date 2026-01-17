@@ -11,10 +11,10 @@ interface EmptyStateProps {
 export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
   if (type === 'error') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-background">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 text-center animate-fade-in bg-background">
         <ErrorCircleIcon />
-        <h2 className="text-h1 text-foreground mt-6 mb-2">Scan Failed</h2>
-        <p className="text-body text-muted-foreground max-w-xs mb-6">
+        <h2 className="text-h1 text-foreground mt-4 mb-2">Scan Failed</h2>
+        <p className="text-body text-muted-foreground max-w-xs mb-4">
           {error || 'An error occurred while scanning the page'}
         </p>
         {onScan && (
@@ -28,10 +28,10 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
 
   if (type === 'no-issues') {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-fade-in bg-background">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 text-center animate-fade-in bg-background">
         <CheckCircleIcon />
-        <h2 className="text-h1 text-foreground mt-6 mb-2">No Issues Found!</h2>
-        <p className="text-body text-muted-foreground max-w-xs mb-6">
+        <h2 className="text-h1 text-foreground mt-4 mb-2">No Issues Found!</h2>
+        <p className="text-body text-muted-foreground max-w-xs mb-4">
           This page passed all accessibility checks. Great job!
         </p>
         {onScan && (
@@ -48,7 +48,7 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center text-center animate-fade-in">
       <EyeIcon />
-      <h2 className="text-h1 text-foreground mt-6 mb-2">Ready to Scan</h2>
+      <h2 className="text-h1 text-foreground mt-4 mb-2">Ready to Scan</h2>
       <p className="text-body text-muted-foreground max-w-xs">
         Scan your page to find and fix accessibility issues
       </p>

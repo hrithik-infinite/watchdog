@@ -94,9 +94,9 @@ export default function App() {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
         <Header onSettingsClick={() => setShowSettings(true)} />
-        <div className="flex-1 flex flex-col items-center justify-center p-8">
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-4">
           <EmptyState type="initial" />
-          <div className="w-full max-w-xs mt-8">
+          <div className="w-full max-w-xs mt-6">
             <ScanButton isScanning={isScanning} onScan={scan} />
           </div>
         </div>
