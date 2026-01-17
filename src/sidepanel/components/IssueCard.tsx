@@ -58,9 +58,7 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
           <span className="text-mono text-[10px] text-muted-foreground tracking-wider px-2 py-0.5 bg-muted/30 rounded border border-border/50">
             WCAG {issue.wcag.id}
           </span>
-          <span className="text-caption text-muted-foreground/70">
-            Level {issue.wcag.level}
-          </span>
+          <span className="text-caption text-muted-foreground/70">Level {issue.wcag.level}</span>
         </div>
 
         {/* Description */}
@@ -69,7 +67,9 @@ export default function IssueCard({ issue, isSelected, onSelect, onHighlight }: 
         {/* Code Preview */}
         <div className="bg-background/50 rounded-md p-3 mb-3 overflow-hidden border border-primary/20 backdrop-blur-sm relative group">
           <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <span className="text-mono text-[9px] text-muted-foreground/50 tracking-wider">HTML</span>
+            <span className="text-mono text-[9px] text-muted-foreground/50 tracking-wider">
+              HTML
+            </span>
           </div>
           <code className="text-mono text-xs text-primary-light block truncate leading-relaxed">
             {truncateHtml(issue.element.html)}
