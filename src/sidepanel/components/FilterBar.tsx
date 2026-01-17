@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react';
+import { Search, X, Ban, Eye, EyeOff } from 'lucide-react';
 import { Input } from '@/sidepanel/components/ui/input';
 import { Button } from '@/sidepanel/components/ui/button';
 import {
@@ -8,15 +8,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/sidepanel/components/ui/select';
+import { cn } from '@/sidepanel/lib/utils';
 import type { Category, Severity } from '@/shared/types';
 
 interface FilterBarProps {
   severityFilter: Severity | 'all';
   categoryFilter: Category | 'all';
   searchQuery: string;
+  hideIgnored: boolean;
+  ignoredCount: number;
   onSeverityChange: (severity: Severity | 'all') => void;
   onCategoryChange: (category: Category | 'all') => void;
   onSearchChange: (query: string) => void;
+  onHideIgnoredChange: (hide: boolean) => void;
 }
 
 const SEVERITY_LABELS: Record<Severity, string> = {
@@ -41,9 +45,12 @@ export default function FilterBar({
   severityFilter,
   categoryFilter,
   searchQuery,
+  hideIgnored,
+  ignoredCount,
   onSeverityChange,
   onCategoryChange,
   onSearchChange,
+  onHideIgnoredChange,
 }: FilterBarProps) {
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
   const categories: Category[] = [
@@ -130,6 +137,34 @@ export default function FilterBar({
           </Button>
         )}
       </div>
+
+      {/* Known Issues Toggle */}
+      {ignoredCount > 0 && (
+        <div className="flex items-center justify-between py-1">
+          <button
+            onClick={() => onHideIgnoredChange(!hideIgnored)}
+            className={cn(
+              'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors',
+              hideIgnored
+                ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                : 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+            )}
+          >
+            <Ban className="h-3.5 w-3.5" />
+            <span>
+              {ignoredCount} known issue{ignoredCount !== 1 ? 's' : ''}
+            </span>
+            {hideIgnored ? (
+              <EyeOff className="h-3 w-3 ml-1" />
+            ) : (
+              <Eye className="h-3 w-3 ml-1" />
+            )}
+          </button>
+          <span className="text-xs text-muted-foreground">
+            {hideIgnored ? 'Hidden' : 'Showing'}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

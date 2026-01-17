@@ -1,18 +1,22 @@
-import { ChevronLeft, ChevronRight, Info, Eye } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronLeft, ChevronRight, Info, Eye, Ban } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { Badge } from '@/sidepanel/components/ui/badge';
 import { Card, CardContent } from '@/sidepanel/components/ui/card';
 import CodeBlock from './CodeBlock';
+import IgnoreIssueModal from './IgnoreIssueModal';
 import type { Issue, Severity } from '@/shared/types';
 
 interface IssueDetailProps {
   issue: Issue;
+  url: string;
   currentIndex: number;
   totalCount: number;
   onBack: () => void;
   onPrev: () => void;
   onNext: () => void;
   onHighlight: () => void;
+  onIgnored: () => void;
   hasPrev: boolean;
   hasNext: boolean;
 }
@@ -33,15 +37,19 @@ const SEVERITY_LABELS: Record<Severity, string> = {
 
 export default function IssueDetail({
   issue,
+  url,
   currentIndex,
   totalCount,
   onBack,
   onPrev,
   onNext,
   onHighlight,
+  onIgnored,
   hasPrev,
   hasNext,
 }: IssueDetailProps) {
+  const [showIgnoreModal, setShowIgnoreModal] = useState(false);
+
   return (
     <div className="flex flex-col h-full animate-slide-in bg-background">
       {/* Header with prominent back button */}
@@ -89,10 +97,21 @@ export default function IssueDetail({
         <div>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-h3 text-foreground">Current Element</h3>
-            <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
-              <Eye className="h-4 w-4" />
-              Highlight
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
+                <Eye className="h-4 w-4" />
+                Highlight
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowIgnoreModal(true)}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Ban className="h-4 w-4" />
+                Mark Known
+              </Button>
+            </div>
           </div>
           <CodeBlock code={issue.element.html} />
         </div>
@@ -128,6 +147,16 @@ export default function IssueDetail({
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>
+
+      {/* Ignore Issue Modal */}
+      {showIgnoreModal && (
+        <IgnoreIssueModal
+          issue={issue}
+          url={url}
+          onClose={() => setShowIgnoreModal(false)}
+          onIgnored={onIgnored}
+        />
+      )}
     </div>
   );
 }

@@ -251,3 +251,137 @@ export function formatRelativeTime(timestamp: number): string {
 
   return new Date(timestamp).toLocaleDateString();
 }
+
+// ============================================
+// IGNORED ISSUES STORAGE
+// ============================================
+
+const IGNORED_ISSUES_KEY = 'watchdog_ignored_issues';
+
+/**
+ * Reason for ignoring an issue
+ */
+export type IgnoreReason =
+  | 'third-party'
+  | 'design-decision'
+  | 'false-positive'
+  | 'will-fix-later'
+  | 'other';
+
+export const IGNORE_REASON_LABELS: Record<IgnoreReason, string> = {
+  'third-party': "Third-party code (can't modify)",
+  'design-decision': 'Design decision (intentional)',
+  'false-positive': 'False positive',
+  'will-fix-later': 'Will fix later',
+  other: 'Other',
+};
+
+/**
+ * Ignored issue entry
+ */
+export interface IgnoredIssue {
+  hash: string; // selector + ruleId hash
+  selector: string;
+  ruleId: string;
+  message: string;
+  reason: IgnoreReason;
+  customNote?: string;
+  ignoredAt: number;
+  domain: string;
+}
+
+/**
+ * Generate hash for an issue (used for comparison across scans)
+ */
+export function generateIssueHash(selector: string, ruleId: string): string {
+  return `${selector}::${ruleId}`;
+}
+
+/**
+ * Get all ignored issues
+ */
+export async function getAllIgnoredIssues(): Promise<IgnoredIssue[]> {
+  const result = await chrome.storage.local.get(IGNORED_ISSUES_KEY);
+  const ignored = result[IGNORED_ISSUES_KEY];
+  return Array.isArray(ignored) ? ignored : [];
+}
+
+/**
+ * Get ignored issues for a specific domain
+ */
+export async function getIgnoredIssuesForDomain(url: string): Promise<IgnoredIssue[]> {
+  const domain = getDomain(url);
+  const allIgnored = await getAllIgnoredIssues();
+  return allIgnored.filter((i) => i.domain === domain);
+}
+
+/**
+ * Check if an issue is ignored
+ */
+export async function isIssueIgnored(url: string, selector: string, ruleId: string): Promise<boolean> {
+  const hash = generateIssueHash(selector, ruleId);
+  const domain = getDomain(url);
+  const allIgnored = await getAllIgnoredIssues();
+  return allIgnored.some((i) => i.hash === hash && i.domain === domain);
+}
+
+/**
+ * Add an issue to the ignored list
+ */
+export async function ignoreIssue(
+  url: string,
+  selector: string,
+  ruleId: string,
+  message: string,
+  reason: IgnoreReason,
+  customNote?: string
+): Promise<void> {
+  const domain = getDomain(url);
+  const hash = generateIssueHash(selector, ruleId);
+
+  const entry: IgnoredIssue = {
+    hash,
+    selector,
+    ruleId,
+    message,
+    reason,
+    customNote,
+    ignoredAt: Date.now(),
+    domain,
+  };
+
+  const allIgnored = await getAllIgnoredIssues();
+
+  // Remove any existing entry with same hash and domain
+  const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
+
+  await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: [...filtered, entry] });
+}
+
+/**
+ * Remove an issue from the ignored list
+ */
+export async function unignoreIssue(url: string, selector: string, ruleId: string): Promise<void> {
+  const domain = getDomain(url);
+  const hash = generateIssueHash(selector, ruleId);
+  const allIgnored = await getAllIgnoredIssues();
+  const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
+  await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: filtered });
+}
+
+/**
+ * Clear all ignored issues for a domain
+ */
+export async function clearIgnoredIssuesForDomain(url: string): Promise<void> {
+  const domain = getDomain(url);
+  const allIgnored = await getAllIgnoredIssues();
+  const filtered = allIgnored.filter((i) => i.domain !== domain);
+  await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: filtered });
+}
+
+/**
+ * Clear all ignored issues
+ */
+export async function clearAllIgnoredIssues(): Promise<void> {
+  await chrome.storage.local.remove(IGNORED_ISSUES_KEY);
+}

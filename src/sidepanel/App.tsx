@@ -17,6 +17,7 @@ import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
 import { useSettings } from './hooks/useSettings';
 import { useScanHistory } from './hooks/useScanHistory';
+import { useIgnoredIssues } from './hooks/useIgnoredIssues';
 import { useScanStore } from './store';
 import type { AuditType } from './store';
 import { compareScanResults } from '@/shared/storage';
@@ -27,11 +28,24 @@ export default function App() {
   const { isScanning, scanResult, error, scan, scanMultiple } = useScanner();
   const selectedAuditType = useScanStore((state) => state.selectedAuditType);
   const setSelectedAuditType = useScanStore((state) => state.setSelectedAuditType);
+  const setIgnoredHashes = useScanStore((state) => state.setIgnoredHashes);
+  const hideIgnored = useScanStore((state) => state.hideIgnored);
+  const setHideIgnored = useScanStore((state) => state.setHideIgnored);
 
   // Scan history
   const { history, previousScan, saveToHistory, refresh: refreshHistory } = useScanHistory(
     scanResult?.url
   );
+
+  // Ignored issues
+  const { ignoredHashes, ignoredCount, refresh: refreshIgnored } = useIgnoredIssues(
+    scanResult?.url
+  );
+
+  // Sync ignored hashes with store
+  useEffect(() => {
+    setIgnoredHashes(ignoredHashes);
+  }, [ignoredHashes, setIgnoredHashes]);
   const {
     filters,
     filteredIssues,
@@ -120,6 +134,7 @@ export default function App() {
         <Header scanResult={scanResult} />
         <IssueDetail
           issue={selectedIssue}
+          url={scanResult?.url || ''}
           currentIndex={getCurrentIndex()}
           totalCount={totalFiltered}
           onBack={handleBack}
@@ -128,6 +143,11 @@ export default function App() {
           onHighlight={() =>
             highlightElement(selectedIssue.element.selector, selectedIssue.severity)
           }
+          onIgnored={() => {
+            // Refresh ignored issues and go back to list
+            refreshIgnored();
+            handleBack();
+          }}
           hasPrev={adjacentIds.prev !== null}
           hasNext={adjacentIds.next !== null}
         />
@@ -228,9 +248,12 @@ export default function App() {
                 severityFilter={filters.severity}
                 categoryFilter={filters.category}
                 searchQuery={filters.searchQuery}
+                hideIgnored={hideIgnored}
+                ignoredCount={ignoredCount}
                 onSeverityChange={(severity) => setFilter('severity', severity)}
                 onCategoryChange={(category) => setFilter('category', category)}
                 onSearchChange={(query) => setFilter('searchQuery', query)}
+                onHideIgnoredChange={setHideIgnored}
               />
 
               <IssueList

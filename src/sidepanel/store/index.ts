@@ -26,6 +26,10 @@ interface ScanState {
   // Filter state
   filters: FilterState;
 
+  // Ignored issues filter
+  hideIgnored: boolean;
+  ignoredHashes: Set<string>;
+
   // UI state
   selectedIssueId: string | null;
   view: 'list' | 'detail';
@@ -43,6 +47,8 @@ interface ScanState {
   selectIssue: (id: string | null) => void;
   setView: (view: 'list' | 'detail') => void;
   updateSettings: (settings: Partial<Settings>) => void;
+  setHideIgnored: (hide: boolean) => void;
+  setIgnoredHashes: (hashes: Set<string>) => void;
 
   // Computed
   getFilteredIssues: () => Issue[];
@@ -63,6 +69,8 @@ export const useScanStore = create<ScanState>((set, get) => ({
   error: null,
   selectedAuditType: 'accessibility',
   filters: initialFilters,
+  hideIgnored: true,
+  ignoredHashes: new Set(),
   selectedIssueId: null,
   view: 'list',
   settings: DEFAULT_SETTINGS,
@@ -102,12 +110,24 @@ export const useScanStore = create<ScanState>((set, get) => ({
       settings: { ...state.settings, ...newSettings },
     })),
 
+  setHideIgnored: (hide) => set({ hideIgnored: hide }),
+
+  setIgnoredHashes: (hashes) => set({ ignoredHashes: hashes }),
+
   // Computed
   getFilteredIssues: () => {
-    const { scanResult, filters } = get();
+    const { scanResult, filters, hideIgnored, ignoredHashes } = get();
     if (!scanResult) return [];
 
     let issues = [...scanResult.issues];
+
+    // Filter out ignored issues
+    if (hideIgnored && ignoredHashes.size > 0) {
+      issues = issues.filter((issue) => {
+        const hash = `${issue.element.selector}::${issue.ruleId}`;
+        return !ignoredHashes.has(hash);
+      });
+    }
 
     // Filter by severity
     if (filters.severity !== 'all') {
