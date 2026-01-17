@@ -27,7 +27,8 @@
 3. [Technical Architecture](#technical-architecture)
 4. [shadcn/ui Components](#shadcnui-components)
 5. [Project Structure](#project-structure)
-6. [Commands & Quick Reference](#commands--quick-reference)
+6. [Future Enhancements & Roadmap](#future-enhancements--roadmap)
+7. [Commands & Quick Reference](#commands--quick-reference)
 
 ---
 
@@ -260,9 +261,56 @@ WatchDog/
 - Dropdown menu in header with format descriptions
 - Implementation: `src/sidepanel/lib/export.ts`
 
-### Future (v1.2)
+---
+
+## Future Enhancements & Roadmap
+
+### v1.2 (Planned)
 - Historical scan comparison
 - Real-time monitoring mode
+
+### Testing & Quality Enhancements
+- **Keyboard navigation testing** - Automated detection of keyboard traps
+- **Screen reader testing hints** - Suggestions for manual screen reader verification
+- **Animation/motion testing** - Detect animations that could trigger vestibular issues
+- **Touch target sizing** - Mobile accessibility validation (min 44x44px touch targets)
+
+### Developer Experience
+- **Inline code fixes** - One-click apply fixes directly to the page (temporary)
+- **Custom rule configuration** - Let users add/disable specific rules
+- **Issue annotations** - "Mark as false positive" or "Snooze" functionality
+- **Accessibility score** - Overall page score/grade (0-100)
+- **CI/CD integration guide** - JSON export → GitHub Actions workflow examples
+
+### Reporting & Collaboration
+- **Shareable reports** - Generate public URLs for report sharing
+- **Issue comments/notes** - Add context to specific issues for team collaboration
+- **Progress tracking** - Track issue resolution over time per domain
+- **WCAG compliance dashboard** - Visual breakdown of A/AA/AAA compliance
+
+### Advanced Detection Rules
+- **Keyboard focus indicators** - Detect missing or insufficient focus styles
+- **Language detection** - Auto-detect content language mismatches
+- **Form validation patterns** - Check for accessible error messaging
+- **Table accessibility** - Detect data tables missing proper markup
+- **Live region detection** - Identify dynamic content needing ARIA live regions
+
+### UX Improvements
+- **Onboarding tour** - First-time user guidance
+- **Quick filters** - "Show only fixable issues" or "High priority only"
+- **Element inspector mode** - Hover over page elements to see accessibility info
+- **Bulk actions** - Copy all issues, export filtered results
+- **Keyboard shortcuts** - Quick scan (Cmd+Shift+A), navigate issues, etc.
+
+### Integration Opportunities
+- **Design tool integration** - Import Figma/Sketch URLs for design QA
+- **Issue tracker export** - Direct export to Jira/Linear/GitHub Issues
+- **Browser DevTools integration** - Show issues in Chrome DevTools panel
+- **Learning resources** - Context-sensitive tutorials based on detected issues
+
+### Mobile & Responsive
+- **Responsive testing mode** - Test at different viewport sizes
+- **Mobile-specific rules** - Touch targets, viewport zoom, orientation handling
 
 ---
 
