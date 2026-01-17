@@ -1,12 +1,12 @@
 import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { Input } from '@/sidepanel/components/ui/input';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
+} from '@/sidepanel/components/ui/select';
 import type { Category, Severity } from '@/shared/types';
 
 interface FilterBarProps {

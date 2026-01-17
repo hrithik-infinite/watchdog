@@ -1,8 +1,8 @@
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/sidepanel/components/ui/card';
+import { Badge } from '@/sidepanel/components/ui/badge';
+import { Button } from '@/sidepanel/components/ui/button';
 import type { Issue, Severity } from '@/shared/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/sidepanel/lib/utils';
 
 interface IssueCardProps {
   issue: Issue;

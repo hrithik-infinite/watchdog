@@ -1,7 +1,7 @@
 import { ChevronLeft, ChevronRight, Info, Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/sidepanel/components/ui/button';
+import { Badge } from '@/sidepanel/components/ui/badge';
+import { Card, CardContent } from '@/sidepanel/components/ui/card';
 import CodeBlock from './CodeBlock';
 import type { Issue, Severity } from '@/shared/types';
 

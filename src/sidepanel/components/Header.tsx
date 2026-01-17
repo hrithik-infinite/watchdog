@@ -1,5 +1,5 @@
 import { Settings } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/sidepanel/components/ui/button';
 import { WatchDogLogo } from './icons';
 
 interface HeaderProps {

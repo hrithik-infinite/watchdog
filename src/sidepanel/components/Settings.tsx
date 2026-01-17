@@ -1,8 +1,8 @@
 import { ChevronLeft } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
+import { Button } from '@/sidepanel/components/ui/button';
+import { Switch } from '@/sidepanel/components/ui/switch';
+import { Card, CardContent } from '@/sidepanel/components/ui/card';
+import { Label } from '@/sidepanel/components/ui/label';
 import type { Settings as SettingsType, WCAGLevel } from '@/shared/types';
 
 interface SettingsProps {

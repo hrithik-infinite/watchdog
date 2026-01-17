@@ -1,5 +1,5 @@
 import { RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Button } from '@/sidepanel/components/ui/button';
 import { EyeIcon, CheckCircleIcon, ErrorCircleIcon } from './icons';
 
 interface EmptyStateProps {

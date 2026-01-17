@@ -1,6 +1,6 @@
-import { Button } from '@/components/ui/button';
+import { Button } from '@/sidepanel/components/ui/button';
 import type { ScanSummary, Severity } from '@/shared/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/sidepanel/lib/utils';
 
 interface SummaryProps {
   summary: ScanSummary;
