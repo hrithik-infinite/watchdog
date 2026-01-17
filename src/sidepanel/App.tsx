@@ -8,6 +8,7 @@ import IssueDetail from './components/IssueDetail';
 import EmptyState from './components/EmptyState';
 import Settings from './components/Settings';
 import AuditSelector from './components/AuditSelector';
+import PostScanReminder from './components/PostScanReminder';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
@@ -18,6 +19,7 @@ import type { AuditType } from './store';
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const { isScanning, scanResult, error, scan } = useScanner();
+  const selectedAuditType = useScanStore((state) => state.selectedAuditType);
   const setSelectedAuditType = useScanStore((state) => state.setSelectedAuditType);
   const {
     filters,
@@ -120,6 +122,16 @@ export default function App() {
       <div className="px-4 py-2">
         <ScanButton isScanning={isScanning} onScan={scan} hasResults={!!scanResult} />
       </div>
+
+      {/* Post-scan reminder for other audit types */}
+      {!isScanning && scanResult && selectedAuditType && (
+        <PostScanReminder
+          completedAuditType={selectedAuditType}
+          onRunRemaining={() => {
+            // TODO: Implement multi-scan in US-001
+          }}
+        />
+      )}
 
       {/* Error state */}
       {error && <EmptyState type="error" error={error} onScan={scan} />}
