@@ -6,20 +6,20 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 
 ---
 
-## Current WatchDog Features
+## Current WatchDog Features (v1.0 - January 2026)
 
 | Category | WatchDog | Status |
 |----------|----------|--------|
-| **Accessibility** | 35 axe-core rules | ✅ Implemented |
-| **Performance** | Full Core Web Vitals (LCP, FCP, TTFB, CLS, INP, TBT) | ✅ Implemented |
-| **SEO** | 9 checks | ✅ Implemented |
-| **Security** | 9 check categories | ✅ Implemented |
+| **Accessibility** | 35 axe-core rules (expanded from 15) | ✅ Implemented |
+| **Performance** | Full Core Web Vitals (LCP, FCP, TTFB, CLS, INP, TBT) + 2 additional metrics | ✅ Implemented |
+| **SEO** | 9 comprehensive checks | ✅ Implemented |
+| **Security** | 9 security check categories | ✅ Implemented |
 | **Best Practices** | 17 checks (console errors, vulnerable libs, image checks, etc.) | ✅ Implemented |
-| **PWA** | 7 checks | ✅ Implemented |
-| **Mobile** | - | Not Implemented |
-| **Links** | - | Not Implemented |
-| **i18n** | - | Not Implemented |
-| **Privacy** | - | Not Implemented |
+| **PWA** | 7 manifest and service worker checks | ✅ Implemented |
+| **Mobile** | - | 🔜 Planned for v1.1 |
+| **Links** | - | 📋 Backlog |
+| **i18n** | - | 📋 Backlog |
+| **Privacy** | - | 📋 Backlog |
 
 ---
 
@@ -173,7 +173,7 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 
 ## Best Practices Gaps
 
-### Currently Implemented (11 checks)
+### Currently Implemented (17 checks) ✅
 
 - [x] DOCTYPE declaration
 - [x] Character encoding (UTF-8)
@@ -186,23 +186,21 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 - [x] Meta refresh
 - [x] Passive event listeners
 - [x] Geolocation on load
+- [x] **Console errors** - Browser errors logged (via early injection)
+- [x] **Console warnings** - Warning detection
+- [x] **Vulnerable libraries** - Detects jQuery, Lodash, Moment, Angular, Bootstrap, etc. with known CVEs
+- [x] **Password paste allowed** - Checks for paste prevention
+- [x] **Notification permission on load** - Detects immediate permission requests
+- [x] **Image aspect ratio** - Validates width/height attributes
+- [x] **Unsized images** - Checks for explicit dimensions (prevents CLS)
 
 ### Missing Best Practices Audits
 
 #### JavaScript & Console
-- [ ] **Console errors** - No browser errors logged
-- [ ] **Console warnings** - Minimize warnings
-- [ ] **Unhandled promise rejections** - All promises handled
-
-#### Security & Privacy
-- [ ] **Vulnerable libraries** - Known vulnerabilities (Snyk/npm audit)
-- [ ] **Password paste allowed** - Don't prevent paste in password fields
-- [ ] **Notification permission on load** - Don't request immediately
+- [ ] **Unhandled promise rejections** - All promises handled (partially implemented in console-capture)
 
 #### Media & Images
-- [ ] **Image aspect ratio** - Correct width/height attributes
-- [ ] **Unsized images** - Images have explicit dimensions
-- [ ] **Offscreen images** - Lazy load below-fold images
+- [ ] **Offscreen images** - Lazy load below-fold images (planned for v1.1)
 
 #### Network & Protocol
 - [ ] **HTTPS redirect** - HTTP redirects to HTTPS
@@ -262,49 +260,55 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 
 ---
 
-## Implementation Priority
+## Implementation Status
 
-### Phase 1: Core Web Vitals (High Priority) ✅ COMPLETED
+### Phase 1: Core Web Vitals & Accessibility ✅ COMPLETED (January 2026)
 
 1. **CLS (Cumulative Layout Shift)** ✅
    - Uses `PerformanceObserver` with `layout-shift` entry type
-   - Calculates cumulative score
+   - Calculates cumulative score with good/poor thresholds
    - Identifies shifting elements with selectors
 
 2. **INP (Interaction to Next Paint)** ✅
    - Monitors click, keydown, pointerdown events
-   - Tracks event processing times
+   - Tracks event processing times with percentile calculations
    - Reports worst interaction with details
 
 3. **TBT (Total Blocking Time)** ✅
    - Uses `PerformanceObserver` with `longtask` entry type
    - Calculates total blocking time (duration - 50ms for each task)
-   - Reports individual long tasks
+   - Reports individual long tasks with blocking durations
 
-4. **Expanded axe-core rules** ✅
-   - Added 20 new rules (15 → 35 total)
-   - Includes fix templates for all rules
-   - WCAG criteria mappings complete
+4. **Expanded Accessibility Rules** ✅
+   - Increased from 15 to 35 axe-core rules
+   - Complete fix templates for all rules
+   - WCAG 2.1 criteria mappings (Level A & AA)
+   - Categories: Images, Forms, ARIA, Tables, Navigation, Media, Structure
 
-### Phase 2: Best Practices (High Priority) ✅ COMPLETED
+### Phase 2: Best Practices & Security ✅ COMPLETED (January 2026)
 
-4. **Console Error Detection** ✅
-   - Early injection via MAIN world content script
+5. **Console Error Detection** ✅
+   - Early injection via MAIN world content script at document_start
    - Captures console.error, console.warn, unhandled errors, and promise rejections
-   - Reports count and sample messages
+   - Reports count and sample messages with timestamps
 
-5. **Vulnerable Libraries Detection** ✅
-   - Detects 10 common libraries via window globals
-   - Tracks 8 known CVEs for jQuery, Lodash, Moment, Angular, Bootstrap
-   - Reports CVE details and fix versions
+6. **Vulnerable Libraries Detection** ✅
+   - Detects 10 common libraries via window globals (jQuery, Lodash, Moment, Angular, Vue, React, Bootstrap, Backbone, Ember)
+   - Tracks 8 known CVEs with severity ratings
+   - Reports CVE details, affected versions, and fix versions
 
-6. **Additional Best Practices** ✅
+7. **Additional Best Practices** ✅
    - Password paste prevention detection
-   - Notification permission on load
-   - Unsized images (causes CLS)
-   - Incorrect image aspect ratios
+   - Notification permission on page load detection
+   - Unsized images detection (causes CLS)
+   - Incorrect image aspect ratios validation
 
-### Phase 3: Advanced Performance & SEO (Medium Priority)
+8. **Complete SEO, Security, and PWA Audits** ✅
+   - 9 SEO checks (title, description, Open Graph, structured data)
+   - 9 security checks (HTTPS, CSP, secure cookies, X-Frame-Options)
+   - 7 PWA checks (manifest, service worker, icons)
+
+### Phase 3: Advanced Performance & SEO (Next Priority - v1.1)
 
 9. **Image optimization**
    - Check image formats (suggest WebP/AVIF)
@@ -328,82 +332,70 @@ This document compares WatchDog's current capabilities against Google Lighthouse
     - Detect JavaScript-only links
     - Verify href attributes
 
-### Phase 5: Enterprise Features (Lower Priority)
+### Phase 4: Mobile & Responsive (Medium Priority - v1.1)
 
-14. **CI/CD integration**
+14. **Tap target sizing**
+    - Measure touch target dimensions
+    - Report undersized targets (<48x48px)
+    - Provide spacing recommendations
+
+15. **Font size legibility**
+    - Check computed font sizes
+    - Report illegible text (<12px)
+    - Mobile-specific considerations
+
+16. **Content width validation**
+    - Detect horizontal overflow
+    - Check viewport configuration
+    - Mobile-friendly layout validation
+
+### Phase 5: Enterprise Features (Lower Priority - v2.0+)
+
+17. **CI/CD integration**
     - CLI tool for automation
     - JSON output for parsing
     - Exit codes for thresholds
+    - GitHub Actions integration
 
-15. **Performance budgets**
+18. **Performance budgets**
     - Configure size limits
     - Set timing thresholds
     - Alert on violations
+    - Budget file format
 
-16. **Historical comparison**
+19. **Historical comparison**
     - Store scan results
     - Compare over time
     - Show trend charts
+    - Regression detection
 
 ---
 
-## Technical Implementation Notes
+## Implementation Highlights
 
-### Adding CLS Measurement
+### Core Web Vitals Implementation
 
-```typescript
-// In performance scanner
-function measureCLS(): Promise<number> {
-  return new Promise((resolve) => {
-    let clsValue = 0;
+WatchDog implements all modern Core Web Vitals metrics:
 
-    const observer = new PerformanceObserver((list) => {
-      for (const entry of list.getEntries()) {
-        if (!(entry as any).hadRecentInput) {
-          clsValue += (entry as any).value;
-        }
-      }
-    });
+- **CLS**: Uses `PerformanceObserver` with `layout-shift` entries, filters out user-initiated shifts
+- **INP**: Tracks all interaction events (click, keydown, pointerdown) with processing time
+- **TBT**: Calculates blocking time from `longtask` entries (tasks > 50ms)
 
-    observer.observe({ type: 'layout-shift', buffered: true });
+### Console Capture Strategy
 
-    // Resolve after page is likely stable
-    setTimeout(() => {
-      observer.disconnect();
-      resolve(clsValue);
-    }, 5000);
-  });
-}
-```
+To capture early console errors:
+- Content script injected at `document_start` with `world: "MAIN"`
+- Wraps `console.error`, `console.warn`, and listens for `error` events
+- Stores messages before page scripts execute
+- Retrieved during audit scan for reporting
 
-### Adding INP with web-vitals
+### Vulnerable Library Detection
 
-```typescript
-import { onINP } from 'web-vitals';
-
-function measureINP(): Promise<number> {
-  return new Promise((resolve) => {
-    onINP((metric) => {
-      resolve(metric.value);
-    }, { reportAllChanges: true });
-  });
-}
-```
-
-### Console Error Detection
-
-```typescript
-// Inject into page context
-const originalError = console.error;
-const errors: string[] = [];
-
-console.error = (...args) => {
-  errors.push(args.map(String).join(' '));
-  originalError.apply(console, args);
-};
-
-// Report errors in scan result
-```
+Detection strategy:
+- Checks for common library globals (`window.jQuery`, `window._`, etc.)
+- Extracts version from library properties
+- Compares against hardcoded CVE database
+- Reports severity, CVE ID, description, and fix version
 
 ---
 

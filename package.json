@@ -12,7 +12,9 @@
     "lint:fix": "eslint src --ext ts,tsx --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css,json}\"",
     "preview": "vite preview",
-    "all": "npm run format && npm run lint:fix && npm run build && npm run test"
+    "all": "npm run format && npm run lint:fix && npm run build && npm run test",
+    "changeset": "changeset",
+    "version": "changeset version"
   },
   "keywords": [
     "accessibility",
@@ -23,6 +25,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@changesets/cli": "^2.29.8",
     "@crxjs/vite-plugin": "^2.3.0",
     "@eslint/js": "^9.39.2",
     "@tailwindcss/postcss": "^4.1.18",

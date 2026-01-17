@@ -11,13 +11,15 @@
 
 ### Core Functionality ✨
 
-- **One-Click Scanning** - Audit any webpage instantly using industry-standard axe-core
+- **Multiple Audit Types** - Comprehensive audits for Accessibility, Performance, SEO, Security, Best Practices, and PWA
+- **One-Click Scanning** - Audit any webpage instantly using industry-standard tools
 - **Side Panel UI** - Clean, non-intrusive interface that opens alongside your page
 - **Visual Highlighting** - Click any issue to highlight the problematic element on the page
 - **Interactive Detection** - Click elements on the page to see their accessibility issues
-- **15 Curated Rules** - Focused on high-impact WCAG violations (A, AA, AAA)
+- **35+ Accessibility Rules** - Comprehensive WCAG coverage (A, AA levels) using axe-core
+- **Core Web Vitals** - Full performance metrics including LCP, FCP, TTFB, CLS, INP, and TBT
 - **Code Fix Suggestions** - Get actionable code examples to fix each issue
-- **Severity Filtering** - Filter by Critical, Serious, or Moderate issues
+- **Severity Filtering** - Filter by Critical, Serious, Moderate, or Minor issues
 - **Badge Counter** - Extension icon shows total issue count at a glance
 
 ### Advanced Features 🎯
@@ -85,16 +87,20 @@ npm run all
    - Click the WatchDog icon in your Chrome toolbar
    - Or use keyboard shortcut (if configured)
 
-2. **Scan a Page**
-   - Click the "Scan Page" button in the side panel
+2. **Select Audit Type**
+   - Choose from Accessibility, Performance, SEO, Security, Best Practices, or PWA
+   - Or run all audits at once for a complete analysis
+
+3. **Scan a Page**
+   - Click the "Scan" button for your selected audit type
    - Wait a few seconds for analysis to complete
 
-3. **Review Issues**
-   - View issues grouped by severity (Critical, Serious, Moderate)
-   - Filter by category (Images, Forms, ARIA, etc.)
+4. **Review Issues**
+   - View issues grouped by severity (Critical, Serious, Moderate, Minor)
+   - Filter by category (Images, Forms, ARIA, Performance, etc.)
    - Click any issue card to see detailed information
 
-4. **Inspect Elements**
+5. **Inspect Elements**
    - Click "Highlight" on an issue to show the element on the page
    - Click directly on page elements to see their issues in the panel
 
@@ -125,21 +131,62 @@ npm run all
 
 ## What WatchDog Checks
 
-### 15 High-Impact Accessibility Rules
+### Comprehensive Audit Categories
+
+WatchDog provides six types of audits to comprehensively analyze your website:
+
+#### 1. Accessibility (35 Rules)
 
 | Category | Rules |
 |----------|-------|
-| **Images** | Alt text for images |
-| **Interactive Elements** | Button and link accessible names |
-| **Forms** | Input labels and form accessibility |
+| **Images** | Alt text for images, videos, audio, objects, and SVGs |
+| **Interactive Elements** | Button and link accessible names, bypass blocks, focus management |
+| **Forms** | Input labels, select names, autocomplete, and image button alt text |
 | **Color & Contrast** | Text contrast ratios (WCAG AA/AAA) |
-| **Document Structure** | Page language, title, headings hierarchy |
+| **Document Structure** | Page language, title, headings hierarchy, meta viewport, frame titles |
 | **Landmarks** | Proper use of semantic regions |
 | **ARIA** | Valid attributes, required properties, proper roles |
-| **Navigation** | Tabindex usage, focus management |
-| **Technical** | Unique IDs, viewport settings |
+| **Navigation** | Tabindex usage, focus order, scrollable regions |
+| **Tables** | Header associations, scope attributes, captions |
+| **Structure** | Lists, definition lists, nested interactive elements |
+| **Deprecated** | Marquee and blink elements |
+| **Media** | Video captions, audio descriptions, no autoplay |
 
-All rules map to specific WCAG 2.1 criteria (Level A, AA, or AAA).
+All rules map to specific WCAG 2.1 criteria (Level A or AA).
+
+#### 2. Performance (8 Metrics)
+
+- **Core Web Vitals**: LCP, CLS, INP, TBT
+- **Load Metrics**: FCP, TTFB, DOM Content Loaded, Page Load Time
+- Identifies performance bottlenecks and provides optimization suggestions
+
+#### 3. SEO (9 Checks)
+
+- Page title, meta description, H1 heading
+- Open Graph tags, canonical URL, structured data
+- HTTPS protocol, viewport meta tag, image alt text
+
+#### 4. Security (9 Categories)
+
+- HTTPS enforcement, CSP headers, secure cookies
+- X-Frame-Options, mixed content detection
+- Security headers and protocol validation
+
+#### 5. Best Practices (17 Checks)
+
+- DOCTYPE, character encoding, language attributes
+- Console errors and warnings detection
+- Vulnerable libraries detection (jQuery, Lodash, Moment, Angular, Bootstrap, etc.)
+- Deprecated HTML elements, broken images, duplicate IDs
+- Password paste prevention, notification permissions
+- Image sizing and aspect ratio issues
+
+#### 6. PWA (7 Checks)
+
+- Web App Manifest validation
+- Service Worker registration
+- Icon requirements (192x192, 512x512)
+- Apple touch icon, HTTPS requirement
 
 ---
 
@@ -173,10 +220,26 @@ WatchDog requires the following permissions:
 ```
 src/
 ├── background/        # Service worker (badge, storage, messaging)
-├── content/           # Content scripts (scanner, overlay, filters)
+├── content/           # Content scripts
+│   ├── scanner.ts                  # Main accessibility scanner
+│   ├── performance-scanner.ts      # Performance metrics & Core Web Vitals
+│   ├── seo-scanner.ts             # SEO audits
+│   ├── security-scanner.ts        # Security checks
+│   ├── best-practices-scanner.ts  # Best practices & console errors
+│   ├── pwa-scanner.ts             # PWA manifest & service worker
+│   ├── console-capture.ts         # Early console error capture
+│   ├── overlay.ts                 # Element highlighting
+│   ├── vision-filters.ts          # Vision simulation filters
+│   └── focus-order.ts             # Focus order visualization
 ├── sidepanel/         # React UI (components, hooks, store)
-├── popup/             # Extension popup
+│   ├── components/    # UI components
+│   └── store/         # Zustand state management
 └── shared/            # Shared types, constants, utilities
+    ├── types.ts       # TypeScript definitions
+    ├── constants.ts   # Accessibility rules & mappings
+    ├── fixes.ts       # Code fix templates
+    ├── scoring.ts     # Audit scoring logic
+    └── messaging.ts   # Chrome extension messaging
 ```
 
 ### Available Commands
@@ -234,20 +297,36 @@ Contributions are welcome! Please:
 
 ## Roadmap
 
-### v1.2 (Planned)
-- Real-time monitoring mode
+### v1.0 ✅ (Current - Released January 2026)
+- 35 accessibility rules with WCAG 2.1 mapping
+- Full Core Web Vitals measurement (CLS, INP, TBT)
+- Complete Performance, SEO, Security, Best Practices, and PWA audits
+- Console error and warning capture
+- Vulnerable library detection
+- Vision simulators and focus order visualization
+- Multi-format report export (PDF, JSON, CSV, HTML)
+
+### v1.1 (Next - February 2026)
+- Image optimization analysis
+- Cache policy audits
+- Mobile responsiveness testing
+- Tap target sizing validation
+- Font legibility checks
+
+### v2.0 (Future)
+- CLI tool for CI/CD integration
+- Performance budgets
 - Historical scan comparison
-- Accessibility score calculation
+- GitHub Actions integration
 - Custom rule configuration
 
-### Future Enhancements
-- CI/CD integration guide
-- Keyboard shortcuts
-- Issue annotations ("mark as false positive")
+### Long-term Vision
+- Real-time monitoring mode
+- Team dashboard for multi-site tracking
 - Integration with design tools (Figma, Sketch)
-- Mobile responsive testing mode
+- API access for programmatic scanning
 
-See [docs/watchdogfinal-plan.md](docs/watchdogfinal-plan.md) for the complete roadmap.
+See [docs/implementation-roadmap.md](docs/implementation-roadmap.md) for the detailed implementation plan.
 
 ---
 

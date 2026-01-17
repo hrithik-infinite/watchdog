@@ -52,8 +52,11 @@ WatchDog processes the following information **locally in your browser only**:
 
 All data processing happens entirely within your browser:
 
-1. **Accessibility Scanning**
-   - When you click "Scan Page," axe-core library analyzes the DOM
+1. **Multi-Type Audits**
+   - When you run a scan, various audits analyze the page locally
+   - Accessibility: axe-core library analyzes the DOM
+   - Performance: Core Web Vitals metrics collected via browser APIs
+   - SEO, Security, Best Practices, PWA: Page metadata and structure analyzed
    - Results are displayed in the side panel
    - No data leaves your device
 
@@ -207,9 +210,10 @@ Processing data locally provides inherent security advantages:
 We follow secure development practices:
 - Regular dependency updates
 - Code reviews and security audits
-- Minimal permission requests
-- TypeScript for type safety
-- Comprehensive testing (24+ unit tests)
+- Minimal permission requests (only 4 essential permissions)
+- TypeScript for type safety and compile-time checks
+- Comprehensive testing with Vitest (unit and integration tests)
+- Linting and formatting with ESLint and Prettier
 
 ---
 
@@ -269,4 +273,4 @@ WatchDog is open-source software. You can:
 
 ---
 
-*This privacy policy applies to WatchDog version 1.0.0 and later.*
+*This privacy policy applies to WatchDog version 1.0.0 (Released January 2026) and later.*

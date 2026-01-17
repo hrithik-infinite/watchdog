@@ -36,9 +36,12 @@ yarn-error.log*
 
 # Testing
 coverage/
+test-suite/
+
+# Documentation
+docs/
 
 # Chrome extension development
 *.crx
 *.pem
 *.zip
-coverage/
