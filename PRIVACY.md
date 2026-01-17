@@ -240,17 +240,17 @@ Under CCPA:
 
 If you have questions about this privacy policy or WatchDog's privacy practices:
 
-- **GitHub Issues:** [https://github.com/your-username/watchdog/issues](https://github.com/your-username/watchdog/issues)
-- **Email:** [your-email@example.com] (if you choose to provide one)
+- **GitHub Issues:** [https://github.com/hrithik-infinite/watchdog/issues](https://github.com/hrithik-infinite/watchdog/issues)
+- **GitHub Repository:** [https://github.com/hrithik-infinite/watchdog](https://github.com/hrithik-infinite/watchdog)
 
-For security vulnerabilities, please report privately via GitHub Security Advisories.
+For security vulnerabilities, please report privately via [GitHub Security Advisories](https://github.com/hrithik-infinite/watchdog/security/advisories).
 
 ---
 
 ## Open Source Transparency
 
 WatchDog is open-source software. You can:
-- Review the complete source code on [GitHub](https://github.com/your-username/watchdog)
+- Review the complete source code on [GitHub](https://github.com/hrithik-infinite/watchdog)
 - Verify that no data collection occurs
 - Audit all functionality yourself
 - Contribute to development

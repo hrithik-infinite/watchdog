@@ -1,0 +1,19 @@
+/* Inter Font Family - Self-hosted for Chrome Web Store compliance */
+/* Using Inter variable font for all weights (300-900) */
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter.var.woff2') format('woff2-variations');
+  font-weight: 100 900; /* Supports all weights from 100 to 900 */
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Optional: Italic variant if needed */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/inter.var.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
