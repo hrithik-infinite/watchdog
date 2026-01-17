@@ -9,6 +9,7 @@ import EmptyState from './components/EmptyState';
 import Settings from './components/Settings';
 import AuditSelector from './components/AuditSelector';
 import PostScanReminder from './components/PostScanReminder';
+import CopyDropdown from './components/CopyDropdown';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
@@ -143,11 +144,18 @@ export default function App() {
             <EmptyState type="no-issues" onScan={scan} />
           ) : (
             <>
-              <Summary
-                summary={scanResult.summary}
-                onFilterBySeverity={(severity) => setFilter('severity', severity)}
-                activeSeverity={filters.severity}
-              />
+              <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
+                <Summary
+                  summary={scanResult.summary}
+                  onFilterBySeverity={(severity) => setFilter('severity', severity)}
+                  activeSeverity={filters.severity}
+                />
+                <CopyDropdown
+                  issues={filteredIssues}
+                  scanResult={scanResult}
+                  auditType={selectedAuditType}
+                />
+              </div>
 
               <FilterBar
                 severityFilter={filters.severity}
