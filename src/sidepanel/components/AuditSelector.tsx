@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone, Sparkles, Info, Check } from 'lucide-react';
+import {
+  Eye,
+  Zap,
+  Search,
+  Shield,
+  CheckCircle2,
+  Smartphone,
+  Sparkles,
+  Info,
+  Check,
+} from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
 import {

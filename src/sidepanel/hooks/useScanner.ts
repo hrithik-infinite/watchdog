@@ -54,21 +54,18 @@ export function useScanner() {
   const [currentAuditType, setCurrentAuditType] = useState<AuditType | null>(null);
 
   // Single scan implementation
-  const scanSingle = useCallback(
-    async (auditType: string, tabId: number): Promise<ScanResult> => {
-      const response = await chrome.tabs.sendMessage(tabId, {
-        type: 'SCAN_PAGE',
-        payload: { auditType },
-      });
+  const scanSingle = useCallback(async (auditType: string, tabId: number): Promise<ScanResult> => {
+    const response = await chrome.tabs.sendMessage(tabId, {
+      type: 'SCAN_PAGE',
+      payload: { auditType },
+    });
 
-      if (response?.success && response.result) {
-        return response.result as ScanResult;
-      } else {
-        throw new Error(response?.error || `${auditType} scan failed`);
-      }
-    },
-    []
-  );
+    if (response?.success && response.result) {
+      return response.result as ScanResult;
+    } else {
+      throw new Error(response?.error || `${auditType} scan failed`);
+    }
+  }, []);
 
   const scan = useCallback(
     async (auditTypeOverride?: string) => {

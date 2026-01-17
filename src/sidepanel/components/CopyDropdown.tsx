@@ -62,12 +62,7 @@ export default function CopyDropdown({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className={className}
-          disabled={issueCount === 0}
-        >
+        <Button variant="outline" size="sm" className={className} disabled={issueCount === 0}>
           {copied ? (
             <Check className="h-4 w-4 text-green-500" />
           ) : (
