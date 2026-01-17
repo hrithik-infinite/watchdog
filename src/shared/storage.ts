@@ -5,6 +5,7 @@
 
 import type { ScanResult, Issue, ScanSummary } from './types';
 import type { AuditType } from '@/sidepanel/store';
+import logger from './logger';
 
 // Storage keys
 const SCAN_HISTORY_KEY = 'watchdog_scan_history';
@@ -51,6 +52,7 @@ export async function saveScanToHistory(
   auditTypes: AuditType[] = ['accessibility']
 ): Promise<ScanHistoryEntry> {
   const domain = getDomain(result.url);
+  logger.debug('Saving scan to history', { domain, auditTypes, issueCount: result.issues.length });
 
   const entry: ScanHistoryEntry = {
     id: generateId(),
@@ -81,6 +83,7 @@ export async function saveScanToHistory(
 
   // Save to storage
   await chrome.storage.local.set({ [SCAN_HISTORY_KEY]: updatedHistory });
+  logger.debug('Scan history saved', { entryId: entry.id, totalEntries: updatedHistory.length });
 
   return entry;
 }
@@ -100,9 +103,7 @@ export async function getAllScanHistory(): Promise<ScanHistoryEntry[]> {
 export async function getScanHistoryForDomain(url: string): Promise<ScanHistoryEntry[]> {
   const domain = getDomain(url);
   const allHistory = await getAllScanHistory();
-  return allHistory
-    .filter((e) => e.domain === domain)
-    .sort((a, b) => b.timestamp - a.timestamp);
+  return allHistory.filter((e) => e.domain === domain).sort((a, b) => b.timestamp - a.timestamp);
 }
 
 /**
@@ -214,8 +215,7 @@ export function compareScanResults(
   const diff = {
     totalDiff: currentEntry.issueCount - previous.issueCount,
     bySeverity: {
-      critical:
-        currentEntry.summary.bySeverity.critical - previous.summary.bySeverity.critical,
+      critical: currentEntry.summary.bySeverity.critical - previous.summary.bySeverity.critical,
       serious: currentEntry.summary.bySeverity.serious - previous.summary.bySeverity.serious,
       moderate: currentEntry.summary.bySeverity.moderate - previous.summary.bySeverity.moderate,
       minor: currentEntry.summary.bySeverity.minor - previous.summary.bySeverity.minor,
@@ -318,7 +318,11 @@ export async function getIgnoredIssuesForDomain(url: string): Promise<IgnoredIss
 /**
  * Check if an issue is ignored
  */
-export async function isIssueIgnored(url: string, selector: string, ruleId: string): Promise<boolean> {
+export async function isIssueIgnored(
+  url: string,
+  selector: string,
+  ruleId: string
+): Promise<boolean> {
   const hash = generateIssueHash(selector, ruleId);
   const domain = getDomain(url);
   const allIgnored = await getAllIgnoredIssues();
@@ -338,6 +342,7 @@ export async function ignoreIssue(
 ): Promise<void> {
   const domain = getDomain(url);
   const hash = generateIssueHash(selector, ruleId);
+  logger.debug('Ignoring issue', { domain, ruleId, reason });
 
   const entry: IgnoredIssue = {
     hash,
@@ -356,6 +361,7 @@ export async function ignoreIssue(
   const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
 
   await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: [...filtered, entry] });
+  logger.info('Issue ignored', { hash, reason });
 }
 
 /**
@@ -364,9 +370,11 @@ export async function ignoreIssue(
 export async function unignoreIssue(url: string, selector: string, ruleId: string): Promise<void> {
   const domain = getDomain(url);
   const hash = generateIssueHash(selector, ruleId);
+  logger.debug('Unignoring issue', { domain, ruleId, hash });
   const allIgnored = await getAllIgnoredIssues();
   const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
   await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: filtered });
+  logger.info('Issue unignored', { hash });
 }
 
 /**

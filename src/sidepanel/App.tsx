@@ -21,6 +21,7 @@ import { useIgnoredIssues } from './hooks/useIgnoredIssues';
 import { useScanStore } from './store';
 import type { AuditType } from './store';
 import { compareScanResults } from '@/shared/storage';
+import logger from '@/shared/logger';
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
@@ -33,14 +34,19 @@ export default function App() {
   const setHideIgnored = useScanStore((state) => state.setHideIgnored);
 
   // Scan history
-  const { history, previousScan, saveToHistory, refresh: refreshHistory } = useScanHistory(
-    scanResult?.url
-  );
+  const {
+    history,
+    previousScan,
+    saveToHistory,
+    refresh: refreshHistory,
+  } = useScanHistory(scanResult?.url);
 
   // Ignored issues
-  const { ignoredHashes, ignoredCount, refresh: refreshIgnored } = useIgnoredIssues(
-    scanResult?.url
-  );
+  const {
+    ignoredHashes,
+    ignoredCount,
+    refresh: refreshIgnored,
+  } = useIgnoredIssues(scanResult?.url);
 
   // Sync ignored hashes with store
   useEffect(() => {
@@ -64,6 +70,7 @@ export default function App() {
 
   const handleStartScan = useCallback(
     (auditType: AuditType) => {
+      logger.info('Starting scan', { auditType });
       setSelectedAuditType(auditType);
       scan(auditType);
     },
@@ -73,6 +80,7 @@ export default function App() {
   const handleStartMultipleScan = useCallback(
     (auditTypes: AuditType[]) => {
       if (auditTypes.length > 0) {
+        logger.info('Starting multiple scans', { auditTypes });
         setSelectedAuditType(auditTypes[0]);
         scanMultiple(auditTypes);
       }
@@ -85,6 +93,11 @@ export default function App() {
       selectIssue(id);
       const issue = filteredIssues.find((i) => i.id === id);
       if (issue) {
+        logger.debug('Issue selected', {
+          id,
+          selector: issue.element.selector,
+          severity: issue.severity,
+        });
         highlightElement(issue.element.selector, issue.severity);
       }
     },
@@ -106,6 +119,12 @@ export default function App() {
   // Save scan to history when completed
   useEffect(() => {
     if (scanResult && !isScanning) {
+      logger.info('Scan completed', {
+        url: scanResult.url,
+        issueCount: scanResult.issues.length,
+        duration: scanResult.duration,
+        summary: scanResult.summary,
+      });
       saveToHistory(scanResult, [selectedAuditType]);
     }
   }, [scanResult, isScanning, selectedAuditType, saveToHistory]);
@@ -144,7 +163,7 @@ export default function App() {
             highlightElement(selectedIssue.element.selector, selectedIssue.severity)
           }
           onIgnored={() => {
-            // Refresh ignored issues and go back to list
+            logger.info('Issue marked as ignored');
             refreshIgnored();
             handleBack();
           }}

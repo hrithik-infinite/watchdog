@@ -48,19 +48,14 @@ function DiffStat({ label, current, previous, colorClass }: DiffStatProps) {
               isNegative ? 'text-green-500' : 'text-red-500'
             )}
           >
-            {isPositive ? (
-              <TrendingUp className="h-3 w-3" />
-            ) : (
-              <TrendingDown className="h-3 w-3" />
-            )}
+            {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
             {isPositive ? '+' : ''}
             {diff}
           </span>
         )}
         {diff === 0 && (
           <span className="flex items-center gap-0.5 text-xs text-muted-foreground">
-            <Minus className="h-3 w-3" />
-            0
+            <Minus className="h-3 w-3" />0
           </span>
         )}
       </div>
@@ -73,9 +68,7 @@ export default function ScanComparisonView({ comparison, onClose }: ScanComparis
   const { current, previous, diff, fixedIssues, newIssues, unchangedCount } = comparison;
 
   const improvementPercent =
-    previous.issueCount > 0
-      ? Math.round((fixedIssues.length / previous.issueCount) * 100)
-      : 0;
+    previous.issueCount > 0 ? Math.round((fixedIssues.length / previous.issueCount) * 100) : 0;
 
   const isImproved = diff.totalDiff < 0;
   const isWorse = diff.totalDiff > 0;
@@ -135,7 +128,11 @@ export default function ScanComparisonView({ comparison, onClose }: ScanComparis
 
       {/* Stats Grid */}
       <div className="px-4 py-3">
-        <DiffStat label="Total Issues" current={current.issueCount} previous={previous.issueCount} />
+        <DiffStat
+          label="Total Issues"
+          current={current.issueCount}
+          previous={previous.issueCount}
+        />
         <DiffStat
           label="Critical"
           current={current.summary.bySeverity.critical}
@@ -189,12 +186,7 @@ export default function ScanComparisonView({ comparison, onClose }: ScanComparis
                         key={issue.id}
                         className="text-xs text-muted-foreground bg-green-500/5 rounded px-2 py-1.5 line-clamp-1"
                       >
-                        <span
-                          className={cn(
-                            'font-medium mr-1.5',
-                            SEVERITY_COLORS[issue.severity]
-                          )}
-                        >
+                        <span className={cn('font-medium mr-1.5', SEVERITY_COLORS[issue.severity])}>
                           [{issue.severity}]
                         </span>
                         {issue.message}
@@ -222,12 +214,7 @@ export default function ScanComparisonView({ comparison, onClose }: ScanComparis
                         key={issue.id}
                         className="text-xs text-muted-foreground bg-red-500/5 rounded px-2 py-1.5 line-clamp-1"
                       >
-                        <span
-                          className={cn(
-                            'font-medium mr-1.5',
-                            SEVERITY_COLORS[issue.severity]
-                          )}
-                        >
+                        <span className={cn('font-medium mr-1.5', SEVERITY_COLORS[issue.severity])}>
                           [{issue.severity}]
                         </span>
                         {issue.message}

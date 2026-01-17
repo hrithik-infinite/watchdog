@@ -154,11 +154,7 @@ export default function FilterBar({
             <span>
               {ignoredCount} known issue{ignoredCount !== 1 ? 's' : ''}
             </span>
-            {hideIgnored ? (
-              <EyeOff className="h-3 w-3 ml-1" />
-            ) : (
-              <Eye className="h-3 w-3 ml-1" />
-            )}
+            {hideIgnored ? <EyeOff className="h-3 w-3 ml-1" /> : <Eye className="h-3 w-3 ml-1" />}
           </button>
           <span className="text-xs text-muted-foreground">
             {hideIgnored ? 'Hidden' : 'Showing'}

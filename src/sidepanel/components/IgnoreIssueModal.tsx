@@ -7,11 +7,7 @@ import { useState } from 'react';
 import { X, Ban, Check } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
-import {
-  ignoreIssue,
-  type IgnoreReason,
-  IGNORE_REASON_LABELS,
-} from '@/shared/storage';
+import { ignoreIssue, type IgnoreReason, IGNORE_REASON_LABELS } from '@/shared/storage';
 import type { Issue } from '@/shared/types';
 
 interface IgnoreIssueModalProps {

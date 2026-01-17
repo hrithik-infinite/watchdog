@@ -14,6 +14,7 @@ import { scanSEO } from './seo-scanner';
 import { scanSecurity } from './security-scanner';
 import { scanBestPractices } from './best-practices-scanner';
 import { scanPWA } from './pwa-scanner';
+import logger from '@/shared/logger';
 
 // Lazy load axe-core only when needed
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -125,12 +126,15 @@ function generateSummary(issues: Issue[]): ScanSummary {
 }
 
 async function scanAccessibility(): Promise<ScanResult> {
+  logger.info('Starting accessibility scan');
   const startTime = performance.now();
 
   // Lazy load axe-core
+  logger.debug('Loading axe-core');
   const axe = await getAxe();
 
   // Configure axe to only run our 15 rules
+  logger.debug('Running axe scan', { ruleCount: MVP_RULES.length });
   const results = await axe.run(document, {
     runOnly: {
       type: 'rule',
@@ -144,6 +148,12 @@ async function scanAccessibility(): Promise<ScanResult> {
   const issues = transformViolations(results.violations);
   const incomplete = transformViolations(results.incomplete);
 
+  logger.info('Accessibility scan complete', {
+    duration: `${duration.toFixed(0)}ms`,
+    violations: issues.length,
+    incomplete: incomplete.length,
+  });
+
   return {
     url: window.location.href,
     timestamp: Date.now(),
@@ -155,25 +165,51 @@ async function scanAccessibility(): Promise<ScanResult> {
 }
 
 export async function scanPage(auditType: AuditType): Promise<ScanResult> {
-  switch (auditType) {
-    case 'accessibility':
-      return scanAccessibility();
-    case 'performance':
-      return scanPerformance();
-    case 'seo':
-      return scanSEO();
-    case 'security':
-      return scanSecurity();
-    case 'best-practices':
-      return scanBestPractices();
-    case 'pwa':
-      return scanPWA();
-    case 'mobile':
-    case 'links':
-    case 'i18n':
-    case 'privacy':
-      throw new Error(`${auditType} audit is not yet implemented`);
-    default:
-      throw new Error(`Unknown audit type: ${auditType}`);
+  logger.group(`Content Script: ${auditType} scan`);
+  logger.info('Scan requested', { auditType, url: window.location.href });
+
+  try {
+    let result: ScanResult;
+
+    switch (auditType) {
+      case 'accessibility':
+        result = await scanAccessibility();
+        break;
+      case 'performance':
+        result = await scanPerformance();
+        break;
+      case 'seo':
+        result = await scanSEO();
+        break;
+      case 'security':
+        result = await scanSecurity();
+        break;
+      case 'best-practices':
+        result = await scanBestPractices();
+        break;
+      case 'pwa':
+        result = await scanPWA();
+        break;
+      case 'mobile':
+      case 'links':
+      case 'i18n':
+      case 'privacy':
+        throw new Error(`${auditType} audit is not yet implemented`);
+      default:
+        throw new Error(`Unknown audit type: ${auditType}`);
+    }
+
+    logger.info('Scan finished', {
+      auditType,
+      issues: result.issues.length,
+      duration: `${result.duration.toFixed(0)}ms`,
+    });
+
+    return result;
+  } catch (error) {
+    logger.error('Scan failed', { auditType, error });
+    throw error;
+  } finally {
+    logger.groupEnd();
   }
 }

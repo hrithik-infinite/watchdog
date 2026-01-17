@@ -28,7 +28,8 @@ export const ERROR_CODES: Record<string, ErrorDetails> = {
     code: 'E003',
     title: 'Content Script Not Loaded',
     message: 'The scanner is not loaded on this page.',
-    suggestion: 'Refresh the page and try again. If the problem persists, try reloading the extension.',
+    suggestion:
+      'Refresh the page and try again. If the problem persists, try reloading the extension.',
   },
   E004: {
     code: 'E004',
@@ -40,7 +41,8 @@ export const ERROR_CODES: Record<string, ErrorDetails> = {
     code: 'E005',
     title: 'Scan Failed',
     message: 'An unexpected error occurred during the scan.',
-    suggestion: 'Try refreshing the page. If the problem continues, check the browser console for details.',
+    suggestion:
+      'Try refreshing the page. If the problem continues, check the browser console for details.',
   },
   E006: {
     code: 'E006',

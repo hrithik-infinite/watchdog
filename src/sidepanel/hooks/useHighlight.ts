@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { getCurrentTab } from '@/shared/messaging';
 import type { Severity } from '@/shared/types';
+import logger from '@/shared/logger';
 
 export function useHighlight() {
   const highlightElement = useCallback(async (selector: string, severity: Severity) => {
@@ -8,12 +9,13 @@ export function useHighlight() {
       const tab = await getCurrentTab();
       if (!tab?.id) return;
 
+      logger.debug('Highlighting element', { selector, severity });
       await chrome.tabs.sendMessage(tab.id, {
         type: 'HIGHLIGHT_ELEMENT',
         payload: { selector, severity },
       });
     } catch (err) {
-      console.error('Failed to highlight element:', err);
+      logger.error('Failed to highlight element', { selector, error: err });
     }
   }, []);
 
@@ -22,9 +24,10 @@ export function useHighlight() {
       const tab = await getCurrentTab();
       if (!tab?.id) return;
 
+      logger.debug('Clearing highlights');
       await chrome.tabs.sendMessage(tab.id, { type: 'CLEAR_HIGHLIGHTS' });
     } catch (err) {
-      console.error('Failed to clear highlights:', err);
+      logger.error('Failed to clear highlights', { error: err });
     }
   }, []);
 

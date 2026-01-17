@@ -10,6 +10,7 @@ import {
 } from '@/shared/storage';
 import type { ScanResult } from '@/shared/types';
 import type { AuditType } from '@/sidepanel/store';
+import logger from '@/shared/logger';
 
 interface UseScanHistoryResult {
   history: ScanHistoryEntry[];
@@ -33,8 +34,10 @@ export function useScanHistory(currentUrl: string | undefined): UseScanHistoryRe
     }
 
     setIsLoading(true);
+    logger.debug('Loading scan history', { url: currentUrl });
     try {
       const domainHistory = await getScanHistoryForDomain(currentUrl);
+      logger.info('Scan history loaded', { count: domainHistory.length });
       setHistory(domainHistory);
 
       // Get the previous scan (second most recent)
@@ -44,7 +47,7 @@ export function useScanHistory(currentUrl: string | undefined): UseScanHistoryRe
         setPreviousScan(null);
       }
     } catch (error) {
-      console.error('Failed to load scan history:', error);
+      logger.error('Failed to load scan history', { error });
     } finally {
       setIsLoading(false);
     }
@@ -57,11 +60,13 @@ export function useScanHistory(currentUrl: string | undefined): UseScanHistoryRe
   // Save scan to history
   const saveToHistoryCallback = useCallback(
     async (result: ScanResult, auditTypes: AuditType[] = ['accessibility']) => {
+      logger.debug('Saving scan to history', { url: result.url, auditTypes });
       try {
         await saveScanToHistory(result, auditTypes);
+        logger.info('Scan saved to history');
         await loadHistory();
       } catch (error) {
-        console.error('Failed to save scan to history:', error);
+        logger.error('Failed to save scan to history', { error });
       }
     },
     [loadHistory]

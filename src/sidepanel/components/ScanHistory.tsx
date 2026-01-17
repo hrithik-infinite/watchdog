@@ -4,7 +4,15 @@
  */
 
 import { useState } from 'react';
-import { History, TrendingDown, TrendingUp, Minus, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import {
+  History,
+  TrendingDown,
+  TrendingUp,
+  Minus,
+  ChevronDown,
+  ChevronUp,
+  Trash2,
+} from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
 import { type ScanHistoryEntry, formatRelativeTime, clearDomainHistory } from '@/shared/storage';
@@ -26,9 +34,7 @@ export default function ScanHistory({ history, onRefresh }: ScanHistoryProps) {
   const latestScan = history[0];
   const totalImprovement = firstScan.issueCount - latestScan.issueCount;
   const improvementPercent =
-    firstScan.issueCount > 0
-      ? Math.round((totalImprovement / firstScan.issueCount) * 100)
-      : 0;
+    firstScan.issueCount > 0 ? Math.round((totalImprovement / firstScan.issueCount) * 100) : 0;
 
   const handleClearHistory = async () => {
     if (confirm('Clear all scan history for this domain?')) {

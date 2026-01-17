@@ -10,6 +10,7 @@ import {
   generateIssueHash,
   type IgnoredIssue,
 } from '@/shared/storage';
+import logger from '@/shared/logger';
 
 interface UseIgnoredIssuesResult {
   ignoredIssues: IgnoredIssue[];
@@ -36,12 +37,14 @@ export function useIgnoredIssues(currentUrl: string | undefined): UseIgnoredIssu
     }
 
     setIsLoading(true);
+    logger.debug('Loading ignored issues', { url: currentUrl });
     try {
       const issues = await getIgnoredIssuesForDomain(currentUrl);
+      logger.info('Ignored issues loaded', { count: issues.length });
       setIgnoredIssues(issues);
       setIgnoredHashes(new Set(issues.map((i) => i.hash)));
     } catch (error) {
-      console.error('Failed to load ignored issues:', error);
+      logger.error('Failed to load ignored issues', { error });
     } finally {
       setIsLoading(false);
     }
@@ -55,11 +58,12 @@ export function useIgnoredIssues(currentUrl: string | undefined): UseIgnoredIssu
   const unignore = useCallback(
     async (selector: string, ruleId: string) => {
       if (!currentUrl) return;
+      logger.info('Unignoring issue', { selector, ruleId });
       try {
         await unignoreIssue(currentUrl, selector, ruleId);
         await loadIgnoredIssues();
       } catch (error) {
-        console.error('Failed to unignore issue:', error);
+        logger.error('Failed to unignore issue', { error });
       }
     },
     [currentUrl, loadIgnoredIssues]
@@ -68,11 +72,12 @@ export function useIgnoredIssues(currentUrl: string | undefined): UseIgnoredIssu
   // Clear all ignored issues for domain
   const clearAll = useCallback(async () => {
     if (!currentUrl) return;
+    logger.info('Clearing all ignored issues', { url: currentUrl });
     try {
       await clearIgnoredIssuesForDomain(currentUrl);
       await loadIgnoredIssues();
     } catch (error) {
-      console.error('Failed to clear ignored issues:', error);
+      logger.error('Failed to clear ignored issues', { error });
     }
   }, [currentUrl, loadIgnoredIssues]);
 

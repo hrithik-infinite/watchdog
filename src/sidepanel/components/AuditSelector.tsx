@@ -1,15 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import {
-  Eye,
-  Zap,
-  Search,
-  Shield,
-  CheckCircle2,
-  Smartphone,
-  Sparkles,
-  Info,
-  Check,
-} from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone, Info, Check } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
 import {
@@ -37,8 +27,6 @@ interface AuditTypeConfig {
   description: string;
   icon: React.ComponentType<{ className?: string }>;
   ruleCount: number;
-  highPriority?: boolean;
-  keyboardShortcut?: string;
   checks: string[];
   doesNotCheck: string[];
 }
@@ -50,8 +38,6 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'WCAG compliance & screen reader support',
     icon: Eye,
     ruleCount: 15,
-    highPriority: true,
-    keyboardShortcut: '1',
     checks: [
       'WCAG 2.1 AA',
       'Screen reader compatibility',
@@ -67,8 +53,6 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'Core Web Vitals & loading metrics',
     icon: Zap,
     ruleCount: 12,
-    highPriority: true,
-    keyboardShortcut: '2',
     checks: ['Core Web Vitals (LCP, FCP, CLS)', 'Page load time', 'Resource sizes', 'TTFB'],
     doesNotCheck: ['Accessibility', 'SEO', 'Security', 'PWA', 'Best Practices'],
   },
@@ -78,8 +62,6 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'Meta tags, structured data, rankings',
     icon: Search,
     ruleCount: 20,
-    highPriority: true,
-    keyboardShortcut: '3',
     checks: ['Meta tags', 'Open Graph', 'Heading hierarchy', 'Canonical URLs', 'Structured data'],
     doesNotCheck: ['Accessibility', 'Performance', 'Security', 'PWA', 'Best Practices'],
   },
@@ -89,7 +71,6 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'HTTPS, headers, vulnerabilities',
     icon: Shield,
     ruleCount: 12,
-    keyboardShortcut: '4',
     checks: ['HTTPS', 'Security headers', 'Mixed content', 'Cookie security', 'CSRF protection'],
     doesNotCheck: ['Accessibility', 'Performance', 'SEO', 'PWA', 'Best Practices'],
   },
@@ -99,7 +80,6 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'HTML validity, console errors, standards',
     icon: CheckCircle2,
     ruleCount: 15,
-    keyboardShortcut: '5',
     checks: [
       'HTML validity',
       'Deprecated elements',
@@ -115,14 +95,10 @@ const auditTypes: AuditTypeConfig[] = [
     description: 'Manifest, service worker, installability',
     icon: Smartphone,
     ruleCount: 7,
-    keyboardShortcut: '6',
     checks: ['Web manifest', 'Service worker', 'HTTPS', 'App icons', 'Theme color'],
     doesNotCheck: ['Accessibility', 'Performance', 'SEO', 'Security', 'Best Practices'],
   },
 ];
-
-// Get high priority audit types for quick action
-const highPriorityAudits = auditTypes.filter((a) => a.highPriority);
 
 interface AuditSelectorProps {
   onStartScan: (auditType: AuditType) => void;
@@ -170,18 +146,6 @@ export default function AuditSelector({
     setSelectedAudits(new Set());
   }, [isScanning]);
 
-  // Handler for scanning all high priority audits
-  const handleScanAllHighPriority = useCallback(() => {
-    if (isScanning) return;
-    const highPriorityIds = highPriorityAudits.map((a) => a.id);
-    if (onStartMultipleScan) {
-      onStartMultipleScan(highPriorityIds);
-    } else {
-      // Fallback: run first high priority audit
-      onStartScan(highPriorityIds[0]);
-    }
-  }, [isScanning, onStartMultipleScan, onStartScan]);
-
   // Start scan with selected audits
   const handleStartScan = useCallback(() => {
     if (isScanning || selectedAudits.size === 0) return;
@@ -199,28 +163,6 @@ export default function AuditSelector({
       onStartScan(auditsArray[0]);
     }
   }, [isScanning, selectedAudits, onStartScan, onStartMultipleScan]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Check for Cmd/Ctrl + number keys to toggle
-      if ((e.metaKey || e.ctrlKey) && !isScanning) {
-        const audit = auditTypes.find((a) => a.keyboardShortcut === e.key);
-        if (audit) {
-          e.preventDefault();
-          toggleAudit(audit.id);
-        }
-      }
-      // Enter key to scan
-      if (e.key === 'Enter' && !isScanning && selectedAudits.size > 0) {
-        e.preventDefault();
-        handleStartScan();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [isScanning, selectedAudits, handleStartScan, toggleAudit]);
 
   // Compute total checks for selected audits
   const totalChecks = useMemo(() => {
@@ -272,26 +214,6 @@ export default function AuditSelector({
         <p className="text-body text-muted-foreground text-sm">
           Select multiple audits to run together
         </p>
-        <p className="text-xs text-muted-foreground/60 mt-1">
-          Tip: Use ⌘1-6 to toggle selection, Enter to scan
-        </p>
-
-        {/* Quick Actions */}
-        <div className="mt-3 pt-3 border-t border-border/30">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleScanAllHighPriority}
-            disabled={isScanning}
-            className="w-full gap-2 bg-primary/5 border-primary/20 hover:bg-primary/10 hover:border-primary/30"
-          >
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span>Scan All High Priority ({highPriorityAudits.length})</span>
-          </Button>
-          <p className="text-[11px] text-muted-foreground/60 mt-1.5 text-center">
-            Runs Accessibility, Performance & SEO together
-          </p>
-        </div>
       </div>
 
       {/* Audit Grid - Scrollable */}
@@ -309,7 +231,7 @@ export default function AuditSelector({
                 onMouseEnter={() => setHoveredAudit(audit.id)}
                 onMouseLeave={() => setHoveredAudit(null)}
                 disabled={isScanning}
-                aria-label={`${audit.label} audit - ${audit.description}. Press ${audit.keyboardShortcut ? `Command ${audit.keyboardShortcut}` : ''} to toggle`}
+                aria-label={`${audit.label} audit - ${audit.description}`}
                 aria-pressed={isSelected}
                 role="checkbox"
                 aria-checked={isSelected}
@@ -375,70 +297,53 @@ export default function AuditSelector({
                   </h3>
                 </div>
 
-                {/* High Priority Badge */}
-                {audit.highPriority && (
-                  <div className="mb-2">
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-medium">
-                      High Priority
-                    </span>
-                  </div>
-                )}
-
                 {/* Description */}
                 <p className="text-xs leading-relaxed text-muted-foreground mb-2">
                   {audit.description}
                 </p>
 
-                {/* Rule Count, Info Tooltip and Keyboard Shortcut */}
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <span
-                      className={cn(
-                        'font-medium',
-                        isSelected ? 'text-primary' : 'text-muted-foreground'
-                      )}
-                    >
-                      {audit.ruleCount} checks
-                    </span>
-                    <TooltipProvider delayDuration={200}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="p-0.5 rounded hover:bg-muted/50 transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs p-3">
-                          <div className="space-y-2">
-                            <div>
-                              <p className="text-xs font-semibold text-foreground mb-1">
-                                ✓ Checks:
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {audit.checks.join(', ')}
-                              </p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-foreground mb-1">
-                                ✗ Does NOT check:
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {audit.doesNotCheck.join(', ')}
-                              </p>
-                            </div>
+                {/* Rule Count and Info Tooltip */}
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span
+                    className={cn(
+                      'font-medium',
+                      isSelected ? 'text-primary' : 'text-muted-foreground'
+                    )}
+                  >
+                    {audit.ruleCount} checks
+                  </span>
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          role="button"
+                          tabIndex={-1}
+                          className="p-0.5 rounded hover:bg-muted/50 transition-colors cursor-help"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs p-3">
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-xs font-semibold text-foreground mb-1">✓ Checks:</p>
+                            <p className="text-xs text-muted-foreground">
+                              {audit.checks.join(', ')}
+                            </p>
                           </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
-                  {audit.keyboardShortcut && (
-                    <kbd className="px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground text-[11px] font-mono">
-                      ⌘{audit.keyboardShortcut}
-                    </kbd>
-                  )}
+                          <div>
+                            <p className="text-xs font-semibold text-foreground mb-1">
+                              ✗ Does NOT check:
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {audit.doesNotCheck.join(', ')}
+                            </p>
+                          </div>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
                 </div>
               </button>
             );
@@ -484,10 +389,10 @@ export default function AuditSelector({
           onClick={handleStartScan}
           disabled={isScanning || selectedAudits.size === 0}
           className={cn(
-            'w-full py-3 text-base font-semibold rounded-lg shadow-xl transition-all duration-200',
+            'w-full py-3 text-base font-semibold rounded-lg shadow-xl transition-all duration-200 cursor-pointer',
             'bg-primary hover:bg-primary-dark hover:scale-[1.02]',
             'border-2 border-primary/30',
-            selectedAudits.size === 0 && 'opacity-50 cursor-not-allowed'
+            selectedAudits.size === 0 && 'opacity-50 !cursor-not-allowed'
           )}
         >
           {isScanning ? (
