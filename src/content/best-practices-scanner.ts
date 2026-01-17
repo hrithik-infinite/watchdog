@@ -27,6 +27,445 @@ interface BestPracticeCheck {
   };
 }
 
+// ============================================
+// Phase 2: Console Error Detection
+// ============================================
+
+interface CapturedConsoleData {
+  errors: string[];
+  warnings: string[];
+}
+
+function getCapturedConsoleData(): CapturedConsoleData {
+  // Try to get captured console data from the page context
+  // This is set by our injected script
+  const windowData = (window as unknown as { __watchdog_console?: CapturedConsoleData })
+    .__watchdog_console;
+  return windowData || { errors: [], warnings: [] };
+}
+
+function checkConsoleErrorsCapture(): BestPracticeCheck[] {
+  const checks: BestPracticeCheck[] = [];
+  const consoleData = getCapturedConsoleData();
+
+  if (consoleData.errors.length > 0) {
+    const errorSample = consoleData.errors
+      .slice(0, 3)
+      .map((e) => e.substring(0, 100))
+      .join('; ');
+    checks.push({
+      id: 'console-errors',
+      name: 'Console Errors',
+      severity: 'serious',
+      passed: false,
+      message: `${consoleData.errors.length} JavaScript error(s) detected`,
+      description: `Console errors indicate runtime problems. Sample: ${errorSample}`,
+      element: null,
+      fix: {
+        description: 'Review and fix JavaScript errors in the browser console.',
+        code: '// Open DevTools (F12) > Console tab to see errors\n// Common fixes:\n// 1. Check for undefined variables\n// 2. Verify API responses\n// 3. Check for missing dependencies',
+      },
+    });
+  }
+
+  if (consoleData.warnings.length > 5) {
+    checks.push({
+      id: 'console-warnings',
+      name: 'Console Warnings',
+      severity: 'moderate',
+      passed: false,
+      message: `${consoleData.warnings.length} console warning(s) detected`,
+      description: 'Excessive console warnings may indicate code quality issues or deprecations.',
+      element: null,
+      fix: {
+        description: 'Review warnings and address deprecation notices.',
+        code: '// Check for:\n// 1. Deprecated API usage\n// 2. React strict mode warnings\n// 3. Security warnings',
+      },
+    });
+  }
+
+  return checks;
+}
+
+// ============================================
+// Phase 2: Vulnerable Libraries Detection
+// ============================================
+
+interface LibraryInfo {
+  name: string;
+  version: string;
+  detected: boolean;
+}
+
+interface VulnerabilityInfo {
+  library: string;
+  minVersion: string;
+  maxVersion: string;
+  severity: Severity;
+  cve: string;
+  description: string;
+  fixedIn: string;
+}
+
+// Known vulnerabilities database (simplified)
+const KNOWN_VULNERABILITIES: VulnerabilityInfo[] = [
+  // jQuery vulnerabilities
+  {
+    library: 'jquery',
+    minVersion: '0.0.0',
+    maxVersion: '3.4.99',
+    severity: 'moderate',
+    cve: 'CVE-2020-11022',
+    description: 'XSS vulnerability in jQuery.htmlPrefilter',
+    fixedIn: '3.5.0',
+  },
+  {
+    library: 'jquery',
+    minVersion: '0.0.0',
+    maxVersion: '3.4.99',
+    severity: 'moderate',
+    cve: 'CVE-2020-11023',
+    description: 'XSS vulnerability when passing HTML from untrusted sources',
+    fixedIn: '3.5.0',
+  },
+  {
+    library: 'jquery',
+    minVersion: '0.0.0',
+    maxVersion: '1.11.99',
+    severity: 'serious',
+    cve: 'CVE-2015-9251',
+    description: 'XSS vulnerability in cross-domain ajax requests',
+    fixedIn: '1.12.0',
+  },
+  // Lodash vulnerabilities
+  {
+    library: 'lodash',
+    minVersion: '0.0.0',
+    maxVersion: '4.17.20',
+    severity: 'serious',
+    cve: 'CVE-2021-23337',
+    description: 'Command injection via template function',
+    fixedIn: '4.17.21',
+  },
+  {
+    library: 'lodash',
+    minVersion: '0.0.0',
+    maxVersion: '4.17.15',
+    severity: 'serious',
+    cve: 'CVE-2020-8203',
+    description: 'Prototype pollution in zipObjectDeep',
+    fixedIn: '4.17.16',
+  },
+  // Moment.js
+  {
+    library: 'moment',
+    minVersion: '0.0.0',
+    maxVersion: '2.29.3',
+    severity: 'moderate',
+    cve: 'CVE-2022-24785',
+    description: 'Path traversal vulnerability',
+    fixedIn: '2.29.4',
+  },
+  // Angular 1.x
+  {
+    library: 'angular',
+    minVersion: '1.0.0',
+    maxVersion: '1.8.2',
+    severity: 'serious',
+    cve: 'Multiple',
+    description: 'AngularJS 1.x is end-of-life and has multiple unpatched vulnerabilities',
+    fixedIn: 'Migrate to Angular 2+',
+  },
+  // Bootstrap
+  {
+    library: 'bootstrap',
+    minVersion: '0.0.0',
+    maxVersion: '4.3.0',
+    severity: 'moderate',
+    cve: 'CVE-2019-8331',
+    description: 'XSS vulnerability in tooltip/popover data-template',
+    fixedIn: '4.3.1',
+  },
+];
+
+function detectLibraries(): LibraryInfo[] {
+  const libraries: LibraryInfo[] = [];
+  const win = window as unknown as Record<string, unknown>;
+
+  // jQuery
+  const jQuery = win.jQuery as { fn?: { jquery?: string } } | undefined;
+  if (jQuery?.fn?.jquery) {
+    libraries.push({ name: 'jquery', version: jQuery.fn.jquery, detected: true });
+  }
+
+  // Lodash
+  const lodash = win._ as { VERSION?: string } | undefined;
+  if (lodash?.VERSION) {
+    libraries.push({ name: 'lodash', version: lodash.VERSION, detected: true });
+  }
+
+  // React
+  const React = win.React as { version?: string } | undefined;
+  if (React?.version) {
+    libraries.push({ name: 'react', version: React.version, detected: true });
+  }
+
+  // Angular 1.x
+  const angular = win.angular as { version?: { full?: string } } | undefined;
+  if (angular?.version?.full) {
+    libraries.push({ name: 'angular', version: angular.version.full, detected: true });
+  }
+
+  // Vue
+  const Vue = win.Vue as { version?: string } | undefined;
+  if (Vue?.version) {
+    libraries.push({ name: 'vue', version: Vue.version, detected: true });
+  }
+
+  // Moment.js
+  const moment = win.moment as { version?: string } | undefined;
+  if (moment?.version) {
+    libraries.push({ name: 'moment', version: moment.version, detected: true });
+  }
+
+  // Bootstrap
+  const bootstrap = win.bootstrap as { VERSION?: string } | undefined;
+  if (bootstrap?.VERSION) {
+    libraries.push({ name: 'bootstrap', version: bootstrap.VERSION, detected: true });
+  }
+
+  // Backbone
+  const Backbone = win.Backbone as { VERSION?: string } | undefined;
+  if (Backbone?.VERSION) {
+    libraries.push({ name: 'backbone', version: Backbone.VERSION, detected: true });
+  }
+
+  // Ember
+  const Ember = win.Ember as { VERSION?: string } | undefined;
+  if (Ember?.VERSION) {
+    libraries.push({ name: 'ember', version: Ember.VERSION, detected: true });
+  }
+
+  // Underscore
+  const underscore = win._ as { VERSION?: string } | undefined;
+  if (underscore?.VERSION && !lodash?.VERSION) {
+    libraries.push({ name: 'underscore', version: underscore.VERSION, detected: true });
+  }
+
+  return libraries;
+}
+
+function compareVersions(version1: string, version2: string): number {
+  const v1Parts = version1.split('.').map((p) => parseInt(p, 10) || 0);
+  const v2Parts = version2.split('.').map((p) => parseInt(p, 10) || 0);
+
+  for (let i = 0; i < Math.max(v1Parts.length, v2Parts.length); i++) {
+    const v1 = v1Parts[i] || 0;
+    const v2 = v2Parts[i] || 0;
+    if (v1 > v2) return 1;
+    if (v1 < v2) return -1;
+  }
+  return 0;
+}
+
+function checkVulnerableLibraries(): BestPracticeCheck[] {
+  const checks: BestPracticeCheck[] = [];
+  const libraries = detectLibraries();
+
+  for (const lib of libraries) {
+    const vulns = KNOWN_VULNERABILITIES.filter(
+      (v) =>
+        v.library === lib.name &&
+        compareVersions(lib.version, v.minVersion) >= 0 &&
+        compareVersions(lib.version, v.maxVersion) <= 0
+    );
+
+    for (const vuln of vulns) {
+      checks.push({
+        id: `vuln-${lib.name}-${vuln.cve}`,
+        name: 'Vulnerable Library',
+        severity: vuln.severity,
+        passed: false,
+        message: `${lib.name} ${lib.version} has known vulnerability (${vuln.cve})`,
+        description: `${vuln.description}. Fixed in version ${vuln.fixedIn}.`,
+        element: null,
+        fix: {
+          description: `Update ${lib.name} to version ${vuln.fixedIn} or later.`,
+          code: `npm update ${lib.name}\n# or\nyarn upgrade ${lib.name}`,
+        },
+      });
+    }
+  }
+
+  return checks;
+}
+
+// ============================================
+// Phase 2: Additional Best Practices
+// ============================================
+
+function checkPasswordPastePrevention(): BestPracticeCheck[] {
+  const checks: BestPracticeCheck[] = [];
+  const passwordFields = document.querySelectorAll('input[type="password"]');
+
+  let preventsPaste = 0;
+  let firstElement: HTMLElement | null = null;
+
+  passwordFields.forEach((input) => {
+    const onpaste = input.getAttribute('onpaste');
+    if (onpaste && (onpaste.includes('return false') || onpaste.includes('preventDefault'))) {
+      preventsPaste++;
+      if (!firstElement) firstElement = input as HTMLElement;
+    }
+
+    // Also check for paste event listeners (heuristic)
+    const autocomplete = input.getAttribute('autocomplete');
+    if (autocomplete === 'off' || autocomplete === 'new-password') {
+      // This might indicate paste prevention intent
+    }
+  });
+
+  if (preventsPaste > 0) {
+    checks.push({
+      id: 'password-paste-prevention',
+      name: 'Password Paste Prevention',
+      severity: 'moderate',
+      passed: false,
+      message: `${preventsPaste} password field(s) prevent paste`,
+      description:
+        'Preventing paste in password fields breaks password managers and reduces security.',
+      element: firstElement,
+      fix: {
+        description:
+          'Remove paste prevention from password fields to allow password manager usage.',
+        code: '<!-- Don\'t do this -->\n<input type="password" onpaste="return false">\n\n<!-- Do this instead -->\n<input type="password" autocomplete="current-password">',
+      },
+    });
+  }
+
+  return checks;
+}
+
+function checkNotificationOnLoad(): BestPracticeCheck[] {
+  const checks: BestPracticeCheck[] = [];
+  const scripts = document.querySelectorAll('script');
+  let requestsNotification = false;
+
+  scripts.forEach((script) => {
+    const content = script.textContent || '';
+    // Check for notification permission request that's not in an event handler
+    if (
+      content.includes('Notification.requestPermission') &&
+      !content.includes('addEventListener') &&
+      !content.includes('onclick') &&
+      !content.includes('click')
+    ) {
+      requestsNotification = true;
+    }
+  });
+
+  if (requestsNotification) {
+    checks.push({
+      id: 'notification-on-load',
+      name: 'Notification Permission on Load',
+      severity: 'moderate',
+      passed: false,
+      message: 'Page requests notification permission on load',
+      description:
+        'Requesting notification permission immediately is intrusive and often denied by users.',
+      element: null,
+      fix: {
+        description: 'Request notification permission only after user interaction.',
+        code: '// Request notification permission after user clicks\nbutton.addEventListener("click", async () => {\n  const permission = await Notification.requestPermission();\n  if (permission === "granted") {\n    // Show notifications\n  }\n});',
+      },
+    });
+  }
+
+  return checks;
+}
+
+function checkUnsizedImages(): BestPracticeCheck[] {
+  const checks: BestPracticeCheck[] = [];
+  const images = document.querySelectorAll('img');
+  let unsizedCount = 0;
+  let firstUnsized: HTMLImageElement | null = null;
+
+  images.forEach((img) => {
+    const hasWidth = img.hasAttribute('width') || img.style.width;
+    const hasHeight = img.hasAttribute('height') || img.style.height;
+
+    // Check if image is visible and significant size
+    if (img.offsetWidth > 50 && img.offsetHeight > 50) {
+      if (!hasWidth || !hasHeight) {
+        unsizedCount++;
+        if (!firstUnsized) firstUnsized = img;
+      }
+    }
+  });
+
+  if (unsizedCount > 3) {
+    checks.push({
+      id: 'unsized-images',
+      name: 'Images Without Dimensions',
+      severity: 'moderate',
+      passed: false,
+      message: `${unsizedCount} image(s) missing explicit width/height`,
+      description: 'Images without dimensions cause layout shifts (CLS) when they load.',
+      element: firstUnsized,
+      fix: {
+        description: 'Add width and height attributes to images to reserve space.',
+        code: '<!-- Add explicit dimensions -->\n<img src="image.jpg" width="800" height="600" alt="Description">\n\n<!-- Or use CSS aspect-ratio -->\n<img src="image.jpg" style="aspect-ratio: 4/3; width: 100%;" alt="Description">',
+      },
+    });
+  }
+
+  return checks;
+}
+
+function checkImageAspectRatio(): BestPracticeCheck[] {
+  const checks: BestPracticeCheck[] = [];
+  const images = document.querySelectorAll('img');
+  let incorrectAspectRatio = 0;
+  let firstIncorrect: HTMLImageElement | null = null;
+
+  images.forEach((img) => {
+    if (img.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+      const declaredWidth = parseInt(img.getAttribute('width') || '0', 10);
+      const declaredHeight = parseInt(img.getAttribute('height') || '0', 10);
+
+      if (declaredWidth > 0 && declaredHeight > 0) {
+        const naturalRatio = img.naturalWidth / img.naturalHeight;
+        const declaredRatio = declaredWidth / declaredHeight;
+
+        // Check if aspect ratio is significantly different (>10% difference)
+        if (Math.abs(naturalRatio - declaredRatio) / naturalRatio > 0.1) {
+          incorrectAspectRatio++;
+          if (!firstIncorrect) firstIncorrect = img;
+        }
+      }
+    }
+  });
+
+  if (incorrectAspectRatio > 2) {
+    checks.push({
+      id: 'image-aspect-ratio',
+      name: 'Incorrect Image Aspect Ratio',
+      severity: 'minor',
+      passed: false,
+      message: `${incorrectAspectRatio} image(s) have incorrect aspect ratio in attributes`,
+      description:
+        'Declared width/height does not match actual image aspect ratio, causing distortion.',
+      element: firstIncorrect,
+      fix: {
+        description: 'Set width and height attributes to match the actual image aspect ratio.',
+        code: '<!-- Ensure attributes match actual image dimensions -->\n<img src="image.jpg" width="800" height="600" alt="...">\n\n<!-- Use object-fit if you need different display size -->\n<img src="image.jpg" width="800" height="600" style="object-fit: cover; width: 400px; height: 400px;">',
+      },
+    });
+  }
+
+  return checks;
+}
+
 function checkDoctype(): BestPracticeCheck {
   const doctype = document.doctype;
 
@@ -558,6 +997,7 @@ export async function scanBestPractices(): Promise<ScanResult> {
 
   // Run all best practice checks
   const allChecks: BestPracticeCheck[] = [
+    // Original checks
     checkDoctype(),
     checkCharset(),
     checkLangAttribute(),
@@ -569,6 +1009,14 @@ export async function scanBestPractices(): Promise<ScanResult> {
     checkMetaRefresh(),
     checkPassiveEventListeners(),
     checkGeolocationUsage(),
+
+    // Phase 2: New checks
+    ...checkConsoleErrorsCapture(), // Console errors from captured data
+    ...checkVulnerableLibraries(), // Vulnerable JS libraries
+    ...checkPasswordPastePrevention(), // Password paste prevention
+    ...checkNotificationOnLoad(), // Notification permission on load
+    ...checkUnsizedImages(), // Images without dimensions
+    ...checkImageAspectRatio(), // Incorrect image aspect ratios
   ];
 
   // Convert checks to issues

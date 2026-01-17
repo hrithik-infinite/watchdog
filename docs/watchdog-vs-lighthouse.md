@@ -10,12 +10,12 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 
 | Category | WatchDog | Status |
 |----------|----------|--------|
-| **Accessibility** | 15 axe-core rules | Implemented |
-| **Performance** | Basic metrics (LCP, FCP, TTFB) | Partial |
-| **SEO** | 9 checks | Implemented |
-| **Security** | 9 check categories | Implemented |
-| **Best Practices** | 11 checks | Implemented |
-| **PWA** | 7 checks | Implemented |
+| **Accessibility** | 35 axe-core rules | ✅ Implemented |
+| **Performance** | Full Core Web Vitals (LCP, FCP, TTFB, CLS, INP, TBT) | ✅ Implemented |
+| **SEO** | 9 checks | ✅ Implemented |
+| **Security** | 9 check categories | ✅ Implemented |
+| **Best Practices** | 17 checks (console errors, vulnerable libs, image checks, etc.) | ✅ Implemented |
+| **PWA** | 7 checks | ✅ Implemented |
 | **Mobile** | - | Not Implemented |
 | **Links** | - | Not Implemented |
 | **i18n** | - | Not Implemented |
@@ -25,65 +25,31 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 
 ## Accessibility Gaps
 
-### Currently Implemented (15 rules)
+### Currently Implemented (35 rules) ✅
 
 | Category | Rules |
 |----------|-------|
-| **Images** | `image-alt` |
-| **Interactive** | `button-name`, `link-name` |
-| **Forms** | `label` |
+| **Images** | `image-alt`, `video-caption`, `audio-caption`, `no-autoplay-audio`, `object-alt`, `svg-img-alt` |
+| **Interactive** | `button-name`, `link-name`, `bypass`, `scrollable-region-focusable`, `frame-focusable-content`, `focus-order-semantics`, `nested-interactive` |
+| **Forms** | `label`, `input-image-alt`, `select-name`, `autocomplete-valid` |
 | **Color** | `color-contrast` |
-| **Document** | `html-has-lang`, `document-title`, `meta-viewport` |
-| **Structure** | `heading-order`, `region` |
+| **Document** | `html-has-lang`, `document-title`, `meta-viewport`, `frame-title`, `valid-lang` |
+| **Structure** | `heading-order`, `region`, `td-headers-attr`, `th-has-data-cells`, `scope-attr-valid`, `table-fake-caption`, `definition-list`, `list`, `listitem` |
 | **ARIA** | `aria-valid-attr`, `aria-required-attr`, `aria-roles` |
-| **Technical** | `tabindex`, `duplicate-id` |
+| **Technical** | `tabindex`, `duplicate-id`, `marquee`, `blink` |
 
-### Missing axe-core Rules (35+ rules)
-
-#### Navigation & Focus
-- [ ] `bypass` - Skip navigation link for keyboard users
-- [ ] `focus-order-semantics` - Focus order follows DOM order
-- [ ] `tabindex` - No positive tabindex values
-- [ ] `scrollable-region-focusable` - Scrollable regions are keyboard accessible
-- [ ] `frame-focusable-content` - Frames with focusable content
+### Remaining axe-core Rules (Not Yet Implemented)
 
 #### Forms & Inputs
-- [ ] `input-image-alt` - Image input buttons have alt text
-- [ ] `select-name` - Select elements have accessible names
-- [ ] `autocomplete-valid` - Autocomplete attributes are valid
 - [ ] `form-field-multiple-labels` - Form fields have single labels
 
-#### Media & Multimedia
-- [ ] `video-caption` - Videos have captions
-- [ ] `audio-caption` - Audio has descriptions/transcripts
-- [ ] `no-autoplay-audio` - No autoplay audio over 3 seconds
-- [ ] `object-alt` - Object elements have alt text
-- [ ] `svg-img-alt` - SVG images have accessible names
-
-#### Tables
-- [ ] `td-headers-attr` - Table data cells reference headers
-- [ ] `th-has-data-cells` - Table headers have data cells
-- [ ] `table-duplicate-name` - Tables have unique captions
-- [ ] `scope-attr-valid` - Scope attributes are valid
-
-#### Structure & Semantics
-- [ ] `definition-list` - Definition lists are properly structured
-- [ ] `list` - Lists contain only proper list items
-- [ ] `listitem` - List items are inside lists
-- [ ] `dlitem` - Definition list items are inside dl
-- [ ] `nested-interactive` - No nested interactive elements
-
 #### Frames & Embedded Content
-- [ ] `frame-title` - Iframes have titles
 - [ ] `frame-title-unique` - Iframe titles are unique
 
 #### Deprecated Elements
-- [ ] `marquee` - No marquee elements
-- [ ] `blink` - No blink elements
 - [ ] `server-side-image-map` - No server-side image maps
 
 #### Language
-- [ ] `valid-lang` - Language codes are valid
 - [ ] `html-xml-lang-mismatch` - HTML and XML lang match
 
 #### Other
@@ -102,32 +68,35 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 
 ## Performance Gaps
 
-### Currently Implemented
+### Currently Implemented ✅
 
-| Metric | Threshold (Good) | Threshold (Poor) |
-|--------|------------------|------------------|
-| LCP (Largest Contentful Paint) | < 2500ms | > 4000ms |
-| FCP (First Contentful Paint) | < 1800ms | > 3000ms |
-| TTFB (Time to First Byte) | < 800ms | > 1800ms |
-| DOM Content Loaded | < 1000ms | > 2000ms |
-| Page Load Time | < 2000ms | > 4000ms |
+| Metric | Threshold (Good) | Threshold (Poor) | Status |
+|--------|------------------|------------------|--------|
+| LCP (Largest Contentful Paint) | < 2500ms | > 4000ms | ✅ |
+| FCP (First Contentful Paint) | < 1800ms | > 3000ms | ✅ |
+| TTFB (Time to First Byte) | < 800ms | > 1800ms | ✅ |
+| DOM Content Loaded | < 1000ms | > 2000ms | ✅ |
+| Page Load Time | < 2000ms | > 4000ms | ✅ |
+| CLS (Cumulative Layout Shift) | < 0.1 | > 0.25 | ✅ |
+| INP (Interaction to Next Paint) | < 200ms | > 500ms | ✅ |
+| TBT (Total Blocking Time) | < 200ms | > 600ms | ✅ |
 
-### Missing Core Web Vitals
+### Core Web Vitals - All Implemented ✅
 
-- [ ] **CLS (Cumulative Layout Shift)** - Visual stability metric
-  - Good: < 0.1
-  - Poor: > 0.25
-  - Implementation: Use `PerformanceObserver` with `layout-shift` entries
+- [x] **CLS (Cumulative Layout Shift)** - Visual stability metric
+  - Good: < 0.1, Poor: > 0.25
+  - Implementation: `PerformanceObserver` with `layout-shift` entries
+  - Reports shifting elements with selectors
 
-- [ ] **INP (Interaction to Next Paint)** - Responsiveness metric (replaced FID)
-  - Good: < 200ms
-  - Poor: > 500ms
-  - Implementation: Use `web-vitals` library or `PerformanceObserver`
+- [x] **INP (Interaction to Next Paint)** - Responsiveness metric (replaced FID)
+  - Good: < 200ms, Poor: > 500ms
+  - Implementation: Monitors click, keydown, pointerdown events
+  - Reports worst interaction details
 
-- [ ] **TBT (Total Blocking Time)** - Main thread blocking
-  - Good: < 200ms
-  - Poor: > 600ms
-  - Implementation: Sum of long tasks (> 50ms) blocking time
+- [x] **TBT (Total Blocking Time)** - Main thread blocking
+  - Good: < 200ms, Poor: > 600ms
+  - Implementation: `PerformanceObserver` with `longtask` entries
+  - Reports individual long tasks with blocking time
 
 ### Missing Performance Audits
 
@@ -295,87 +264,83 @@ This document compares WatchDog's current capabilities against Google Lighthouse
 
 ## Implementation Priority
 
-### Phase 1: Core Web Vitals (High Priority)
+### Phase 1: Core Web Vitals (High Priority) ✅ COMPLETED
 
-1. **CLS (Cumulative Layout Shift)**
-   - Use `PerformanceObserver` with `layout-shift` entry type
-   - Calculate cumulative score
-   - Identify shifting elements
+1. **CLS (Cumulative Layout Shift)** ✅
+   - Uses `PerformanceObserver` with `layout-shift` entry type
+   - Calculates cumulative score
+   - Identifies shifting elements with selectors
 
-2. **INP (Interaction to Next Paint)**
-   - Use `web-vitals` library
-   - Monitor event processing times
-   - Report worst interaction
+2. **INP (Interaction to Next Paint)** ✅
+   - Monitors click, keydown, pointerdown events
+   - Tracks event processing times
+   - Reports worst interaction with details
 
-3. **Expand axe-core rules**
-   - Add remaining 35+ rules
-   - Make rule selection configurable
-   - Add WCAG level filtering
+3. **TBT (Total Blocking Time)** ✅
+   - Uses `PerformanceObserver` with `longtask` entry type
+   - Calculates total blocking time (duration - 50ms for each task)
+   - Reports individual long tasks
 
-### Phase 2: Resource Analysis (High Priority)
+4. **Expanded axe-core rules** ✅
+   - Added 20 new rules (15 → 35 total)
+   - Includes fix templates for all rules
+   - WCAG criteria mappings complete
 
-4. **Unused CSS/JS detection**
-   - Use Chrome DevTools Protocol coverage API
-   - Report unused bytes percentage
-   - List specific unused files
+### Phase 2: Best Practices (High Priority) ✅ COMPLETED
 
-5. **Console errors detection**
-   - Capture console.error calls
-   - Report error count and messages
-   - Categorize by type
+4. **Console Error Detection** ✅
+   - Early injection via MAIN world content script
+   - Captures console.error, console.warn, unhandled errors, and promise rejections
+   - Reports count and sample messages
 
-6. **Vulnerable libraries check**
-   - Detect library versions from globals/comments
-   - Check against vulnerability database
-   - Report CVE information
+5. **Vulnerable Libraries Detection** ✅
+   - Detects 10 common libraries via window globals
+   - Tracks 8 known CVEs for jQuery, Lodash, Moment, Angular, Bootstrap
+   - Reports CVE details and fix versions
 
-### Phase 3: Advanced Performance (Medium Priority)
+6. **Additional Best Practices** ✅
+   - Password paste prevention detection
+   - Notification permission on load
+   - Unsized images (causes CLS)
+   - Incorrect image aspect ratios
 
-7. **Render-blocking resources**
-   - Identify blocking CSS/JS
-   - Suggest async/defer
-   - Estimate savings
+### Phase 3: Advanced Performance & SEO (Medium Priority)
 
-8. **Image optimization**
-   - Check image formats
-   - Compare to display size
+9. **Image optimization**
+   - Check image formats (suggest WebP/AVIF)
+   - Compare to display size (detect oversized)
    - Suggest modern formats
 
-9. **Cache policy analysis**
-   - Check Cache-Control headers
-   - Identify uncached resources
-   - Suggest optimal TTL
+10. **Cache policy analysis**
+    - Check Cache-Control headers
+    - Identify uncached resources
+    - Suggest optimal TTL
 
-### Phase 4: Mobile & SEO (Medium Priority)
-
-10. **Tap target sizing**
+11. **Tap target sizing**
     - Measure touch target dimensions
-    - Report undersized targets
-    - Show visual overlay
+    - Report undersized targets (<48x48px)
 
-11. **Font size legibility**
+12. **Font size legibility**
     - Check computed font sizes
-    - Report illegible text
-    - Suggest minimum sizes
+    - Report illegible text (<12px)
 
-12. **Crawlable links**
+13. **Crawlable links**
     - Detect JavaScript-only links
-    - Check onclick handlers
     - Verify href attributes
 
 ### Phase 5: Enterprise Features (Lower Priority)
 
-13. **CI/CD integration**
+14. **CI/CD integration**
     - CLI tool for automation
     - JSON output for parsing
     - Exit codes for thresholds
 
-14. **Performance budgets**
+15. **Performance budgets**
     - Configure size limits
     - Set timing thresholds
     - Alert on violations
 
-15. **Historical comparison**
+16. **Historical comparison**
     - Store scan results
     - Compare over time
     - Show trend charts

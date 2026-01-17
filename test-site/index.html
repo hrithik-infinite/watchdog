@@ -1,0 +1,290 @@
+<!-- Missing DOCTYPE intentionally -->
+<!-- Missing lang attribute on html -->
+<html>
+<head>
+  <!-- Missing charset -->
+  <!-- Missing title - document-title issue -->
+
+  <!-- meta-viewport issue: user-scalable=no -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+
+  <!-- meta-refresh issue -->
+  <meta http-equiv="refresh" content="300">
+
+  <!-- Missing meta description for SEO -->
+  <!-- Missing Open Graph tags -->
+  <!-- Missing canonical URL -->
+
+  <link rel="stylesheet" href="styles.css">
+
+  <!-- Vulnerable jQuery version (CVE-2020-11022, CVE-2020-11023) -->
+  <script src="https://code.jquery.com/jquery-3.4.1.min.js"></script>
+
+  <!-- Render-blocking script without async/defer -->
+  <script src="blocking-script.js"></script>
+</head>
+<body>
+  <!-- No skip link - bypass issue -->
+  <!-- No landmark regions - region issue -->
+
+  <!-- ==================== -->
+  <!-- ACCESSIBILITY ISSUES -->
+  <!-- ==================== -->
+
+  <h1>WatchDog Test Page - All Issues</h1>
+
+  <!-- heading-order issue: skipping from h1 to h3 -->
+  <h3>Skipped Heading Level (should be h2)</h3>
+
+  <!-- image-alt issue: missing alt -->
+  <img src="https://via.placeholder.com/300x200" width="300" height="200">
+
+  <!-- image with wrong aspect ratio -->
+  <img src="https://via.placeholder.com/400x300" width="400" height="200" alt="Wrong aspect ratio">
+
+  <!-- Unsized image - causes CLS -->
+  <img src="https://via.placeholder.com/500x400" alt="Unsized image">
+
+  <!-- Broken image -->
+  <img src="nonexistent-image.jpg" alt="This image is broken">
+
+  <!-- button-name issue: empty button -->
+  <button></button>
+  <button><img src="icon.png"></button>
+
+  <!-- link-name issue: empty link -->
+  <a href="https://example.com"></a>
+  <a href="#"></a>
+
+  <!-- javascript: protocol link -->
+  <a href="javascript:void(0)">JavaScript Link</a>
+
+  <!-- label issue: input without label -->
+  <input type="text" placeholder="No label input">
+  <input type="email" placeholder="Email without label">
+
+  <!-- select-name issue: select without label -->
+  <select>
+    <option>Option 1</option>
+    <option>Option 2</option>
+  </select>
+
+  <!-- input-image-alt issue -->
+  <input type="image" src="submit.png">
+
+  <!-- autocomplete-valid issue -->
+  <input type="text" autocomplete="invalid-value">
+
+  <!-- Password paste prevention issue -->
+  <input type="password" placeholder="Password" onpaste="return false">
+
+  <!-- color-contrast issue (light gray on white) -->
+  <p style="color: #cccccc; background: #ffffff;">Low contrast text - hard to read</p>
+
+  <!-- duplicate-id issue -->
+  <div id="duplicate">First duplicate ID</div>
+  <div id="duplicate">Second duplicate ID</div>
+
+  <!-- tabindex issue: positive tabindex -->
+  <button tabindex="5">Positive Tabindex</button>
+  <button tabindex="10">Another Positive Tabindex</button>
+
+  <!-- aria-valid-attr issue: invalid aria attribute -->
+  <div aria-invalid-attribute="true">Invalid ARIA attribute</div>
+
+  <!-- aria-required-attr issue: role without required attributes -->
+  <div role="slider">Slider without aria-valuenow</div>
+  <div role="checkbox">Checkbox without aria-checked</div>
+
+  <!-- aria-roles issue: invalid role -->
+  <div role="invalidrole">Invalid ARIA role</div>
+
+  <!-- nested-interactive issue -->
+  <a href="#">
+    <button>Button inside link</button>
+  </a>
+  <button>
+    <a href="#">Link inside button</a>
+  </button>
+
+  <!-- frame-title issue: iframe without title -->
+  <iframe src="about:blank" width="200" height="100"></iframe>
+
+  <!-- scrollable-region-focusable issue -->
+  <div style="overflow: auto; height: 100px; width: 200px;">
+    <p>This is a scrollable region without tabindex.</p>
+    <p>Users can't focus it with keyboard.</p>
+    <p>More content to make it scroll.</p>
+    <p>Even more content here.</p>
+    <p>And some more.</p>
+  </div>
+
+  <!-- valid-lang issue: invalid language code -->
+  <p lang="invalid-lang">Text with invalid language code</p>
+
+  <!-- svg-img-alt issue -->
+  <svg role="img" width="100" height="100">
+    <circle cx="50" cy="50" r="40" fill="red" />
+  </svg>
+
+  <!-- object-alt issue -->
+  <object data="movie.swf" width="400" height="300"></object>
+
+  <!-- ==================== -->
+  <!-- TABLE ISSUES -->
+  <!-- ==================== -->
+
+  <h2>Table Issues</h2>
+
+  <!-- Table without proper headers -->
+  <table>
+    <tr>
+      <td>Name</td>
+      <td>Age</td>
+    </tr>
+    <tr>
+      <td>John</td>
+      <td>30</td>
+    </tr>
+  </table>
+
+  <!-- scope-attr-valid issue -->
+  <table>
+    <tr>
+      <th scope="invalid">Invalid Scope</th>
+    </tr>
+  </table>
+
+  <!-- table-fake-caption issue -->
+  <table>
+    <tr>
+      <td colspan="3"><strong>This is a fake caption</strong></td>
+    </tr>
+    <tr>
+      <th>Col 1</th>
+      <th>Col 2</th>
+      <th>Col 3</th>
+    </tr>
+  </table>
+
+  <!-- ==================== -->
+  <!-- LIST ISSUES -->
+  <!-- ==================== -->
+
+  <h2>List Issues</h2>
+
+  <!-- list issue: div inside ul -->
+  <ul>
+    <li>Valid item</li>
+    <div>Invalid div inside ul</div>
+    <li>Another valid item</li>
+  </ul>
+
+  <!-- listitem issue: li outside list -->
+  <li>Orphan list item outside of list</li>
+
+  <!-- definition-list issue -->
+  <dl>
+    <dt>Term</dt>
+    <div>Invalid div inside dl</div>
+    <dd>Definition</dd>
+  </dl>
+
+  <!-- ==================== -->
+  <!-- MEDIA ISSUES -->
+  <!-- ==================== -->
+
+  <h2>Media Issues</h2>
+
+  <!-- video-caption issue: video without captions -->
+  <video width="320" height="240" controls>
+    <source src="movie.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+  </video>
+
+  <!-- audio-caption issue: audio without transcript -->
+  <audio controls>
+    <source src="audio.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- no-autoplay-audio issue -->
+  <audio autoplay>
+    <source src="background-music.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- ==================== -->
+  <!-- DEPRECATED ELEMENTS -->
+  <!-- ==================== -->
+
+  <h2>Deprecated Elements</h2>
+
+  <!-- marquee issue -->
+  <marquee>This is deprecated marquee text</marquee>
+
+  <!-- blink issue (though most browsers don't support it) -->
+  <blink>This is deprecated blink text</blink>
+
+  <!-- Other deprecated elements -->
+  <center>Centered with deprecated center tag</center>
+  <font color="red" size="5">Text with deprecated font tag</font>
+  <strike>Strikethrough with deprecated strike tag</strike>
+
+  <!-- ==================== -->
+  <!-- FORM ISSUES -->
+  <!-- ==================== -->
+
+  <h2>Form Issues</h2>
+
+  <form>
+    <!-- Multiple inputs without labels -->
+    <input type="text" name="firstname" placeholder="First Name">
+    <input type="text" name="lastname" placeholder="Last Name">
+    <input type="tel" placeholder="Phone">
+    <input type="date">
+
+    <textarea placeholder="Comments without label"></textarea>
+
+    <button type="submit"></button>
+  </form>
+
+  <!-- ==================== -->
+  <!-- INTERACTIVE ISSUES -->
+  <!-- ==================== -->
+
+  <h2>Interactive Element Issues</h2>
+
+  <!-- Multiple scroll/touch handlers (passive listeners issue) -->
+  <div
+    onscroll="handleScroll()"
+    onwheel="handleWheel()"
+    ontouchmove="handleTouch()"
+    style="overflow: auto; height: 50px;">
+    Scroll area 1
+  </div>
+  <div onscroll="handleScroll()" style="overflow: auto; height: 50px;">
+    Scroll area 2
+  </div>
+  <div onscroll="handleScroll()" style="overflow: auto; height: 50px;">
+    Scroll area 3
+  </div>
+  <div onscroll="handleScroll()" style="overflow: auto; height: 50px;">
+    Scroll area 4
+  </div>
+
+  <!-- ==================== -->
+  <!-- BEST PRACTICES ISSUES -->
+  <!-- ==================== -->
+
+  <h2>Best Practices Issues</h2>
+
+  <!-- Elements with onerror handlers -->
+  <img src="bad1.jpg" onerror="handleError()">
+  <img src="bad2.jpg" onerror="handleError()">
+  <img src="bad3.jpg" onerror="handleError()">
+  <img src="bad4.jpg" onerror="handleError()">
+  <img src="bad5.jpg" onerror="handleError()">
+  <img src="bad6.jpg" onerror="handleError()">
+
+  <script src="app.js"></script>
+</body>
+</html>
