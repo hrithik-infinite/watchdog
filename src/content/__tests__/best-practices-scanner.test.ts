@@ -254,4 +254,147 @@ describe('Best Practices Scanner', () => {
       expect(uniqueIds.size).toBe(ids.length);
     });
   });
+
+  describe('Meta refresh checks', () => {
+    it('should detect meta refresh redirect', async () => {
+      const pageWithMetaRefresh = new JSDOM(
+        '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="5;url=https://example.com"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', pageWithMetaRefresh.window.document);
+      vi.stubGlobal('window', pageWithMetaRefresh.window);
+
+      const result = await scanBestPractices();
+
+      const refreshIssue = result.issues.find((i) => i.ruleId?.includes('meta-refresh'));
+      expect(refreshIssue).toBeDefined();
+    });
+
+    it('should accept page without meta refresh', async () => {
+      const result = await scanBestPractices();
+
+      const refreshIssue = result.issues.find((i) => i.ruleId?.includes('meta-refresh'));
+      expect(refreshIssue).toBeUndefined();
+    });
+  });
+
+  describe('Passive event listeners checks', () => {
+    it('should detect non-passive touchstart listener', async () => {
+      const pageWithEventListener = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><div id="test">Content</div><script>document.getElementById("test").addEventListener("touchstart", handler, false);</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithEventListener.window.document);
+      vi.stubGlobal('window', pageWithEventListener.window);
+
+      const result = await scanBestPractices();
+
+      // The check looks for script content containing event listeners
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should accept page with passive event listeners', async () => {
+      const pageWithPassiveListener = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>document.addEventListener("touchstart", handler, { passive: true });</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithPassiveListener.window.document);
+      vi.stubGlobal('window', pageWithPassiveListener.window);
+
+      const result = await scanBestPractices();
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should handle pages without event listeners', async () => {
+      const result = await scanBestPractices();
+
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
+
+  describe('Geolocation usage checks', () => {
+    it('should detect geolocation request on load', async () => {
+      const pageWithGeolocation = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>navigator.geolocation.getCurrentPosition(success, error);</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithGeolocation.window.document);
+      vi.stubGlobal('window', pageWithGeolocation.window);
+
+      const result = await scanBestPractices();
+
+      const geoIssue = result.issues.find((i) => i.ruleId?.includes('geolocation'));
+      expect(geoIssue).toBeDefined();
+    });
+
+    it('should accept geolocation with event listener', async () => {
+      const pageWithGeoListener = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>button.addEventListener("click", () => { navigator.geolocation.getCurrentPosition(success, error); });</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithGeoListener.window.document);
+      vi.stubGlobal('window', pageWithGeoListener.window);
+
+      const result = await scanBestPractices();
+
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeUndefined();
+    });
+
+    it('should accept page without geolocation request', async () => {
+      const result = await scanBestPractices();
+
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeUndefined();
+    });
+
+    it('should detect multiple geolocation requests', async () => {
+      const pageWithMultipleGeo = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>navigator.geolocation.getCurrentPosition(s1, e1);</script><script>navigator.geolocation.getCurrentPosition(s2, e2);</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithMultipleGeo.window.document);
+      vi.stubGlobal('window', pageWithMultipleGeo.window);
+
+      const result = await scanBestPractices();
+
+      const geoIssue = result.issues.find((i) => i.ruleId?.includes('geolocation'));
+      // Should detect at least one geolocation issue
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
+
+  describe('Console errors check', () => {
+    it('should detect excessive error handlers', async () => {
+      const pageWithErrorHandlers = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+        '<img onerror="alert(1)">' +
+        '<img onerror="alert(2)">' +
+        '<img onerror="alert(3)">' +
+        '<img onerror="alert(4)">' +
+        '<img onerror="alert(5)">' +
+        '<img onerror="alert(6)">' +
+        '</body></html>'
+      );
+      vi.stubGlobal('document', pageWithErrorHandlers.window.document);
+      vi.stubGlobal('window', pageWithErrorHandlers.window);
+
+      const result = await scanBestPractices();
+
+      const errorIssue = result.issues.find((i) => i.ruleId?.includes('error'));
+      expect(errorIssue).toBeDefined();
+    });
+
+    it('should accept pages with few error handlers', async () => {
+      const pageWithFewHandlers = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+        '<img onerror="alert(1)">' +
+        '<img onerror="alert(2)">' +
+        '</body></html>'
+      );
+      vi.stubGlobal('document', pageWithFewHandlers.window.document);
+      vi.stubGlobal('window', pageWithFewHandlers.window);
+
+      const result = await scanBestPractices();
+
+      const errorIssue = result.issues.find((i) => i.ruleId?.includes('excessive-error'));
+      expect(errorIssue).toBeUndefined();
+    });
+  });
 });

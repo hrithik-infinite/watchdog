@@ -24,6 +24,27 @@ vi.mock('@/shared/fixes', () => ({
   })),
 }));
 
+// Mock scanner modules
+vi.mock('../performance-scanner', () => ({
+  scanPerformance: vi.fn(),
+}));
+
+vi.mock('../seo-scanner', () => ({
+  scanSEO: vi.fn(),
+}));
+
+vi.mock('../security-scanner', () => ({
+  scanSecurity: vi.fn(),
+}));
+
+vi.mock('../best-practices-scanner', () => ({
+  scanBestPractices: vi.fn(),
+}));
+
+vi.mock('../pwa-scanner', () => ({
+  scanPWA: vi.fn(),
+}));
+
 // Mock window and performance
 const mockPerformanceNow = vi.fn();
 const mockWindowLocation = { href: 'https://example.com' };
@@ -38,6 +59,11 @@ vi.stubGlobal('performance', {
 });
 
 import { scanPage } from '../scanner';
+import { scanPerformance } from '../performance-scanner';
+import { scanSEO } from '../seo-scanner';
+import { scanSecurity } from '../security-scanner';
+import { scanBestPractices } from '../best-practices-scanner';
+import { scanPWA } from '../pwa-scanner';
 
 describe('Scanner - scanPage', () => {
   beforeEach(() => {
@@ -633,6 +659,190 @@ describe('Scanner - scanPage', () => {
       expect(result.issues[0].fix).toBeDefined();
       expect(result.issues[0].fix.description).toBe('Fix description');
       expect(result.issues[0].fix.code).toBe('<fixed code>');
+    });
+  });
+
+  describe('Other audit types', () => {
+    it('should delegate performance audit to scanPerformance', async () => {
+      const mockResult: ScanResult = {
+        url: 'https://example.com',
+        timestamp: Date.now(),
+        duration: 100,
+        issues: [],
+        incomplete: [],
+        summary: {
+          total: 0,
+          bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+          byCategory: {
+            images: 0,
+            interactive: 0,
+            forms: 0,
+            color: 0,
+            document: 0,
+            structure: 0,
+            aria: 0,
+            technical: 0,
+          },
+        },
+      };
+
+      (scanPerformance as any).mockResolvedValue(mockResult);
+
+      const result = await scanPage('performance');
+
+      expect(scanPerformance).toHaveBeenCalled();
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should delegate seo audit to scanSEO', async () => {
+      const mockResult: ScanResult = {
+        url: 'https://example.com',
+        timestamp: Date.now(),
+        duration: 100,
+        issues: [],
+        incomplete: [],
+        summary: {
+          total: 0,
+          bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+          byCategory: {
+            images: 0,
+            interactive: 0,
+            forms: 0,
+            color: 0,
+            document: 0,
+            structure: 0,
+            aria: 0,
+            technical: 0,
+          },
+        },
+      };
+
+      (scanSEO as any).mockResolvedValue(mockResult);
+
+      const result = await scanPage('seo');
+
+      expect(scanSEO).toHaveBeenCalled();
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should delegate security audit to scanSecurity', async () => {
+      const mockResult: ScanResult = {
+        url: 'https://example.com',
+        timestamp: Date.now(),
+        duration: 100,
+        issues: [],
+        incomplete: [],
+        summary: {
+          total: 0,
+          bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+          byCategory: {
+            images: 0,
+            interactive: 0,
+            forms: 0,
+            color: 0,
+            document: 0,
+            structure: 0,
+            aria: 0,
+            technical: 0,
+          },
+        },
+      };
+
+      (scanSecurity as any).mockResolvedValue(mockResult);
+
+      const result = await scanPage('security');
+
+      expect(scanSecurity).toHaveBeenCalled();
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should delegate best-practices audit to scanBestPractices', async () => {
+      const mockResult: ScanResult = {
+        url: 'https://example.com',
+        timestamp: Date.now(),
+        duration: 100,
+        issues: [],
+        incomplete: [],
+        summary: {
+          total: 0,
+          bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+          byCategory: {
+            images: 0,
+            interactive: 0,
+            forms: 0,
+            color: 0,
+            document: 0,
+            structure: 0,
+            aria: 0,
+            technical: 0,
+          },
+        },
+      };
+
+      (scanBestPractices as any).mockResolvedValue(mockResult);
+
+      const result = await scanPage('best-practices');
+
+      expect(scanBestPractices).toHaveBeenCalled();
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should delegate pwa audit to scanPWA', async () => {
+      const mockResult: ScanResult = {
+        url: 'https://example.com',
+        timestamp: Date.now(),
+        duration: 100,
+        issues: [],
+        incomplete: [],
+        summary: {
+          total: 0,
+          bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+          byCategory: {
+            images: 0,
+            interactive: 0,
+            forms: 0,
+            color: 0,
+            document: 0,
+            structure: 0,
+            aria: 0,
+            technical: 0,
+          },
+        },
+      };
+
+      (scanPWA as any).mockResolvedValue(mockResult);
+
+      const result = await scanPage('pwa');
+
+      expect(scanPWA).toHaveBeenCalled();
+      expect(result).toEqual(mockResult);
+    });
+
+    it('should throw error for mobile audit type', async () => {
+      await expect(scanPage('mobile')).rejects.toThrow('mobile audit is not yet implemented');
+    });
+
+    it('should throw error for links audit type', async () => {
+      await expect(scanPage('links')).rejects.toThrow('links audit is not yet implemented');
+    });
+
+    it('should throw error for i18n audit type', async () => {
+      await expect(scanPage('i18n')).rejects.toThrow('i18n audit is not yet implemented');
+    });
+
+    it('should throw error for privacy audit type', async () => {
+      await expect(scanPage('privacy')).rejects.toThrow('privacy audit is not yet implemented');
+    });
+
+    it('should throw error for unknown audit type', async () => {
+      // Type assertion needed since 'unknown' is not in AuditType
+      await expect(scanPage('unknown' as any)).rejects.toThrow('Unknown audit type: unknown');
+    });
+
+    it('should throw error when audit type is invalid', async () => {
+      await expect(scanPage('invalid-type' as any)).rejects.toThrow(
+        'Unknown audit type: invalid-type'
+      );
     });
   });
 });
