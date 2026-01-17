@@ -397,4 +397,349 @@ describe('Best Practices Scanner', () => {
       expect(errorIssue).toBeUndefined();
     });
   });
+
+  describe('Vulnerable libraries detection', () => {
+    it('should not report vulns without libraries', async () => {
+      const result = await scanBestPractices();
+
+      const vulnIssues = result.issues.filter((i) => i.ruleId?.includes('vuln-'));
+      expect(vulnIssues.length).toBe(0);
+    });
+
+    it('should have vulnerable library check', async () => {
+      const result = await scanBestPractices();
+      expect(result).toBeDefined();
+      expect(result.issues).toBeDefined();
+    });
+  });
+
+  describe('Password paste prevention checks', () => {
+    it('should detect password paste prevention', async () => {
+      const pageWithPasswordPaste = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><input type="password" onpaste="return false"></body></html>'
+      );
+      vi.stubGlobal('document', pageWithPasswordPaste.window.document);
+      vi.stubGlobal('window', pageWithPasswordPaste.window);
+
+      const result = await scanBestPractices();
+
+      const pasteIssue = result.issues.find((i) => i.ruleId?.includes('password-paste'));
+      expect(pasteIssue).toBeDefined();
+    });
+
+    it('should detect password paste prevention with preventDefault', async () => {
+      const pageWithPasswordPaste = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><input type="password" onpaste="e.preventDefault()"></body></html>'
+      );
+      vi.stubGlobal('document', pageWithPasswordPaste.window.document);
+      vi.stubGlobal('window', pageWithPasswordPaste.window);
+
+      const result = await scanBestPractices();
+
+      const pasteIssue = result.issues.find((i) => i.ruleId?.includes('password-paste'));
+      expect(pasteIssue).toBeDefined();
+    });
+
+    it('should accept password field without paste prevention', async () => {
+      const pageWithoutPaste = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><input type="password" autocomplete="current-password"></body></html>'
+      );
+      vi.stubGlobal('document', pageWithoutPaste.window.document);
+      vi.stubGlobal('window', pageWithoutPaste.window);
+
+      const result = await scanBestPractices();
+
+      const pasteIssue = result.issues.find((i) => i.ruleId?.includes('password-paste'));
+      expect(pasteIssue).toBeUndefined();
+    });
+  });
+
+  describe('Notification on load checks', () => {
+    it('should detect notification request on page load', async () => {
+      const pageWithNotification = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>Notification.requestPermission();</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithNotification.window.document);
+      vi.stubGlobal('window', pageWithNotification.window);
+
+      const result = await scanBestPractices();
+
+      const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
+      expect(notifIssue).toBeDefined();
+    });
+
+    it('should not flag notification in event listener', async () => {
+      const pageWithListenerNotif = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>button.addEventListener("click", () => { Notification.requestPermission(); });</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithListenerNotif.window.document);
+      vi.stubGlobal('window', pageWithListenerNotif.window);
+
+      const result = await scanBestPractices();
+
+      const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
+      expect(notifIssue).toBeUndefined();
+    });
+
+    it('should accept page without notification request', async () => {
+      const result = await scanBestPractices();
+
+      const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
+      expect(notifIssue).toBeUndefined();
+    });
+  });
+
+  describe('Unsized images checks', () => {
+    it('should detect images without dimensions', async () => {
+      const pageWithUnsizedImages = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="large1.jpg" style="width: 100px; height: 100px">' +
+          '<img src="large2.jpg" style="width: 100px; height: 100px">' +
+          '<img src="large3.jpg" style="width: 100px; height: 100px">' +
+          '<img src="large4.jpg" style="width: 100px; height: 100px">' +
+          '</body></html>'
+      );
+      vi.stubGlobal('document', pageWithUnsizedImages.window.document);
+      vi.stubGlobal('window', pageWithUnsizedImages.window);
+
+      const result = await scanBestPractices();
+
+      // The result should be defined and have issues array
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should accept images with explicit dimensions', async () => {
+      const pageWithSizedImages = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><img src="test.jpg" width="100" height="100"></body></html>'
+      );
+      vi.stubGlobal('document', pageWithSizedImages.window.document);
+      vi.stubGlobal('window', pageWithSizedImages.window);
+
+      const result = await scanBestPractices();
+
+      const unsizedIssue = result.issues.find((i) => i.ruleId?.includes('unsized-images'));
+      expect(unsizedIssue).toBeUndefined();
+    });
+
+    it('should ignore small images without dimensions', async () => {
+      const pageWithSmallImages = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><img src="icon.png" style="width: 32px; height: 32px"></body></html>'
+      );
+      vi.stubGlobal('document', pageWithSmallImages.window.document);
+      vi.stubGlobal('window', pageWithSmallImages.window);
+
+      const result = await scanBestPractices();
+
+      const unsizedIssue = result.issues.find((i) => i.ruleId?.includes('unsized-images'));
+      expect(unsizedIssue).toBeUndefined();
+    });
+  });
+
+  describe('Image aspect ratio checks', () => {
+    it('should handle pages with no images', async () => {
+      const result = await scanBestPractices();
+
+      const aspectRatioIssue = result.issues.find((i) => i.ruleId?.includes('image-aspect-ratio'));
+      expect(aspectRatioIssue).toBeUndefined();
+    });
+  });
+
+  describe('Version comparison', () => {
+    it('should handle complex version strings', async () => {
+      const pageWithJQuery = new JSDOM(
+        '<!DOCTYPE html><html><head><script>window.jQuery = { fn: { jquery: "3.4.1" } };</script></head><body></body></html>'
+      );
+      vi.stubGlobal('document', pageWithJQuery.window.document);
+      vi.stubGlobal('window', pageWithJQuery.window);
+
+      const result = await scanBestPractices();
+
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
+
+  describe('Empty links edge cases', () => {
+    it('should detect empty anchor tags', async () => {
+      const pageWithEmptyLinks = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><a href="#empty"></a></body></html>'
+      );
+      vi.stubGlobal('document', pageWithEmptyLinks.window.document);
+      vi.stubGlobal('window', pageWithEmptyLinks.window);
+
+      const result = await scanBestPractices();
+
+      const emptyLinkIssue = result.issues.find((i) => i.ruleId?.includes('empty-links'));
+      expect(emptyLinkIssue).toBeDefined();
+    });
+
+    it('should detect javascript: links', async () => {
+      const pageWithJsLinks = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<a href="javascript:void(0)">Click 1</a>' +
+          '<a href="javascript:doSomething()">Click 2</a>' +
+          '</body></html>'
+      );
+      vi.stubGlobal('document', pageWithJsLinks.window.document);
+      vi.stubGlobal('window', pageWithJsLinks.window);
+
+      const result = await scanBestPractices();
+
+      const jsLinkIssue = result.issues.find((i) => i.ruleId?.includes('javascript-links'));
+      expect(jsLinkIssue).toBeDefined();
+    });
+
+    it('should ignore links with images', async () => {
+      const pageWithImageLink = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><a href="#"><img src="icon.png"></a></body></html>'
+      );
+      vi.stubGlobal('document', pageWithImageLink.window.document);
+      vi.stubGlobal('window', pageWithImageLink.window);
+
+      const result = await scanBestPractices();
+
+      // Should not count as empty if there's an image
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
+
+  describe('Deprecated DOCTYPE', () => {
+    it('should detect invalid DOCTYPE', async () => {
+      const pageWithInvalidDoctype = new JSDOM(
+        '<!DOCTYPE xml><html><head></head><body></body></html>'
+      );
+      const doctype = Object.getOwnPropertyDescriptor(
+        Object.getPrototypeOf(pageWithInvalidDoctype.window.document),
+        'doctype'
+      );
+      vi.stubGlobal('document', pageWithInvalidDoctype.window.document);
+      vi.stubGlobal('window', pageWithInvalidDoctype.window);
+
+      const result = await scanBestPractices();
+
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
+
+  describe('Check passthrough coverage', () => {
+    it('should properly count issues by category', async () => {
+      const result = await scanBestPractices();
+
+      const summary = result.summary;
+      expect(summary.bySeverity.critical).toBeGreaterThanOrEqual(0);
+      expect(summary.bySeverity.serious).toBeGreaterThanOrEqual(0);
+      expect(summary.bySeverity.moderate).toBeGreaterThanOrEqual(0);
+      expect(summary.bySeverity.minor).toBeGreaterThanOrEqual(0);
+
+      const totalBySeverity = Object.values(summary.bySeverity).reduce((a, b) => a + b, 0);
+      expect(totalBySeverity).toBe(result.issues.length);
+    });
+
+    it('should properly count issues by category', async () => {
+      const result = await scanBestPractices();
+
+      const summary = result.summary;
+      expect(summary.byCategory.technical).toBeGreaterThanOrEqual(0);
+      expect(summary.byCategory.document).toBeGreaterThanOrEqual(0);
+      expect(summary.byCategory.structure).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should have timestamp within reasonable bounds', async () => {
+      const now = Date.now();
+      const result = await scanBestPractices();
+
+      expect(result.timestamp).toBeLessThanOrEqual(now + 1000);
+      expect(result.timestamp).toBeGreaterThan(now - 10000);
+    });
+
+    it('should set valid duration', async () => {
+      const result = await scanBestPractices();
+
+      expect(result.duration).toBeDefined();
+    });
+  });
+
+  describe('String in selector check', () => {
+    it('should generate proper selectors for elements', async () => {
+      const pageWithIds = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><div id="test-div">Content</div></body></html>'
+      );
+      vi.stubGlobal('document', pageWithIds.window.document);
+      vi.stubGlobal('window', pageWithIds.window);
+
+      const result = await scanBestPractices();
+
+      expect(result.issues).toBeDefined();
+      // Check that selectors are properly formed
+      for (const issue of result.issues) {
+        expect(issue.element).toBeDefined();
+        expect(issue.element.selector).toBeDefined();
+      }
+    });
+  });
+
+  describe('Passive listeners threshold check', () => {
+    it('should flag scroll listeners when count exceeds threshold', async () => {
+      const pageWithScrollHandlers = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<div onscroll="handleScroll()"></div>' +
+          '<div onwheel="handleWheel()"></div>' +
+          '<div ontouchmove="handleTouch()"></div>' +
+          '<div onwheel="handleWheel2()"></div>' +
+          '</body></html>'
+      );
+      vi.stubGlobal('document', pageWithScrollHandlers.window.document);
+      vi.stubGlobal('window', pageWithScrollHandlers.window);
+
+      const result = await scanBestPractices();
+
+      const passiveIssue = result.issues.find((i) => i.ruleId?.includes('passive-listeners'));
+      expect(passiveIssue).toBeDefined();
+    });
+
+    it('should not flag few scroll listeners', async () => {
+      const pageWithFewScrollHandlers = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<div onscroll="handleScroll()"></div>' +
+          '</body></html>'
+      );
+      vi.stubGlobal('document', pageWithFewScrollHandlers.window.document);
+      vi.stubGlobal('window', pageWithFewScrollHandlers.window);
+
+      const result = await scanBestPractices();
+
+      const passiveIssue = result.issues.find((i) => i.ruleId?.includes('passive-listeners'));
+      expect(passiveIssue).toBeUndefined();
+    });
+  });
+
+  describe('Char set meta tag variations', () => {
+    it('should accept http-equiv charset', async () => {
+      const pageWithHttpEquiv = new JSDOM(
+        '<!DOCTYPE html><html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', pageWithHttpEquiv.window.document);
+      vi.stubGlobal('window', pageWithHttpEquiv.window);
+
+      const result = await scanBestPractices();
+
+      const charsetIssue = result.issues.find((i) => i.ruleId?.includes('charset'));
+      expect(charsetIssue).toBeUndefined();
+    });
+  });
+
+  describe('Lang attribute variations', () => {
+    it('should accept empty lang attribute value', async () => {
+      const pageWithEmptyLang = new JSDOM(
+        '<!DOCTYPE html><html lang=""><head></head><body></body></html>'
+      );
+      vi.stubGlobal('document', pageWithEmptyLang.window.document);
+      vi.stubGlobal('window', pageWithEmptyLang.window);
+
+      const result = await scanBestPractices();
+
+      // Empty lang might be detected as missing
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
 });

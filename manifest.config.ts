@@ -36,12 +36,6 @@ export default defineManifest({
   content_scripts: [
     {
       matches: ['<all_urls>'],
-      js: ['src/content/console-capture.ts'],
-      run_at: 'document_start',
-      world: 'MAIN', // Run in page context to capture console
-    },
-    {
-      matches: ['<all_urls>'],
       js: ['src/content/index.ts'],
       css: ['src/content/styles.css'],
       run_at: 'document_idle',

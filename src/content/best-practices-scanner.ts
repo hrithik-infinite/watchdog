@@ -28,66 +28,6 @@ interface BestPracticeCheck {
 }
 
 // ============================================
-// Phase 2: Console Error Detection
-// ============================================
-
-interface CapturedConsoleData {
-  errors: string[];
-  warnings: string[];
-}
-
-function getCapturedConsoleData(): CapturedConsoleData {
-  // Try to get captured console data from the page context
-  // This is set by our injected script
-  const windowData = (window as unknown as { __watchdog_console?: CapturedConsoleData })
-    .__watchdog_console;
-  return windowData || { errors: [], warnings: [] };
-}
-
-function checkConsoleErrorsCapture(): BestPracticeCheck[] {
-  const checks: BestPracticeCheck[] = [];
-  const consoleData = getCapturedConsoleData();
-
-  if (consoleData.errors.length > 0) {
-    const errorSample = consoleData.errors
-      .slice(0, 3)
-      .map((e) => e.substring(0, 100))
-      .join('; ');
-    checks.push({
-      id: 'console-errors',
-      name: 'Console Errors',
-      severity: 'serious',
-      passed: false,
-      message: `${consoleData.errors.length} JavaScript error(s) detected`,
-      description: `Console errors indicate runtime problems. Sample: ${errorSample}`,
-      element: null,
-      fix: {
-        description: 'Review and fix JavaScript errors in the browser console.',
-        code: '// Open DevTools (F12) > Console tab to see errors\n// Common fixes:\n// 1. Check for undefined variables\n// 2. Verify API responses\n// 3. Check for missing dependencies',
-      },
-    });
-  }
-
-  if (consoleData.warnings.length > 5) {
-    checks.push({
-      id: 'console-warnings',
-      name: 'Console Warnings',
-      severity: 'moderate',
-      passed: false,
-      message: `${consoleData.warnings.length} console warning(s) detected`,
-      description: 'Excessive console warnings may indicate code quality issues or deprecations.',
-      element: null,
-      fix: {
-        description: 'Review warnings and address deprecation notices.',
-        code: '// Check for:\n// 1. Deprecated API usage\n// 2. React strict mode warnings\n// 3. Security warnings',
-      },
-    });
-  }
-
-  return checks;
-}
-
-// ============================================
 // Phase 2: Vulnerable Libraries Detection
 // ============================================
 
@@ -1011,7 +951,6 @@ export async function scanBestPractices(): Promise<ScanResult> {
     checkGeolocationUsage(),
 
     // Phase 2: New checks
-    ...checkConsoleErrorsCapture(), // Console errors from captured data
     ...checkVulnerableLibraries(), // Vulnerable JS libraries
     ...checkPasswordPastePrevention(), // Password paste prevention
     ...checkNotificationOnLoad(), // Notification permission on load

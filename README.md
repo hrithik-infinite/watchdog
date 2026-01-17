@@ -172,10 +172,9 @@ All rules map to specific WCAG 2.1 criteria (Level A or AA).
 - X-Frame-Options, mixed content detection
 - Security headers and protocol validation
 
-#### 5. Best Practices (17 Checks)
+#### 5. Best Practices (16 Checks)
 
 - DOCTYPE, character encoding, language attributes
-- Console errors and warnings detection
 - Vulnerable libraries detection (jQuery, Lodash, Moment, Angular, Bootstrap, etc.)
 - Deprecated HTML elements, broken images, duplicate IDs
 - Password paste prevention, notification permissions
@@ -225,9 +224,8 @@ src/
 │   ├── performance-scanner.ts      # Performance metrics & Core Web Vitals
 │   ├── seo-scanner.ts             # SEO audits
 │   ├── security-scanner.ts        # Security checks
-│   ├── best-practices-scanner.ts  # Best practices & console errors
+│   ├── best-practices-scanner.ts  # Best practices
 │   ├── pwa-scanner.ts             # PWA manifest & service worker
-│   ├── console-capture.ts         # Early console error capture
 │   ├── overlay.ts                 # Element highlighting
 │   ├── vision-filters.ts          # Vision simulation filters
 │   └── focus-order.ts             # Focus order visualization
@@ -301,7 +299,6 @@ Contributions are welcome! Please:
 - 35 accessibility rules with WCAG 2.1 mapping
 - Full Core Web Vitals measurement (CLS, INP, TBT)
 - Complete Performance, SEO, Security, Best Practices, and PWA audits
-- Console error and warning capture
 - Vulnerable library detection
 - Vision simulators and focus order visualization
 - Multi-format report export (PDF, JSON, CSV, HTML)

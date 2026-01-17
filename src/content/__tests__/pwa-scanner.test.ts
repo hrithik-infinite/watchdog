@@ -549,6 +549,39 @@ describe('PWA Scanner', () => {
   });
 
   describe('Manifest content validation', () => {
+    it('should detect missing manifest short_name', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          // short_name is missing
+          start_url: '/',
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const shortNameIssue = result.issues.find((i) => i.ruleId === 'manifest-short-name-missing');
+      expect(shortNameIssue).toBeDefined();
+      expect(shortNameIssue?.severity).toBe('moderate');
+    });
+
     it('should detect missing manifest name', async () => {
       const withManifestDOM = new JSDOM(
         '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
@@ -696,6 +729,503 @@ describe('PWA Scanner', () => {
       const result = await scanPWA();
 
       expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should detect missing manifest display mode', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          start_url: '/',
+          // display is missing
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const displayIssue = result.issues.find((i) => i.ruleId === 'manifest-display-missing');
+      expect(displayIssue).toBeDefined();
+      expect(displayIssue?.severity).toBe('moderate');
+    });
+
+    it('should detect missing manifest theme_color', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          start_url: '/',
+          display: 'standalone',
+          // theme_color is missing
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const themeIssue = result.issues.find((i) => i.ruleId === 'manifest-theme-color-missing');
+      expect(themeIssue).toBeDefined();
+      expect(themeIssue?.severity).toBe('moderate');
+    });
+
+    it('should detect missing manifest background_color', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          start_url: '/',
+          display: 'standalone',
+          theme_color: '#000000',
+          // background_color is missing
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const bgColorIssue = result.issues.find(
+        (i) => i.ruleId === 'manifest-background-color-missing'
+      );
+      expect(bgColorIssue).toBeDefined();
+      expect(bgColorIssue?.severity).toBe('moderate');
+    });
+
+    it('should detect missing manifest start_url', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          // start_url is missing
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const startUrlIssue = result.issues.find((i) => i.ruleId === 'manifest-start-url-missing');
+      expect(startUrlIssue).toBeDefined();
+      expect(startUrlIssue?.severity).toBe('serious');
+    });
+
+    it('should handle manifest with empty name string', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: '', // empty name
+          short_name: 'PWA',
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const nameIssue = result.issues.find((i) => i.ruleId === 'manifest-name-missing');
+      expect(nameIssue).toBeDefined();
+    });
+
+    it('should detect icon size issues with missing 192 size', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          icons: [{ src: '/icon-512.png', sizes: '512x512' }],
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const sizeIssue = result.issues.find((i) => i.ruleId === 'manifest-icons-sizes');
+      expect(sizeIssue).toBeDefined();
+      expect(sizeIssue?.severity).toBe('serious');
+    });
+
+    it('should detect icon size issues with missing 512 size', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          icons: [{ src: '/icon-192.png', sizes: '192x192' }],
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const sizeIssue = result.issues.find((i) => i.ruleId === 'manifest-icons-sizes');
+      expect(sizeIssue).toBeDefined();
+      expect(sizeIssue?.severity).toBe('serious');
+    });
+
+    it('should accept valid icon sizes', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          start_url: '/',
+          display: 'standalone',
+          theme_color: '#000000',
+          background_color: '#ffffff',
+          icons: [
+            { src: '/icon-192.png', sizes: '192x192' },
+            { src: '/icon-512.png', sizes: '512x512' },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const sizeIssue = result.issues.find((i) => i.ruleId === 'manifest-icons-sizes');
+      expect(sizeIssue).toBeUndefined();
+    });
+  });
+
+  describe('Service worker offline capability', () => {
+    it('should handle service worker registration success', async () => {
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue({ active: true, scope: '/' }),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      const swIssue = result.issues.find((i) => i.ruleId === 'service-worker-not-registered');
+      expect(swIssue).toBeUndefined();
+    });
+
+    it('should handle service worker API error gracefully', async () => {
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockRejectedValue(new Error('SW check error')),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      // Scan should complete without throwing
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should verify offline functionality with proper service worker', async () => {
+      const swDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', swDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: swDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue({
+              active: true,
+              scope: '/',
+              installing: null,
+            }),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'Offline PWA',
+          short_name: 'Offline',
+          start_url: '/',
+          display: 'standalone',
+          theme_color: '#000000',
+          background_color: '#ffffff',
+          icons: [
+            { src: '/icon-192.png', sizes: '192x192' },
+            { src: '/icon-512.png', sizes: '512x512' },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const swIssue = result.issues.find((i) => i.ruleId === 'service-worker-not-registered');
+      expect(swIssue).toBeUndefined();
+    });
+  });
+
+  describe('Learn more URL generation', () => {
+    it('should generate manifest learn more URL for manifest-related checks', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: '', // missing name
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const nameIssue = result.issues.find((i) => i.ruleId === 'manifest-name-missing');
+      expect(nameIssue).toBeDefined();
+      expect(nameIssue?.fix.learnMoreUrl).toContain('web.dev/add-manifest');
+    });
+
+    it('should generate appropriate learn more URLs for all issue types', async () => {
+      const result = await scanPWA();
+
+      // All issues should have learn more URLs
+      expect(result.issues.length).toBeGreaterThan(0);
+      for (const issue of result.issues) {
+        expect(issue.fix.learnMoreUrl).toBeDefined();
+        expect(typeof issue.fix.learnMoreUrl).toBe('string');
+        expect(issue.fix.learnMoreUrl.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should generate HTTPS learn more URL', async () => {
+      vi.stubGlobal('window', {
+        location: { href: 'http://example.com', protocol: 'http:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      const httpsIssue = result.issues.find((i) => i.ruleId === 'pwa-https-required');
+      expect(httpsIssue).toBeDefined();
+      expect(httpsIssue?.fix.learnMoreUrl).toContain('why-https-matters');
+    });
+
+    it('should generate viewport learn more URL', async () => {
+      const noViewportDOM = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>');
+      vi.stubGlobal('document', noViewportDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: noViewportDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      const viewportIssue = result.issues.find((i) => i.ruleId === 'pwa-viewport-missing');
+      expect(viewportIssue).toBeDefined();
+      expect(viewportIssue?.fix.learnMoreUrl).toContain('viewport');
+    });
+
+    it('should generate apple-touch-icon learn more URL', async () => {
+      const noIconDOM = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>');
+      vi.stubGlobal('document', noIconDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: noIconDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      const iconIssue = result.issues.find((i) => i.ruleId === 'apple-touch-icon-missing');
+      expect(iconIssue).toBeDefined();
+      expect(iconIssue?.fix.learnMoreUrl).toContain('apple');
+    });
+
+    it('should generate theme-color learn more URL', async () => {
+      const noThemeDOM = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>');
+      vi.stubGlobal('document', noThemeDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: noThemeDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      const themeIssue = result.issues.find((i) => i.ruleId === 'theme-color-meta-missing');
+      expect(themeIssue).toBeDefined();
+      expect(themeIssue?.fix.learnMoreUrl).toContain('theme-color');
+    });
+
+    it('should generate default learn more URL for unknown checks', async () => {
+      // Since we can't directly test the default URL, we verify the general PWA URL
+      const result = await scanPWA();
+
+      // Pick any issue that doesn't match specific patterns
+      const anyIssue = result.issues[0];
+      if (anyIssue) {
+        expect(anyIssue.fix.learnMoreUrl).toBeDefined();
+        expect(typeof anyIssue.fix.learnMoreUrl).toBe('string');
+      }
     });
   });
 });
