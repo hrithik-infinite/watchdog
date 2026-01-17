@@ -33,12 +33,17 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   const blurModes: { value: VisionMode; label: string; description: string }[] = [
     { value: 'none', label: 'None', description: 'Normal vision' },
     { value: 'blur-low', label: 'Mild Blur', description: '20/40 vision (mild impairment)' },
-    { value: 'blur-medium', label: 'Moderate Blur', description: '20/70 vision (moderate impairment)' },
+    {
+      value: 'blur-medium',
+      label: 'Moderate Blur',
+      description: '20/70 vision (moderate impairment)',
+    },
     { value: 'blur-high', label: 'Severe Blur', description: '20/200 vision (legal blindness)' },
   ];
 
   // Determine current mode type
-  const isColorBlindMode = settings.visionMode !== 'none' && !settings.visionMode.startsWith('blur');
+  const isColorBlindMode =
+    settings.visionMode !== 'none' && !settings.visionMode.startsWith('blur');
   const isBlurMode = settings.visionMode !== 'none' && settings.visionMode.startsWith('blur');
   const colorBlindValue = isColorBlindMode ? settings.visionMode : 'none';
   const blurValue = isBlurMode ? settings.visionMode : 'none';
@@ -57,6 +62,23 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
       }
     } catch (error) {
       console.error('Failed to apply vision filter:', error);
+    }
+  };
+
+  const handleFocusOrderToggle = async (checked: boolean) => {
+    onUpdate({ showFocusOrder: checked });
+
+    // Toggle focus order visualization on the current tab
+    try {
+      const tab = await getCurrentTab();
+      if (tab?.id) {
+        await chrome.tabs.sendMessage(tab.id, {
+          type: 'TOGGLE_FOCUS_ORDER',
+          payload: { show: checked },
+        });
+      }
+    } catch (error) {
+      console.error('Failed to toggle focus order:', error);
     }
   };
 
@@ -181,6 +203,19 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
             </SelectContent>
           </Select>
         </div>
+
+        {/* Focus Order Visualization */}
+        <Card>
+          <CardContent className="flex items-center justify-between p-4">
+            <div className="space-y-1 pr-4">
+              <Label className="text-h3 text-foreground block">Focus Order Visualization</Label>
+              <p className="text-sm text-muted-foreground">
+                Show numbered badges on all focusable elements to visualize keyboard tab order.
+              </p>
+            </div>
+            <Switch checked={settings.showFocusOrder} onCheckedChange={handleFocusOrderToggle} />
+          </CardContent>
+        </Card>
       </div>
 
       {/* Footer */}

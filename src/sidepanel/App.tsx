@@ -71,7 +71,7 @@ export default function App() {
   if (view === 'detail' && selectedIssue) {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
-        <Header />
+        <Header scanResult={scanResult} />
         <IssueDetail
           issue={selectedIssue}
           currentIndex={getCurrentIndex()}
@@ -93,7 +93,7 @@ export default function App() {
   if (!error && !scanResult) {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
-        <Header onSettingsClick={() => setShowSettings(true)} />
+        <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-4">
           <EmptyState type="initial" />
           <div className="w-full max-w-xs mt-6">
@@ -107,7 +107,7 @@ export default function App() {
   // List view with results
   return (
     <div className="h-screen flex flex-col bg-bg-dark">
-      <Header onSettingsClick={() => setShowSettings(true)} />
+      <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
 
       {/* Scan button at top for results view */}
       <div className="px-4 py-2">

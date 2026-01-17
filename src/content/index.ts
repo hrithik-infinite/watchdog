@@ -1,6 +1,7 @@
 import { scanPage } from './scanner';
 import { highlightElement, clearHighlights } from './overlay';
 import { applyVisionFilter, removeVisionFilter } from './vision-filters';
+import { toggleFocusOrder, hideFocusOrder } from './focus-order';
 import type { Message, ScanResponse } from '@/shared/messaging';
 import type { Severity, VisionMode } from '@/shared/types';
 
@@ -66,15 +67,22 @@ async function handleMessage(message: Message): Promise<unknown> {
       return { success: true };
     }
 
+    case 'TOGGLE_FOCUS_ORDER': {
+      const { show } = message.payload as { show: boolean };
+      toggleFocusOrder(show);
+      return { success: true };
+    }
+
     default:
       return { success: false, error: 'Unknown message type' };
   }
 }
 
-// Clear highlights and vision filters when page unloads
+// Clear highlights, vision filters, and focus order when page unloads
 window.addEventListener('beforeunload', () => {
   clearHighlights();
   removeVisionFilter();
+  hideFocusOrder();
 });
 
 console.log('WatchDog content script loaded');

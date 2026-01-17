@@ -85,6 +85,7 @@ export interface Settings {
   showIncomplete: boolean;
   autoHighlight: boolean;
   visionMode: VisionMode;
+  showFocusOrder: boolean;
 }
 
 // Filter state for issue list

@@ -116,4 +116,5 @@ export const DEFAULT_SETTINGS = {
   showIncomplete: false,
   autoHighlight: true,
   visionMode: 'none' as const,
+  showFocusOrder: false,
 };

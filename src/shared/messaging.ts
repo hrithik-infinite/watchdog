@@ -8,6 +8,7 @@ export type MessageType =
   | 'HIGHLIGHT_ELEMENT'
   | 'CLEAR_HIGHLIGHTS'
   | 'APPLY_VISION_FILTER'
+  | 'TOGGLE_FOCUS_ORDER'
   | 'GET_SETTINGS'
   | 'UPDATE_SETTINGS'
   | 'OPEN_SIDEPANEL';
@@ -45,6 +46,13 @@ export interface ApplyVisionFilterMessage {
   };
 }
 
+export interface ToggleFocusOrderMessage {
+  type: 'TOGGLE_FOCUS_ORDER';
+  payload: {
+    show: boolean;
+  };
+}
+
 export interface GetSettingsMessage {
   type: 'GET_SETTINGS';
 }
@@ -66,6 +74,7 @@ export type Message =
   | HighlightElementMessage
   | ClearHighlightsMessage
   | ApplyVisionFilterMessage
+  | ToggleFocusOrderMessage
   | GetSettingsMessage
   | UpdateSettingsMessage
   | OpenSidePanelMessage;
