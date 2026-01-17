@@ -10,6 +10,7 @@
 |----------|--------|
 | MVP Rules | 15 rules |
 | UI Approach | Side panel + element highlighting |
+| Component Library | shadcn/ui (Radix UI + Tailwind) |
 | Vision Simulators | v1.1 (not MVP) |
 | Rule Engine | Hybrid (axe-core + custom UI/overlays) |
 
@@ -17,14 +18,165 @@
 
 ## Table of Contents
 
-1. [MVP Feature Set](#mvp-feature-set)
-2. [The 15 MVP Rules](#the-15-mvp-rules)
-3. [Side Panel UI Design](#side-panel-ui-design)
-4. [Technical Architecture](#technical-architecture)
-5. [Hybrid axe-core Integration](#hybrid-axe-core-integration)
-6. [Project Structure](#project-structure)
-7. [Development Phases](#development-phases)
-8. [v1.1 Roadmap](#v11-roadmap)
+1. [Task List Overview](#task-list-overview)
+2. [MVP Feature Set](#mvp-feature-set)
+3. [The 15 MVP Rules](#the-15-mvp-rules)
+4. [Side Panel UI Design](#side-panel-ui-design)
+5. [Technical Architecture](#technical-architecture)
+6. [shadcn/ui Setup & Components](#shadcnui-setup--components)
+7. [Hybrid axe-core Integration](#hybrid-axe-core-integration)
+8. [Project Structure](#project-structure)
+9. [Development Phases](#development-phases)
+10. [v1.1 Roadmap](#v11-roadmap)
+
+---
+
+## Task List Overview
+
+### 🚀 Project Setup & Configuration
+- [ ] Initialize project with Vite + CRXJS + React + TypeScript
+- [ ] Configure Tailwind CSS and PostCSS
+- [ ] Initialize shadcn/ui (`npx shadcn-ui@latest init`)
+- [ ] Install core shadcn components (Button, Card, Badge, Tabs, ScrollArea, etc.)
+- [ ] Set up ESLint and Prettier
+- [ ] Create project folder structure
+- [ ] Create manifest.json (MV3)
+- [ ] Set up git repository and initial commit
+
+### 🎨 UI Foundation
+- [ ] Create theme provider for dark mode support
+- [ ] Set up Tailwind configuration with shadcn/ui variables
+- [ ] Create base layout components (Header, Footer)
+- [ ] Implement empty state components
+- [ ] Create loading skeleton components
+
+### 🧩 Extension Components
+
+**Popup**
+- [ ] Create popup HTML and entry point
+- [ ] Build "Open Side Panel" button UI
+- [ ] Implement side panel opening logic
+- [ ] Add extension icon and branding
+
+**Side Panel**
+- [ ] Create side panel HTML and React entry point
+- [ ] Build Header component with settings button
+- [ ] Create ScanButton component with loading states
+- [ ] Build Summary component (severity breakdown cards)
+- [ ] Create FilterBar component with tabs
+- [ ] Build IssueList component with scroll area
+- [ ] Create IssueCard component
+- [ ] Build IssueDetail component (full issue view)
+- [ ] Create CodeBlock component with syntax highlighting
+- [ ] Build Settings panel component
+
+**Background Service Worker**
+- [ ] Create background service worker entry point
+- [ ] Implement badge count management
+- [ ] Set up Chrome storage helpers
+- [ ] Create message routing system
+
+**Content Script**
+- [ ] Create content script entry point
+- [ ] Set up message listener infrastructure
+- [ ] Implement element highlighting system
+- [ ] Create overlay manager
+- [ ] Build element selector utility
+- [ ] Add injected CSS for highlights
+
+### 🔍 Scanner Implementation
+- [ ] Install and configure axe-core
+- [ ] Create scanner.ts with axe integration
+- [ ] Configure 15-rule filter
+- [ ] Implement result transformation to Issue type
+- [ ] Create severity mapping logic
+- [ ] Build category mapping
+- [ ] Add WCAG tag extraction
+- [ ] Implement scan result caching
+
+### 🎯 Highlighting System
+- [ ] Create highlight style classes (critical, serious, moderate, minor)
+- [ ] Implement highlight injection on page
+- [ ] Build click issue → highlight element flow
+- [ ] Add hover issue → preview highlight
+- [ ] Implement click element → show issues
+- [ ] Create element badges on highlighted items
+- [ ] Add clear highlights functionality
+- [ ] Handle dynamic content and DOM changes
+
+### 🛠️ Fix Suggestions
+- [ ] Create fix suggestion template system
+- [ ] Write fix templates for all 15 rules:
+  - [ ] image-alt
+  - [ ] button-name
+  - [ ] link-name
+  - [ ] color-contrast
+  - [ ] label
+  - [ ] html-has-lang
+  - [ ] document-title
+  - [ ] heading-order
+  - [ ] region
+  - [ ] aria-valid-attr
+  - [ ] aria-required-attr
+  - [ ] aria-roles
+  - [ ] meta-viewport
+  - [ ] tabindex
+  - [ ] duplicate-id
+- [ ] Add code syntax highlighting for fixes
+- [ ] Implement copy-to-clipboard functionality
+- [ ] Add "Learn More" links to WCAG documentation
+
+### ⚙️ Settings & State Management
+- [ ] Set up Zustand store
+- [ ] Create useScanner hook
+- [ ] Build useIssues hook with filtering
+- [ ] Create useHighlight hook
+- [ ] Build useSettings hook
+- [ ] Implement WCAG level selection (A, AA, AAA)
+- [ ] Add dark mode toggle
+- [ ] Create settings persistence with Chrome storage
+
+### 🧪 Testing & Quality
+- [ ] Write scanner unit tests
+- [ ] Create overlay manager tests
+- [ ] Test on 20+ real websites
+- [ ] Test with various WCAG violations
+- [ ] Verify all 15 rules detect correctly
+- [ ] Test highlighting on dynamic content
+- [ ] Check memory usage and performance
+- [ ] Test dark mode across all components
+- [ ] Verify message passing between components
+- [ ] Test edge cases and error handling
+
+### 🎨 Polish & UX
+- [ ] Add smooth animations and transitions
+- [ ] Implement toast notifications for errors/success
+- [ ] Create proper loading states
+- [ ] Add keyboard navigation support
+- [ ] Optimize for performance
+- [ ] Add tooltips for better UX
+- [ ] Ensure responsive design in side panel
+- [ ] Add proper ARIA labels (dogfooding!)
+
+### 📦 Build & Deploy
+- [ ] Test production build
+- [ ] Create extension icons (16, 32, 48, 128)
+- [ ] Write README.md with usage instructions
+- [ ] Create privacy policy
+- [ ] Take screenshots for Chrome Web Store (1280x800)
+- [ ] Create promotional images
+- [ ] Write compelling store description
+- [ ] Set up Chrome Web Store developer account
+- [ ] Submit extension for review
+- [ ] Monitor for review feedback
+
+### 🚧 v1.1 Features (Post-MVP)
+- [ ] Vision simulators (colorblind filters)
+- [ ] Blur simulation
+- [ ] Focus order visualization
+- [ ] Report export (PDF, JSON, CSV, HTML)
+- [ ] Historical scan comparison
+- [ ] Real-time monitoring mode
 
 ---
 
@@ -33,6 +185,7 @@
 ### What's IN MVP ✅
 
 - Side panel UI (opens alongside the page)
+- shadcn/ui component library for polished, accessible UI
 - One-click page scan using axe-core
 - 15 curated accessibility rules
 - Issue list with severity filtering
@@ -43,6 +196,7 @@
 - Click element → show issues
 - Badge with issue count
 - Basic settings (WCAG level)
+- Dark mode support
 
 ### What's NOT in MVP ❌
 
@@ -100,6 +254,15 @@ Technical (2):        tabindex, duplicate-id
 - Can see issues and page simultaneously
 - Professional, app-like feel
 - Native Chrome side panel API (MV3)
+
+### Component Library
+
+**shadcn/ui** - A collection of re-usable components built with Radix UI and Tailwind CSS
+- Pre-built accessible components (Button, Card, Badge, Tabs, etc.)
+- Consistent design system
+- Fully customizable with Tailwind
+- Already supports dark mode
+- Excellent accessibility out of the box
 
 ### Panel Layout
 
@@ -346,6 +509,129 @@ User clicks issue
 
 ---
 
+## shadcn/ui Setup & Components
+
+### Installation
+
+```bash
+# Initialize shadcn/ui
+npx shadcn-ui@latest init
+
+# Install required components
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add card
+npx shadcn-ui@latest add badge
+npx shadcn-ui@latest add tabs
+npx shadcn-ui@latest add scroll-area
+npx shadcn-ui@latest add separator
+npx shadcn-ui@latest add switch
+npx shadcn-ui@latest add select
+npx shadcn-ui@latest add toast
+npx shadcn-ui@latest add skeleton
+```
+
+### Key Components Mapping
+
+| Feature | shadcn Component | Usage |
+|---------|------------------|-------|
+| Scan button | `Button` | Primary action with loading state |
+| Severity cards | `Card` | Summary statistics display |
+| Filter tabs | `Tabs` | Switch between severity levels |
+| Issue list | `ScrollArea` | Scrollable list of issues |
+| Issue cards | `Card` + `Badge` | Individual issue display |
+| Settings toggles | `Switch` | WCAG level selection |
+| Notifications | `Toast` | Success/error messages |
+| Loading states | `Skeleton` | Content placeholders |
+| Separators | `Separator` | Visual dividers |
+
+### Component Examples
+
+```tsx
+// Scan Button with Loading State
+import { Button } from '@/components/ui/button';
+
+<Button
+  onClick={handleScan}
+  disabled={isScanning}
+>
+  {isScanning ? 'Scanning...' : 'Scan Page'}
+</Button>
+
+// Issue Card
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+
+<Card className="cursor-pointer hover:bg-accent">
+  <CardHeader>
+    <div className="flex items-center justify-between">
+      <Badge variant={severityVariant}>{severity}</Badge>
+      <span className="text-sm text-muted-foreground">WCAG {wcagLevel}</span>
+    </div>
+  </CardHeader>
+  <CardContent>
+    <CardTitle className="text-base mb-2">{message}</CardTitle>
+    <code className="text-xs text-muted-foreground">{elementSnippet}</code>
+  </CardContent>
+</Card>
+
+// Filter Tabs
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+<Tabs value={activeFilter} onValueChange={setActiveFilter}>
+  <TabsList>
+    <TabsTrigger value="all">All ({total})</TabsTrigger>
+    <TabsTrigger value="critical">Critical ({critical})</TabsTrigger>
+    <TabsTrigger value="serious">Serious ({serious})</TabsTrigger>
+    <TabsTrigger value="moderate">Moderate ({moderate})</TabsTrigger>
+  </TabsList>
+</Tabs>
+```
+
+### Dark Mode Setup
+
+shadcn/ui includes dark mode support via the `next-themes` pattern:
+
+```tsx
+// App.tsx
+import { ThemeProvider } from '@/components/theme-provider';
+
+export default function App() {
+  return (
+    <ThemeProvider defaultTheme="system" storageKey="watchdog-theme">
+      {/* Your app */}
+    </ThemeProvider>
+  );
+}
+```
+
+### Tailwind Configuration
+
+shadcn/ui extends your Tailwind config with CSS variables for theming:
+
+```js
+// tailwind.config.js
+module.exports = {
+  darkMode: ["class"],
+  content: ["./src/**/*.{ts,tsx}"],
+  theme: {
+    extend: {
+      colors: {
+        border: "hsl(var(--border))",
+        background: "hsl(var(--background))",
+        foreground: "hsl(var(--foreground))",
+        primary: {
+          DEFAULT: "hsl(var(--primary))",
+          foreground: "hsl(var(--primary-foreground))",
+        },
+        // ... more color variables
+      },
+    },
+  },
+}
+```
+
+---
+
 ## Hybrid axe-core Integration
 
 ### Why Hybrid?
@@ -529,12 +815,20 @@ WatchDog/
 │   │   ├── main.tsx                 # React entry
 │   │   ├── App.tsx
 │   │   ├── components/
+│   │   │   ├── ui/                  # shadcn/ui components
+│   │   │   │   ├── button.tsx
+│   │   │   │   ├── card.tsx
+│   │   │   │   ├── badge.tsx
+│   │   │   │   ├── tabs.tsx
+│   │   │   │   ├── scroll-area.tsx
+│   │   │   │   ├── separator.tsx
+│   │   │   │   └── ...              # Other shadcn components
 │   │   │   ├── Header.tsx
-│   │   │   ├── ScanButton.tsx
-│   │   │   ├── Summary.tsx          # Severity breakdown
-│   │   │   ├── FilterBar.tsx        # Category filter
-│   │   │   ├── IssueList.tsx
-│   │   │   ├── IssueCard.tsx
+│   │   │   ├── ScanButton.tsx       # Uses shadcn Button
+│   │   │   ├── Summary.tsx          # Severity breakdown with shadcn Cards
+│   │   │   ├── FilterBar.tsx        # Category filter with shadcn Tabs
+│   │   │   ├── IssueList.tsx        # Uses shadcn ScrollArea
+│   │   │   ├── IssueCard.tsx        # Uses shadcn Card + Badge
 │   │   │   ├── IssueDetail.tsx      # Full issue view
 │   │   │   ├── CodeBlock.tsx        # Syntax highlighted code
 │   │   │   ├── EmptyState.tsx
@@ -544,8 +838,10 @@ WatchDog/
 │   │   │   ├── useIssues.ts         # Issue state & filtering
 │   │   │   ├── useHighlight.ts      # Highlight commands
 │   │   │   └── useSettings.ts
-│   │   └── store/
-│   │       └── index.ts             # Zustand store
+│   │   ├── store/
+│   │   │   └── index.ts             # Zustand store
+│   │   └── lib/
+│   │       └── utils.ts             # shadcn cn() utility
 │   │
 │   ├── popup/
 │   │   ├── index.html
@@ -575,6 +871,8 @@ WatchDog/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── tailwind.config.js
+├── components.json              # shadcn/ui configuration
+├── postcss.config.js
 └── README.md
 ```
 
@@ -646,15 +944,18 @@ WatchDog/
 **Day 1-2: Project Setup**
 - [ ] Initialize Vite + CRXJS + React + TypeScript
 - [ ] Configure Tailwind CSS
+- [ ] Initialize shadcn/ui (`npx shadcn-ui@latest init`)
+- [ ] Install core shadcn components (Button, Card, Badge, Tabs, ScrollArea)
 - [ ] Set up ESLint + Prettier
 - [ ] Create folder structure
 - [ ] Basic manifest.json
 
 **Day 3-4: Extension Shell**
-- [ ] Popup with "Open Side Panel" button
-- [ ] Side panel basic UI (header, empty state)
+- [ ] Popup with "Open Side Panel" button (shadcn Button)
+- [ ] Side panel basic UI with shadcn components (header, empty state)
 - [ ] Background service worker
 - [ ] Message passing infrastructure
+- [ ] Test dark mode support
 
 **Day 5-7: Content Script Basics**
 - [ ] Content script injection
@@ -675,16 +976,16 @@ WatchDog/
 - [ ] Category mapping
 
 **Day 3-4: Side Panel UI**
-- [ ] Scan button with loading state
-- [ ] Summary cards (severity breakdown)
-- [ ] Issue list component
-- [ ] Basic filtering by severity
+- [ ] Scan button with loading state (shadcn Button with spinner)
+- [ ] Summary cards using shadcn Card component (severity breakdown)
+- [ ] Issue list component with shadcn ScrollArea
+- [ ] Basic filtering by severity using shadcn Tabs
 
 **Day 5-7: Issue Cards**
-- [ ] Issue card design
-- [ ] Show element snippet
-- [ ] WCAG badge
-- [ ] "View" button
+- [ ] Issue card design using shadcn Card
+- [ ] Show element snippet with code styling
+- [ ] WCAG badge using shadcn Badge
+- [ ] "View" button using shadcn Button
 
 **Deliverable:** Can scan page and see issues in side panel.
 
@@ -715,22 +1016,22 @@ WatchDog/
 ### Phase 4: Issue Details & Fixes (Week 4)
 
 **Day 1-2: Issue Detail View**
-- [ ] Full issue detail component
-- [ ] WCAG criteria explanation
-- [ ] Element HTML display
-- [ ] Navigation (prev/next issue)
+- [ ] Full issue detail component using shadcn Card
+- [ ] WCAG criteria explanation with proper typography
+- [ ] Element HTML display using shadcn code block styling
+- [ ] Navigation (prev/next issue) with shadcn Buttons
 
 **Day 3-4: Fix Suggestions**
 - [ ] Create fix templates for all 15 rules
 - [ ] Code block with syntax highlighting
-- [ ] Copy fix button
-- [ ] "Learn More" links
+- [ ] Copy fix button using shadcn Button with copy icon
+- [ ] "Learn More" links using shadcn Button variant
 
 **Day 5-7: Settings & Polish**
-- [ ] Settings panel (WCAG level toggle)
+- [ ] Settings panel using shadcn components (Switch, Select, etc.)
 - [ ] Badge count updates
 - [ ] Persist scan results
-- [ ] Error handling
+- [ ] Error handling with shadcn Toast notifications
 
 **Deliverable:** Full MVP feature complete.
 
@@ -745,10 +1046,10 @@ WatchDog/
 - [ ] Memory leak checks
 
 **Day 3-4: Polish**
-- [ ] Empty states
-- [ ] Loading states
-- [ ] Animations/transitions
-- [ ] Dark mode support
+- [ ] Empty states with shadcn components
+- [ ] Loading states and skeletons
+- [ ] Smooth animations/transitions
+- [ ] Dark mode support (shadcn provides this out of the box)
 
 **Day 5-7: Chrome Web Store**
 - [ ] Create store listing
@@ -809,11 +1110,13 @@ function visualizeFocusOrder() {
 
 ### Key Files to Build First
 
-1. `src/shared/types.ts` - All TypeScript interfaces
-2. `src/content/scanner.ts` - axe-core wrapper
-3. `src/sidepanel/store/index.ts` - Zustand state
-4. `src/sidepanel/components/IssueList.tsx` - Main UI
-5. `src/content/overlay.ts` - Highlighting
+1. Initialize shadcn/ui and install core components
+2. `src/shared/types.ts` - All TypeScript interfaces
+3. `src/sidepanel/lib/utils.ts` - shadcn cn() utility
+4. `src/content/scanner.ts` - axe-core wrapper
+5. `src/sidepanel/store/index.ts` - Zustand state
+6. `src/sidepanel/components/IssueList.tsx` - Main UI using shadcn components
+7. `src/content/overlay.ts` - Highlighting
 
 ### Commands
 
@@ -829,6 +1132,10 @@ npm run test         # Run tests
 
 # Lint
 npm run lint         # ESLint check
+
+# shadcn/ui
+npx shadcn-ui@latest init              # Initialize shadcn/ui
+npx shadcn-ui@latest add [component]   # Add a component
 ```
 
 ### Chrome Extension Loading
@@ -847,6 +1154,7 @@ npm run lint         # ESLint check
 |----------|----------|
 | MVP rules count | 15 rules |
 | UI approach | Side panel + highlighting |
+| Component library | shadcn/ui (Radix UI + Tailwind) |
 | Vision simulators | v1.1 |
 | Rule engine | Hybrid (axe-core + custom UI) |
 | Additional features | None for MVP |
