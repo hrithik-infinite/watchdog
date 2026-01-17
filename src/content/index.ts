@@ -2,7 +2,7 @@ import { scanPage } from './scanner';
 import { highlightElement, clearHighlights } from './overlay';
 import { applyVisionFilter, removeVisionFilter } from './vision-filters';
 import { toggleFocusOrder, hideFocusOrder } from './focus-order';
-import type { Message, ScanResponse } from '@/shared/messaging';
+import type { Message, ScanResponse, AuditType } from '@/shared/messaging';
 import type { Severity, VisionMode } from '@/shared/types';
 
 // Listen for messages from the side panel and background
@@ -28,7 +28,8 @@ async function handleMessage(message: Message): Promise<unknown> {
 
     case 'SCAN_PAGE': {
       try {
-        const result = await scanPage();
+        const { auditType } = message.payload as { auditType: AuditType };
+        const result = await scanPage(auditType);
 
         // Notify background to update badge
         chrome.runtime.sendMessage({

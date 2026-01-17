@@ -44,12 +44,21 @@ export default function IssueDetail({
 }: IssueDetailProps) {
   return (
     <div className="flex flex-col h-full animate-slide-in bg-background">
-      {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-        <Button variant="ghost" size="sm" onClick={onBack} className="gap-1 text-primary -ml-2">
+      {/* Header with prominent back button */}
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/30">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onBack}
+          className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10 font-medium"
+        >
           <ChevronLeft className="h-4 w-4" />
-          <span className="text-sm">Back to Issues</span>
+          <span className="text-sm">Back</span>
         </Button>
+        <div className="flex-1" />
+        <span className="text-xs text-muted-foreground">
+          Issue {currentIndex + 1} of {totalCount}
+        </span>
       </div>
 
       {/* Content */}

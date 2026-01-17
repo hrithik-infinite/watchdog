@@ -130,7 +130,7 @@ describe('Content Script - index.ts', () => {
       (scanPage as any).mockResolvedValue(mockScanResult);
 
       const sendResponse = vi.fn();
-      const message: Message = { type: 'SCAN_PAGE' };
+      const message: Message = { type: 'SCAN_PAGE', payload: { auditType: 'accessibility' } };
 
       const handler = messageListeners[0];
       const result = handler(message, {}, sendResponse);
@@ -171,7 +171,7 @@ describe('Content Script - index.ts', () => {
       (scanPage as any).mockResolvedValue(mockScanResult);
 
       const handler = messageListeners[0];
-      handler({ type: 'SCAN_PAGE' }, {}, vi.fn());
+      handler({ type: 'SCAN_PAGE', payload: { auditType: 'accessibility' } }, {}, vi.fn());
 
       await new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -187,7 +187,7 @@ describe('Content Script - index.ts', () => {
       (scanPage as any).mockRejectedValue(scanError);
 
       const sendResponse = vi.fn();
-      const message: Message = { type: 'SCAN_PAGE' };
+      const message: Message = { type: 'SCAN_PAGE', payload: { auditType: 'accessibility' } };
 
       const handler = messageListeners[0];
       const result = handler(message, {}, sendResponse);
@@ -207,7 +207,7 @@ describe('Content Script - index.ts', () => {
 
       const sendResponse = vi.fn();
       const handler = messageListeners[0];
-      handler({ type: 'SCAN_PAGE' }, {}, sendResponse);
+      handler({ type: 'SCAN_PAGE', payload: { auditType: 'accessibility' } }, {}, sendResponse);
 
       await new Promise((resolve) => setTimeout(resolve, 20));
 
@@ -442,7 +442,7 @@ describe('Content Script - index.ts', () => {
 
       const messages: Message[] = [
         { type: 'PING' },
-        { type: 'SCAN_PAGE' },
+        { type: 'SCAN_PAGE', payload: { auditType: 'accessibility' } },
         { type: 'CLEAR_HIGHLIGHTS' },
         { type: 'HIGHLIGHT_ELEMENT', payload: { selector: 'div', severity: 'critical' } },
         { type: 'APPLY_VISION_FILTER', payload: { mode: 'protanopia' } },

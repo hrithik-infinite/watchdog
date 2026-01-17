@@ -52,7 +52,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result).toBeDefined();
       expect(result.url).toBe('https://example.com');
@@ -69,7 +69,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.url).toBe('https://mywebsite.com/page');
     });
@@ -80,7 +80,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       // Duration should be end time (100) - start time (0) = 100
       expect(result.duration).toBe(100);
@@ -95,7 +95,7 @@ describe('Scanner - scanPage', () => {
       });
 
       const beforeScan = Date.now();
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
       const afterScan = Date.now();
 
       expect(result.timestamp).toBeGreaterThanOrEqual(beforeScan);
@@ -125,7 +125,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.issues).toHaveLength(1);
       const issue = result.issues[0];
@@ -161,7 +161,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.issues).toHaveLength(2);
       expect(result.issues[0].element.selector).toBe('button.btn1');
@@ -189,7 +189,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.issues).toHaveLength(1);
       expect(result.issues[0].element.selector).toBe('body main form input.email');
@@ -216,7 +216,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
       const issue = result.issues[0];
 
       expect(issue.element.selector).toBe('img.hero');
@@ -263,7 +263,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.issues).toHaveLength(4);
       expect(result.issues[0].severity).toBe('critical');
@@ -303,7 +303,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.issues[0].category).toBe('images');
       expect(result.issues[1].category).toBe('interactive');
@@ -325,7 +325,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
       const issue = result.issues[0];
 
       expect(issue.wcag).toBeDefined();
@@ -349,7 +349,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
       const issue = result.issues[0];
 
       expect(issue.wcag.id).toBe('N/A');
@@ -374,7 +374,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.issues[0].id).not.toBe(result.issues[1].id);
       expect(result.issues[0].id).toMatch(/^issue-/);
@@ -404,7 +404,7 @@ describe('Scanner - scanPage', () => {
         ],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.incomplete).toHaveLength(1);
       expect(result.incomplete[0].ruleId).toBe('color-contrast');
@@ -434,7 +434,7 @@ describe('Scanner - scanPage', () => {
         ],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.issues).toHaveLength(1);
       expect(result.incomplete).toHaveLength(1);
@@ -465,7 +465,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.summary.total).toBe(2);
       expect(result.summary.bySeverity.critical).toBe(1);
@@ -505,7 +505,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.summary.byCategory.images).toBe(1);
       expect(result.summary.byCategory.interactive).toBe(1);
@@ -519,7 +519,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.summary.total).toBe(0);
       expect(result.summary.bySeverity.critical).toBe(0);
@@ -549,7 +549,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(result.summary.total).toBe(2);
       expect(result.summary.bySeverity.critical).toBe(2);
@@ -564,7 +564,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      await scanPage();
+      await scanPage('accessibility');
 
       expect(mockAxeRun).toHaveBeenCalled();
       const [doc, config] = mockAxeRun.mock.calls[0];
@@ -581,7 +581,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      await scanPage();
+      await scanPage('accessibility');
 
       const config = mockAxeRun.mock.calls[0][1];
       expect(config.resultTypes).toContain('violations');
@@ -593,7 +593,7 @@ describe('Scanner - scanPage', () => {
     it('should handle axe.run errors', async () => {
       mockAxeRun.mockRejectedValue(new Error('Axe error'));
 
-      await expect(scanPage()).rejects.toThrow('Axe error');
+      await expect(scanPage('accessibility')).rejects.toThrow('Axe error');
     });
 
     it('should handle response with violations and incomplete', async () => {
@@ -603,7 +603,7 @@ describe('Scanner - scanPage', () => {
       });
 
       // Should work fine with empty arrays
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
       expect(result.issues).toHaveLength(0);
       expect(result.incomplete).toHaveLength(0);
     });
@@ -627,7 +627,7 @@ describe('Scanner - scanPage', () => {
         incomplete: [],
       });
 
-      const result = await scanPage();
+      const result = await scanPage('accessibility');
 
       expect(generateFix).toHaveBeenCalled();
       expect(result.issues[0].fix).toBeDefined();

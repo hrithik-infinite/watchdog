@@ -13,7 +13,8 @@ async function checkContentScriptLoaded(tabId: number): Promise<boolean> {
 }
 
 export function useScanner() {
-  const { isScanning, scanResult, error, setScanning, setScanResult, setError } = useScanStore();
+  const { isScanning, scanResult, error, selectedAuditType, setScanning, setScanResult, setError } =
+    useScanStore();
 
   const scan = useCallback(async () => {
     setScanning(true);
@@ -40,8 +41,11 @@ export function useScanner() {
         throw new Error('Please refresh the page and try again');
       }
 
-      // Send scan message to content script
-      const response = await chrome.tabs.sendMessage(tab.id, { type: 'SCAN_PAGE' });
+      // Send scan message to content script with audit type
+      const response = await chrome.tabs.sendMessage(tab.id, {
+        type: 'SCAN_PAGE',
+        payload: { auditType: selectedAuditType },
+      });
 
       if (response?.success && response.result) {
         setScanResult(response.result as ScanResult);
@@ -55,7 +59,7 @@ export function useScanner() {
     } finally {
       setScanning(false);
     }
-  }, [setScanning, setScanResult, setError]);
+  }, [selectedAuditType, setScanning, setScanResult, setError]);
 
   const clearResults = useCallback(() => {
     setScanResult(null);

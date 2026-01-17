@@ -6,8 +6,14 @@ import type {
   Category,
   WCAGCriteria,
 } from '@/shared/types';
+import type { AuditType } from '@/shared/messaging';
 import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/shared/constants';
 import { generateFix } from '@/shared/fixes';
+import { scanPerformance } from './performance-scanner';
+import { scanSEO } from './seo-scanner';
+import { scanSecurity } from './security-scanner';
+import { scanBestPractices } from './best-practices-scanner';
+import { scanPWA } from './pwa-scanner';
 
 // Lazy load axe-core only when needed
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -118,7 +124,7 @@ function generateSummary(issues: Issue[]): ScanSummary {
   };
 }
 
-export async function scanPage(): Promise<ScanResult> {
+async function scanAccessibility(): Promise<ScanResult> {
   const startTime = performance.now();
 
   // Lazy load axe-core
@@ -146,4 +152,28 @@ export async function scanPage(): Promise<ScanResult> {
     incomplete,
     summary: generateSummary(issues),
   };
+}
+
+export async function scanPage(auditType: AuditType): Promise<ScanResult> {
+  switch (auditType) {
+    case 'accessibility':
+      return scanAccessibility();
+    case 'performance':
+      return scanPerformance();
+    case 'seo':
+      return scanSEO();
+    case 'security':
+      return scanSecurity();
+    case 'best-practices':
+      return scanBestPractices();
+    case 'pwa':
+      return scanPWA();
+    case 'mobile':
+    case 'links':
+    case 'i18n':
+    case 'privacy':
+      throw new Error(`${auditType} audit is not yet implemented`);
+    default:
+      throw new Error(`Unknown audit type: ${auditType}`);
+  }
 }

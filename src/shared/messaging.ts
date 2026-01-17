@@ -1,5 +1,17 @@
 import type { ScanResult, Settings, Severity, VisionMode } from './types';
 
+export type AuditType =
+  | 'accessibility'
+  | 'performance'
+  | 'seo'
+  | 'security'
+  | 'best-practices'
+  | 'pwa'
+  | 'mobile'
+  | 'links'
+  | 'i18n'
+  | 'privacy';
+
 // Message types for communication between extension parts
 export type MessageType =
   | 'PING'
@@ -20,6 +32,9 @@ export interface PingMessage {
 
 export interface ScanPageMessage {
   type: 'SCAN_PAGE';
+  payload: {
+    auditType: AuditType;
+  };
 }
 
 export interface ScanResultMessage {

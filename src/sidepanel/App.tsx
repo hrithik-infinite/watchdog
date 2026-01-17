@@ -7,14 +7,18 @@ import IssueList from './components/IssueList';
 import IssueDetail from './components/IssueDetail';
 import EmptyState from './components/EmptyState';
 import Settings from './components/Settings';
+import AuditSelector from './components/AuditSelector';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
 import { useSettings } from './hooks/useSettings';
+import { useScanStore } from './store';
+import type { AuditType } from './store';
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const { isScanning, scanResult, error, scan } = useScanner();
+  const setSelectedAuditType = useScanStore((state) => state.setSelectedAuditType);
   const {
     filters,
     filteredIssues,
@@ -30,6 +34,14 @@ export default function App() {
   } = useIssues();
   const { highlightElement, clearHighlights } = useHighlight();
   const { settings, updateSettings } = useSettings();
+
+  const handleStartScan = useCallback(
+    (auditType: AuditType) => {
+      setSelectedAuditType(auditType);
+      scan();
+    },
+    [setSelectedAuditType, scan]
+  );
 
   const handleSelectIssue = useCallback(
     (id: string) => {
@@ -89,17 +101,12 @@ export default function App() {
     );
   }
 
-  // Initial state - scan button below ready to scan content
+  // Initial state - show audit type selector
   if (!error && !scanResult) {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
         <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-4">
-          <EmptyState type="initial" />
-          <div className="w-full max-w-xs mt-6">
-            <ScanButton isScanning={isScanning} onScan={scan} />
-          </div>
-        </div>
+        <AuditSelector onStartScan={handleStartScan} isScanning={isScanning} />
       </div>
     );
   }

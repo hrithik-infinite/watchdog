@@ -2,11 +2,26 @@ import { create } from 'zustand';
 import type { Issue, ScanResult, FilterState, Settings } from '@/shared/types';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 
+export type AuditType =
+  | 'accessibility'
+  | 'performance'
+  | 'seo'
+  | 'security'
+  | 'best-practices'
+  | 'pwa'
+  | 'mobile'
+  | 'links'
+  | 'i18n'
+  | 'privacy';
+
 interface ScanState {
   // Scan state
   isScanning: boolean;
   scanResult: ScanResult | null;
   error: string | null;
+
+  // Audit type
+  selectedAuditType: AuditType;
 
   // Filter state
   filters: FilterState;
@@ -22,6 +37,7 @@ interface ScanState {
   setScanning: (isScanning: boolean) => void;
   setScanResult: (result: ScanResult | null) => void;
   setError: (error: string | null) => void;
+  setSelectedAuditType: (auditType: AuditType) => void;
   setFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
   resetFilters: () => void;
   selectIssue: (id: string | null) => void;
@@ -45,6 +61,7 @@ export const useScanStore = create<ScanState>((set, get) => ({
   isScanning: false,
   scanResult: null,
   error: null,
+  selectedAuditType: 'accessibility',
   filters: initialFilters,
   selectedIssueId: null,
   view: 'list',
@@ -62,6 +79,8 @@ export const useScanStore = create<ScanState>((set, get) => ({
     }),
 
   setError: (error) => set({ error, isScanning: false }),
+
+  setSelectedAuditType: (auditType) => set({ selectedAuditType: auditType }),
 
   setFilter: (key, value) =>
     set((state) => ({

@@ -308,7 +308,11 @@ describe('useScanner Hook', () => {
         await result.current.scan();
       });
 
-      expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(1, { type: 'SCAN_PAGE' });
+      // Check the second call (first is PING to check if content script is loaded)
+      expect(chrome.tabs.sendMessage).toHaveBeenLastCalledWith(1, {
+        type: 'SCAN_PAGE',
+        payload: { auditType: 'accessibility' }
+      });
     });
   });
 
