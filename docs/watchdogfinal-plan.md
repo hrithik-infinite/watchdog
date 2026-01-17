@@ -11,6 +11,7 @@
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
 | MVP Rules | 15 curated rules | Focus on high-impact issues |
+| Audit Coverage | Multi-type (Accessibility + 9 more planned) | Comprehensive web quality tool |
 | UI Approach | Side panel + element highlighting | Non-intrusive, professional workflow |
 | Component Library | shadcn/ui (Radix UI + Tailwind) | Accessible, customizable, modern |
 | Rule Engine | Hybrid (axe-core + custom UI) | Industry-standard detection + custom UX |
@@ -27,8 +28,9 @@
 3. [Technical Architecture](#technical-architecture)
 4. [shadcn/ui Components](#shadcnui-components)
 5. [Project Structure](#project-structure)
-6. [Future Enhancements & Roadmap](#future-enhancements--roadmap)
-7. [Commands & Quick Reference](#commands--quick-reference)
+6. [Planned Audit Types](#planned-audit-types)
+7. [Future Enhancements & Roadmap](#future-enhancements--roadmap)
+8. [Commands & Quick Reference](#commands--quick-reference)
 
 ---
 
@@ -260,6 +262,311 @@ WatchDog/
 - **Formats:** PDF (with screenshot), JSON (CI/CD), CSV (spreadsheet), HTML (standalone)
 - Dropdown menu in header with format descriptions
 - Implementation: `src/sidepanel/lib/export.ts`
+
+---
+
+## Planned Audit Types
+
+WatchDog currently focuses on accessibility auditing with 15 curated WCAG rules. The roadmap includes expanding into a **comprehensive web quality auditing tool** with multiple audit categories. This positions WatchDog to compete with tools like Lighthouse while maintaining our developer-friendly, extension-based approach.
+
+### 1. SEO Audit ⭐ (v1.2 Priority)
+
+**What we'll check:**
+- **Meta Tags:** Title, description, keywords, viewport, charset
+- **Social Media:** Open Graph and Twitter Card tags
+- **Heading Structure:** H1 uniqueness, proper hierarchy (H1 → H2 → H3)
+- **Canonical URLs:** Duplicate content prevention
+- **Structured Data:** Schema.org markup validation (JSON-LD)
+- **Robots & Crawling:** robots.txt, meta robots, sitemap.xml presence
+- **Image SEO:** Alt text (already covered!), descriptive file names
+- **Internal Links:** Broken links, anchor text quality
+- **Mobile-Friendliness:** Responsive design validation
+- **HTTPS Status:** Secure connection check
+
+**Severity Levels:** Critical, High, Medium, Low
+**Estimated Rules:** ~20 checks
+**Implementation:** Custom DOM checkers + meta tag parsing
+
+---
+
+### 2. Performance Audit ⭐ (v1.2 Priority)
+
+**What we'll check:**
+- **Core Web Vitals:**
+  - LCP (Largest Contentful Paint) < 2.5s
+  - FID (First Input Delay) < 100ms
+  - CLS (Cumulative Layout Shift) < 0.1
+- **Loading Metrics:**
+  - Time to First Byte (TTFB)
+  - First Contentful Paint (FCP)
+  - Time to Interactive (TTI)
+- **Resource Analysis:**
+  - Large JavaScript bundles (> 500KB warning)
+  - Unoptimized images (missing WebP/AVIF)
+  - Unused CSS/JS detection
+  - Render-blocking resources
+- **Network Optimization:**
+  - Missing compression (gzip/brotli)
+  - Cache headers validation
+  - Excessive HTTP requests
+
+**Target Metrics:** Based on Google's performance thresholds
+**Integration:** `web-vitals` npm package + Chrome DevTools Protocol
+**Estimated Rules:** ~12 metrics
+
+---
+
+### 3. Security Audit 🔒 (v1.3)
+
+**What we'll check:**
+- **HTTPS:** SSL/TLS certificate validity
+- **Mixed Content:** HTTP resources on HTTPS pages
+- **Security Headers:**
+  - Content-Security-Policy (CSP)
+  - X-Frame-Options (clickjacking protection)
+  - X-Content-Type-Options (MIME sniffing)
+  - Strict-Transport-Security (HSTS)
+  - Referrer-Policy
+- **Vulnerabilities:**
+  - Inline scripts (XSS risk indicators)
+  - Deprecated/insecure APIs
+  - Third-party script risks
+- **Cookie Security:** Secure, HttpOnly, SameSite flags
+
+**Severity:** Critical for missing security headers
+**Estimated Rules:** ~12 checks
+**Implementation:** Response header analysis
+
+---
+
+### 4. Best Practices Audit ✅ (v1.3)
+
+**What we'll check:**
+- **HTML Validity:** W3C markup validation
+- **Deprecated Elements:** `<font>`, `<center>`, `align=""` attributes
+- **Console Errors:** JavaScript errors and warnings
+- **Network Errors:** Failed requests (404, 500 status codes)
+- **Anti-Patterns:**
+  - Geolocation requests on page load
+  - Notification permission prompts on load
+- **Document Mode:** Quirks mode detection
+- **Character Encoding:** UTF-8 validation
+
+**Severity:** Warning to Medium
+**Estimated Rules:** ~15 checks
+**Implementation:** `html-validate` or W3C Validator API
+
+---
+
+### 5. PWA (Progressive Web App) Audit 📱 (v1.4)
+
+**What we'll check:**
+- **Manifest.json:** Presence and validity
+- **Service Worker:** Registration and functionality
+- **Installability:** Add to home screen criteria
+- **Offline Support:** Offline fallback page
+- **App Icons:** Multiple sizes (192px, 512px)
+- **Theme Color:** Consistent branding
+- **Start URL:** Properly configured
+- **Display Mode:** Standalone/fullscreen
+
+**Format:** Pass/Fail binary checks
+**Estimated Rules:** ~7 checks
+**Implementation:** Manifest parser + service worker detection
+
+---
+
+### 6. Mobile Responsiveness Audit 📱 (v1.3)
+
+**What we'll check:**
+- **Viewport Meta Tag:** Properly configured
+- **Touch Target Size:** Minimum 48x48px tap targets
+- **Font Sizes:** Readable without zoom (16px minimum)
+- **Content Width:** No horizontal scrolling
+- **Tap Delay:** `touch-action` CSS property
+- **Media Queries:** Breakpoints for common devices (320px, 768px, 1024px)
+- **Orientation Support:** Both portrait and landscape
+
+**Device Testing:** Common viewport sizes
+**Estimated Rules:** ~10 checks
+**Implementation:** Computed style analysis + viewport simulation
+
+---
+
+### 7. Link Quality Audit 🔗 (v1.4)
+
+**What we'll check:**
+- **Broken Links:** 404 errors (internal & external)
+- **Redirect Chains:** Multiple 301/302 redirects
+- **External Link Security:** nofollow/noopener attributes
+- **Download Links:** File type indicators
+- **Email/Phone Links:** `mailto:` and `tel:` validation
+- **Hash Links:** Anchor targets exist
+- **Link Text Quality:** Avoid generic "click here"
+
+**Async Checking:** May require external requests
+**Estimated Rules:** ~8 checks
+**Implementation:** `broken-link-checker` or custom crawler
+
+---
+
+### 8. Content Quality Audit 📝 (v2.0)
+
+**What we'll check:**
+- **Readability Score:** Flesch-Kincaid grade level
+- **Word Count:** Minimum content thresholds
+- **Duplicate Content:** Similar page detection
+- **Grammar/Spelling:** Basic validation
+- **Keyword Density:** SEO relevance checks
+- **Media-to-Text Ratio:** Balance analysis
+
+**Lower Priority:** Nice-to-have features
+**Estimated Rules:** ~6 checks
+**Implementation:** Natural language processing libraries
+
+---
+
+### 9. Internationalization (i18n) Audit 🌍 (v2.0)
+
+**What we'll check:**
+- **Language Tags:** `lang` and `hreflang` attributes
+- **Character Encoding:** UTF-8 support validation
+- **Text Direction:** RTL language support (`dir` attribute)
+- **Date/Time Formats:** Locale-appropriate formatting
+- **Currency Formatting:** Proper symbols and placement
+- **Translation Completeness:** Missing translation detection
+
+**Target Users:** Global/multilingual websites
+**Estimated Rules:** ~8 checks
+**Implementation:** DOM attribute analysis + locale detection
+
+---
+
+### 10. Privacy & Compliance Audit 🔐 (v1.4)
+
+**What we'll check:**
+- **Cookie Consent:** GDPR/CCPA banner presence
+- **Privacy Policy:** Link accessible and valid
+- **Terms of Service:** Present and properly linked
+- **Third-Party Tracking:** Google Analytics, Facebook Pixel detection
+- **Data Collection Forms:** Privacy notices on forms
+- **Cookie Classification:** First-party vs. third-party
+- **Do Not Track:** Header respect
+
+**Regulatory Focus:** Legal compliance requirements
+**Estimated Rules:** ~10 checks
+**Implementation:** Cookie analysis + DOM scanning
+
+---
+
+## Multi-Audit UI Design
+
+### UI Implementation Options
+
+**Option 1: Tabbed Interface**
+```
+[ Accessibility ] [ SEO ] [ Performance ] [ Security ] [ Best Practices ] [ More ▼ ]
+```
+Separate tab for each audit type with independent results.
+
+**Option 2: Multi-Select Scan**
+```
+☑ Accessibility (15 rules)
+☑ SEO (20 checks)
+☑ Performance (12 metrics)
+☐ Security (12 checks)
+☐ Best Practices (15 checks)
+
+[Scan Selected Audits]
+```
+Users choose which audits to run before scanning.
+
+**Option 3: Lighthouse-Style Dashboard**
+```
+🎯 Overall Score: 85/100
+
+Accessibility:    92/100 ✅
+SEO:              88/100 ✅
+Performance:      74/100 ⚠️
+Security:        100/100 ✅
+Best Practices:   81/100 ⚠️
+```
+Unified scoring system with color-coded results.
+
+### Suggested Implementation Libraries
+
+| Audit Type | Library/Tool | Notes |
+|------------|--------------|-------|
+| SEO | Custom checkers | DOM parsing + meta tag validation |
+| Performance | `web-vitals` | Official Google library |
+| Security | Custom analysis | Response header inspection |
+| Best Practices | `html-validate` | W3C-compliant validator |
+| PWA | Manifest parser | JSON validation + SW detection |
+| Links | `broken-link-checker` | Async link validation |
+| Full Integration | `lighthouse` | Complete Lighthouse integration option |
+
+### Type System Updates
+
+```typescript
+// Extend audit types beyond accessibility
+export type AuditType =
+  | 'accessibility'
+  | 'seo'
+  | 'performance'
+  | 'security'
+  | 'best-practices'
+  | 'pwa'
+  | 'mobile'
+  | 'links'
+  | 'content'
+  | 'i18n'
+  | 'privacy';
+
+// Unified scan result structure
+export interface MultiAuditResult {
+  url: string;
+  timestamp: number;
+  audits: {
+    accessibility?: AccessibilityAudit;
+    seo?: SEOAudit;
+    performance?: PerformanceAudit;
+    security?: SecurityAudit;
+    // ... other audit types
+  };
+  overallScore: number; // 0-100 composite score
+  summary: MultiAuditSummary;
+}
+```
+
+---
+
+## Phased Rollout Strategy
+
+### Phase 1 (v1.2) - High-Demand Audits
+- ✅ **SEO Audit** - Most requested by developers
+- ✅ **Performance Audit** - Core Web Vitals are critical for rankings
+- **Timeline:** Q2 2026
+- **Effort:** ~4 weeks development
+
+### Phase 2 (v1.3) - Security & Standards
+- 🔒 **Security Audit** - Essential for production sites
+- ✅ **Best Practices** - Easy wins for developers
+- 📱 **Mobile Responsiveness** - Mobile-first web
+- **Timeline:** Q3 2026
+- **Effort:** ~3 weeks development
+
+### Phase 3 (v1.4) - Modern Web Features
+- 📱 **PWA Audit** - Growing adoption trend
+- 🔗 **Link Quality** - High utility for large sites
+- 🔐 **Privacy/Compliance** - Legal requirements
+- **Timeline:** Q4 2026
+- **Effort:** ~2 weeks development
+
+### Phase 4 (v2.0) - Advanced Features
+- 📝 **Content Quality** - Nice-to-have
+- 🌍 **Internationalization** - For global sites
+- **Timeline:** 2027
+- **Effort:** ~3 weeks development
 
 ---
 

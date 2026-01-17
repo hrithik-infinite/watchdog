@@ -22,7 +22,7 @@ export default function CodeBlock({ code, showCopy = false }: CodeBlockProps) {
 
   return (
     <div className="relative bg-card rounded-lg overflow-hidden border border-primary/10">
-      <pre className="p-4 text-xs overflow-x-auto">
+      <pre className={`p-4 text-xs overflow-x-auto ${showCopy ? 'pr-24' : ''}`}>
         <code className="text-primary-light font-mono whitespace-pre-wrap break-words">{code}</code>
       </pre>
       {showCopy && (
@@ -30,7 +30,7 @@ export default function CodeBlock({ code, showCopy = false }: CodeBlockProps) {
           variant="ghost"
           size="sm"
           onClick={handleCopy}
-          className="absolute top-2 right-2 h-7 gap-1.5 text-primary"
+          className="absolute top-2 right-2 h-7 gap-1.5 text-primary bg-card/80 backdrop-blur-sm hover:bg-card"
         >
           {copied ? (
             <>
