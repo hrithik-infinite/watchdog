@@ -196,7 +196,6 @@ WatchDog requires the following permissions:
 - **activeTab** - Access the current tab to scan for accessibility issues
 - **storage** - Save your settings and preferences
 - **sidePanel** - Display the results panel alongside web pages
-- **scripting** - Inject scanning and highlighting code into pages
 
 **Privacy Note:** WatchDog processes everything locally in your browser. No data is sent to external servers. See [PRIVACY.md](PRIVACY.md) for details.
 

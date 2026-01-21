@@ -199,9 +199,6 @@ if (!isExtensionContext) {
         set: () => Promise.resolve(),
       },
     },
-    scripting: {
-      executeScript: () => Promise.resolve(),
-    },
   };
 }
 

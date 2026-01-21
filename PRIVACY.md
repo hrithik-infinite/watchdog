@@ -133,11 +133,6 @@ WatchDog requires the following Chrome permissions:
 - **Scope:** UI component only, no data collection
 - **Functionality:** Shows scan results and controls
 
-### scripting
-- **Purpose:** Inject content scripts to scan pages and highlight elements
-- **Scope:** Only on pages you actively choose to scan
-- **Functionality:** Required for DOM analysis and visual highlighting
-
 ---
 
 ## Your Rights and Controls

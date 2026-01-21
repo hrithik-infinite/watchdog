@@ -13,7 +13,7 @@ export default defineManifest({
   version_name: version,
   description,
 
-  permissions: ['activeTab', 'storage', 'sidePanel', 'scripting'],
+  permissions: ['activeTab', 'storage', 'sidePanel'],
 
   action: {
     default_icon: {
