@@ -504,92 +504,110 @@ export function exportHTML(result: ScanResult): void {
 }
 
 /**
- * Capture screenshot of the current page
- */
-async function captureScreenshot(): Promise<string> {
-  return new Promise((resolve) => {
-    chrome.tabs.captureVisibleTab({ format: 'png' }, (dataUrl) => {
-      resolve(dataUrl || '');
-    });
-  });
-}
-
-/**
- * Export scan results as PDF
+ * Export scan results as PDF using pdf-lib
  */
 export async function exportPDF(result: ScanResult): Promise<void> {
-  // Dynamically import jsPDF to avoid loading it unless needed
-  const { default: jsPDF } = await import('jspdf');
+  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
 
-  const doc = new jsPDF({
-    orientation: 'portrait',
-    unit: 'mm',
-    format: 'a4',
-  });
+  const doc = await PDFDocument.create();
+  const helvetica = await doc.embedFont(StandardFonts.Helvetica);
+  const helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
 
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 20;
+  const pageWidth = 595; // A4 width in points
+  const pageHeight = 842; // A4 height in points
+  const margin = 50;
   const contentWidth = pageWidth - 2 * margin;
-  let yPosition = margin;
 
-  // Helper to add new page if needed
+  let page = doc.addPage([pageWidth, pageHeight]);
+  let yPosition = pageHeight - margin;
+
+  const addNewPage = () => {
+    page = doc.addPage([pageWidth, pageHeight]);
+    yPosition = pageHeight - margin;
+  };
+
   const checkPageBreak = (requiredSpace: number) => {
-    if (yPosition + requiredSpace > pageHeight - margin) {
-      doc.addPage();
-      yPosition = margin;
+    if (yPosition - requiredSpace < margin) {
+      addNewPage();
     }
   };
 
-  // Header
-  doc.setFillColor(37, 99, 235);
-  doc.rect(0, 0, pageWidth, 40, 'F');
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text('WatchDog Accessibility Report', margin, 25);
+  // Helper to wrap text
+  const wrapText = (
+    text: string,
+    maxWidth: number,
+    fontSize: number,
+    font: typeof helvetica
+  ): string[] => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
 
-  yPosition = 50;
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const width = font.widthOfTextAtSize(testLine, fontSize);
+      if (width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  };
+
+  // Header background
+  page.drawRectangle({
+    x: 0,
+    y: pageHeight - 80,
+    width: pageWidth,
+    height: 80,
+    color: rgb(37 / 255, 99 / 255, 235 / 255),
+  });
+
+  // Header text
+  page.drawText('WatchDog Accessibility Report', {
+    x: margin,
+    y: pageHeight - 50,
+    size: 22,
+    font: helveticaBold,
+    color: rgb(1, 1, 1),
+  });
+
+  yPosition = pageHeight - 110;
 
   // Metadata
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`URL: ${result.url}`, margin, yPosition);
-  yPosition += 6;
-  doc.text(`Date: ${new Date(result.timestamp).toLocaleString()}`, margin, yPosition);
-  yPosition += 6;
-  doc.text(`Scan Duration: ${result.duration.toFixed(0)}ms`, margin, yPosition);
-  yPosition += 6;
-  doc.text(`Total Issues: ${result.summary.total}`, margin, yPosition);
-  yPosition += 12;
+  const metaLines = [
+    `URL: ${result.url}`,
+    `Date: ${new Date(result.timestamp).toLocaleString()}`,
+    `Scan Duration: ${result.duration.toFixed(0)}ms`,
+    `Total Issues: ${result.summary.total}`,
+  ];
 
-  // Try to capture and add screenshot
-  try {
-    const screenshot = await captureScreenshot();
-    if (screenshot) {
-      checkPageBreak(80);
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Screenshot', margin, yPosition);
-      yPosition += 8;
-
-      // Add screenshot (scaled to fit)
-      const imgWidth = contentWidth;
-      const imgHeight = 120;
-      doc.addImage(screenshot, 'PNG', margin, yPosition, imgWidth, imgHeight);
-      yPosition += imgHeight + 12;
-    }
-  } catch (error) {
-    console.error('Failed to capture screenshot:', error);
+  for (const line of metaLines) {
+    page.drawText(line, {
+      x: margin,
+      y: yPosition,
+      size: 10,
+      font: helvetica,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 16;
   }
 
-  // Summary
-  checkPageBreak(50);
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Summary', margin, yPosition);
-  yPosition += 10;
+  yPosition -= 10;
+
+  // Summary section
+  checkPageBreak(100);
+  page.drawText('Summary', {
+    x: margin,
+    y: yPosition,
+    size: 16,
+    font: helveticaBold,
+    color: rgb(0, 0, 0),
+  });
+  yPosition -= 25;
 
   const severities: Array<{ key: Severity; label: string; color: [number, number, number] }> = [
     { key: 'critical', label: 'Critical', color: [220, 38, 38] },
@@ -598,80 +616,117 @@ export async function exportPDF(result: ScanResult): Promise<void> {
     { key: 'minor', label: 'Minor', color: [37, 99, 235] },
   ];
 
-  severities.forEach(({ key, label, color }) => {
+  for (const { key, label, color } of severities) {
     const count = result.summary.bySeverity[key];
-    doc.setFillColor(...color);
-    doc.rect(margin, yPosition - 5, 5, 5, 'F');
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`${label}: ${count}`, margin + 8, yPosition);
-    yPosition += 7;
-  });
+    page.drawRectangle({
+      x: margin,
+      y: yPosition - 3,
+      width: 12,
+      height: 12,
+      color: rgb(color[0] / 255, color[1] / 255, color[2] / 255),
+    });
+    page.drawText(`${label}: ${count}`, {
+      x: margin + 18,
+      y: yPosition,
+      size: 10,
+      font: helvetica,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 18;
+  }
 
-  yPosition += 8;
+  yPosition -= 20;
 
   // Issues by severity
   for (const { key: severity, label } of severities) {
     const issues = result.issues.filter((i) => i.severity === severity);
     if (issues.length === 0) continue;
 
-    checkPageBreak(20);
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'bold');
-    doc.text(`${label} Issues (${issues.length})`, margin, yPosition);
-    yPosition += 8;
+    checkPageBreak(40);
+    page.drawText(`${label} Issues (${issues.length})`, {
+      x: margin,
+      y: yPosition,
+      size: 14,
+      font: helveticaBold,
+      color: rgb(0, 0, 0),
+    });
+    yPosition -= 22;
 
     for (let i = 0; i < issues.length; i++) {
       const issue = issues[i];
-      checkPageBreak(40);
+      checkPageBreak(80);
 
-      // Issue number and message
-      doc.setFontSize(11);
-      doc.setFont('helvetica', 'bold');
-      const issueTitle = `${i + 1}. ${issue.message}`;
-      const titleLines = doc.splitTextToSize(issueTitle, contentWidth);
-      doc.text(titleLines, margin, yPosition);
-      yPosition += titleLines.length * 5 + 3;
+      // Issue title
+      const titleLines = wrapText(`${i + 1}. ${issue.message}`, contentWidth, 11, helveticaBold);
+      for (const line of titleLines) {
+        page.drawText(line, {
+          x: margin,
+          y: yPosition,
+          size: 11,
+          font: helveticaBold,
+          color: rgb(0, 0, 0),
+        });
+        yPosition -= 14;
+      }
 
       // WCAG info
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100, 100, 100);
-      doc.text(
-        `WCAG ${issue.wcag.id} (${issue.wcag.level}) - ${issue.wcag.name}`,
-        margin,
-        yPosition
-      );
-      yPosition += 6;
+      page.drawText(`WCAG ${issue.wcag.id} (${issue.wcag.level}) - ${issue.wcag.name}`, {
+        x: margin,
+        y: yPosition,
+        size: 9,
+        font: helvetica,
+        color: rgb(0.4, 0.4, 0.4),
+      });
+      yPosition -= 14;
 
-      // Element selector
-      doc.setTextColor(0, 0, 0);
-      doc.text(`Selector: ${issue.element.selector}`, margin, yPosition);
-      yPosition += 6;
+      // Selector (truncate if too long)
+      const selector =
+        issue.element.selector.length > 80
+          ? issue.element.selector.slice(0, 77) + '...'
+          : issue.element.selector;
+      page.drawText(`Selector: ${selector}`, {
+        x: margin,
+        y: yPosition,
+        size: 9,
+        font: helvetica,
+        color: rgb(0, 0, 0),
+      });
+      yPosition -= 14;
 
       // Fix description
-      const fixLines = doc.splitTextToSize(`Fix: ${issue.fix.description}`, contentWidth);
-      doc.text(fixLines, margin, yPosition);
-      yPosition += fixLines.length * 4 + 8;
+      const fixLines = wrapText(`Fix: ${issue.fix.description}`, contentWidth, 9, helvetica);
+      for (const line of fixLines) {
+        checkPageBreak(14);
+        page.drawText(line, {
+          x: margin,
+          y: yPosition,
+          size: 9,
+          font: helvetica,
+          color: rgb(0, 0, 0),
+        });
+        yPosition -= 12;
+      }
+
+      yPosition -= 10;
     }
 
-    yPosition += 5;
+    yPosition -= 10;
   }
 
-  // Footer
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  const footerY = pageHeight - 10;
-  doc.text(
-    `Generated by WatchDog v1.0.0 on ${new Date().toLocaleString()}`,
-    pageWidth / 2,
-    footerY,
-    { align: 'center' }
-  );
+  // Footer on last page
+  page.drawText(`Generated by WatchDog v1.0.0 on ${new Date().toLocaleString()}`, {
+    x: pageWidth / 2 - 100,
+    y: 30,
+    size: 8,
+    font: helvetica,
+    color: rgb(0.6, 0.6, 0.6),
+  });
 
   // Save PDF
+  const pdfBytes = await doc.save();
+  const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
   const filename = `watchdog-report-${formatTimestamp(result.timestamp)}.pdf`;
-  doc.save(filename);
+  downloadFile(blob, filename, 'application/pdf');
 }
 
 /**

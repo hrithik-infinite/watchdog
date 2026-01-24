@@ -4,13 +4,12 @@ import { getCurrentTab } from '@/shared/messaging';
 import type { ScanResult, Issue, ScanSummary, Severity, Category } from '@/shared/types';
 import logger from '@/shared/logger';
 
-async function checkContentScriptLoaded(tabId: number): Promise<boolean> {
+async function ensureContentScriptLoaded(tabId: number): Promise<void> {
   try {
     await chrome.tabs.sendMessage(tabId, { type: 'PING' });
-    return true;
+    logger.info('Content script loaded', { tabId });
   } catch {
-    logger.warn('Content script not loaded', { tabId });
-    return false;
+    throw new Error('Content script not loaded. Please refresh the page and try again.');
   }
 }
 
@@ -113,11 +112,8 @@ export function useScanner() {
           throw new Error('Cannot scan browser internal pages');
         }
 
-        // Check if content script is loaded
-        const isLoaded = await checkContentScriptLoaded(tab.id);
-        if (!isLoaded) {
-          throw new Error('Please refresh the page and try again');
-        }
+        // Ensure content script is loaded (inject on-demand if needed)
+        await ensureContentScriptLoaded(tab.id);
 
         const result = await scanSingle(auditType, tab.id);
         logger.info('Scan completed', {
@@ -176,11 +172,8 @@ export function useScanner() {
           throw new Error('Cannot scan browser internal pages');
         }
 
-        // Check if content script is loaded
-        const isLoaded = await checkContentScriptLoaded(tab.id);
-        if (!isLoaded) {
-          throw new Error('Please refresh the page and try again');
-        }
+        // Ensure content script is loaded (inject on-demand if needed)
+        await ensureContentScriptLoaded(tab.id);
 
         const allIssues: Issue[] = [];
         const allIncomplete: Issue[] = [];
