@@ -255,6 +255,30 @@ describe('PWA Scanner', () => {
       expect(manifestIssue).toBeDefined();
     });
 
+    it('should handle manifest link without href attribute', async () => {
+      // Manifest link exists but has no href
+      const noHrefDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', noHrefDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: noHrefDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      // Should complete without errors - manifest content won't be fetched due to missing href
+      expect(Array.isArray(result.issues)).toBe(true);
+      expect(result.duration).toBeGreaterThanOrEqual(0);
+    });
+
     it('should detect present manifest link', async () => {
       const withManifestDOM = new JSDOM(
         '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
@@ -1090,6 +1114,73 @@ describe('PWA Scanner', () => {
     });
   });
 
+  describe('Service worker registration paths', () => {
+    it('should detect when no service worker is registered', async () => {
+      const mockServiceWorker = {
+        getRegistration: vi.fn().mockResolvedValue(null),
+      };
+      vi.stubGlobal('navigator', { serviceWorker: mockServiceWorker });
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+        navigator: { serviceWorker: mockServiceWorker },
+      });
+
+      const result = await scanPWA();
+
+      const swIssue = result.issues.find((i) => i.ruleId === 'service-worker-not-registered');
+      expect(swIssue).toBeDefined();
+      expect(swIssue?.severity).toBe('critical');
+      expect(swIssue?.message).toContain('No service worker');
+    });
+
+    it('should pass when service worker is registered', async () => {
+      const swDOM = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>');
+      const mockServiceWorker = {
+        getRegistration: vi.fn().mockResolvedValue({
+          active: { state: 'activated' },
+          scope: 'https://example.com/',
+        }),
+      };
+      vi.stubGlobal('navigator', { serviceWorker: mockServiceWorker });
+      vi.stubGlobal('document', swDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: swDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: { serviceWorker: mockServiceWorker },
+      });
+
+      const result = await scanPWA();
+
+      // Should not have the "not registered" issue
+      const swNotRegistered = result.issues.find(
+        (i) => i.ruleId === 'service-worker-not-registered'
+      );
+      expect(swNotRegistered).toBeUndefined();
+    });
+
+    it('should handle when service worker API throws error', async () => {
+      const mockServiceWorker = {
+        getRegistration: vi.fn().mockRejectedValue(new Error('SW API error')),
+      };
+      vi.stubGlobal('navigator', { serviceWorker: mockServiceWorker });
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+        navigator: { serviceWorker: mockServiceWorker },
+      });
+
+      const result = await scanPWA();
+
+      // Should complete without throwing
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
+
   describe('Learn more URL generation', () => {
     it('should generate manifest learn more URL for manifest-related checks', async () => {
       const withManifestDOM = new JSDOM(
@@ -1226,6 +1317,81 @@ describe('PWA Scanner', () => {
         expect(anyIssue.fix.learnMoreUrl).toBeDefined();
         expect(typeof anyIssue.fix.learnMoreUrl).toBe('string');
       }
+    });
+
+    it('should return default PWA URL for unrecognized check IDs', async () => {
+      // Test service worker check which falls through to default URL
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      // Service worker issues should use default PWA URL
+      const swIssue = result.issues.find((i) => i.ruleId === 'service-worker-not-registered');
+      if (swIssue) {
+        expect(swIssue.fix.learnMoreUrl).toContain('web.dev');
+      }
+    });
+  });
+
+  describe('No manifest link in DOM', () => {
+    it('should handle when no manifest link exists in document', async () => {
+      // Use a DOM without any manifest link
+      const noManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><title>Test</title></head><body></body></html>'
+      );
+      vi.stubGlobal('document', noManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: noManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const result = await scanPWA();
+
+      // Should complete and detect missing manifest
+      expect(result).toBeDefined();
+      const manifestIssue = result.issues.find((i) => i.ruleId === 'manifest-missing');
+      expect(manifestIssue).toBeDefined();
+      expect(manifestIssue?.severity).toBe('critical');
+    });
+
+    it('should skip manifest content checks when no manifest link exists', async () => {
+      const noManifestDOM = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>');
+      vi.stubGlobal('document', noManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: noManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      // Make sure fetch is not called when there's no manifest link
+      const mockFetch = vi.fn();
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      // Fetch should not be called for manifest when no link exists
+      expect(mockFetch).not.toHaveBeenCalled();
+      expect(result).toBeDefined();
     });
   });
 });

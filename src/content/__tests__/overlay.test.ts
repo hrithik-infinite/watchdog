@@ -278,12 +278,12 @@ describe('Overlay - Element Highlighting', () => {
     it('should handle selector errors gracefully', () => {
       document.body.innerHTML = '<div class="test">Test</div>';
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-      let callCount = 0;
 
-      vi.spyOn(document, 'querySelector').mockImplementation((sel) => {
-        callCount++;
-        if (callCount === 2) throw new Error('Selector error');
-        return document.querySelector(sel as string);
+      // Create a mock that throws on specific selector
+      const querySelectorSpy = vi.spyOn(document, 'querySelector').mockImplementation((sel) => {
+        if (sel === '.error') throw new Error('Selector error');
+        if (sel === '.test') return document.body.querySelector('.test');
+        return null;
       });
 
       highlightMultiple([
@@ -293,6 +293,95 @@ describe('Overlay - Element Highlighting', () => {
 
       expect(errorSpy).toHaveBeenCalled();
       errorSpy.mockRestore();
+      querySelectorSpy.mockRestore();
+    });
+
+    it('should skip body element in highlightMultiple', () => {
+      document.body.innerHTML = '<div class="test">Content</div>';
+
+      highlightMultiple([
+        { selector: 'body', severity: 'critical' },
+        { selector: '.test', severity: 'serious' },
+      ]);
+
+      // Body should NOT be highlighted
+      expect(document.body.classList.contains('watchdog-highlight-critical')).toBe(false);
+      // But .test should be highlighted
+      expect(
+        document.querySelector('.test')?.classList.contains('watchdog-highlight-serious')
+      ).toBe(true);
+    });
+
+    it('should skip html element in highlightMultiple', () => {
+      document.body.innerHTML = '<div class="test">Content</div>';
+
+      highlightMultiple([
+        { selector: 'html', severity: 'critical' },
+        { selector: '.test', severity: 'serious' },
+      ]);
+
+      // HTML should NOT be highlighted
+      expect(document.documentElement.classList.contains('watchdog-highlight-critical')).toBe(
+        false
+      );
+      // But .test should be highlighted
+      expect(
+        document.querySelector('.test')?.classList.contains('watchdog-highlight-serious')
+      ).toBe(true);
+    });
+  });
+
+  describe('Skip full-page elements', () => {
+    it('should skip highlighting body element and not add classes', () => {
+      document.body.innerHTML = '<div class="test">Content</div>';
+
+      highlightElement('body', 'critical');
+
+      // Body should NOT have any highlight classes
+      expect(document.body.classList.contains('watchdog-highlight-critical')).toBe(false);
+      expect(document.body.classList.contains('watchdog-highlight-active')).toBe(false);
+    });
+
+    it('should skip highlighting html element and not add classes', () => {
+      document.body.innerHTML = '<div class="test">Content</div>';
+
+      highlightElement('html', 'critical');
+
+      // HTML should NOT have any highlight classes
+      expect(document.documentElement.classList.contains('watchdog-highlight-critical')).toBe(
+        false
+      );
+      expect(document.documentElement.classList.contains('watchdog-highlight-active')).toBe(false);
+    });
+
+    it('should not scroll when skipping full-page elements', () => {
+      document.body.innerHTML = '<div class="test">Content</div>';
+
+      // Reset mockScrollInto before test
+      mockScrollInto.mockClear();
+
+      highlightElement('body', 'serious');
+
+      // Body should have no highlight classes
+      expect(document.body.classList.contains('watchdog-highlight-serious')).toBe(false);
+      expect(document.body.classList.contains('watchdog-highlight-active')).toBe(false);
+
+      // scrollIntoView should NOT have been called on body
+      expect(mockScrollInto).not.toHaveBeenCalled();
+    });
+
+    it('should still highlight normal elements after skipping body', () => {
+      document.body.innerHTML = '<div class="test">Content</div>';
+
+      // First try to highlight body (should be skipped)
+      highlightElement('body', 'critical');
+      expect(document.body.classList.contains('watchdog-highlight-critical')).toBe(false);
+
+      // Then highlight a normal element (should work)
+      highlightElement('.test', 'serious');
+      expect(
+        document.querySelector('.test')?.classList.contains('watchdog-highlight-serious')
+      ).toBe(true);
     });
   });
 });

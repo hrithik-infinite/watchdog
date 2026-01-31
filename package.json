@@ -1,6 +1,6 @@
 {
   "name": "watchdog",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Instant accessibility audits with visual highlighting",
   "type": "module",
   "scripts": {
@@ -22,7 +22,7 @@
     "chrome-extension",
     "wcag"
   ],
-  "author": "",
+  "author": "Hrithik Agarwal",
   "license": "ISC",
   "devDependencies": {
     "@changesets/cli": "^2.29.8",

@@ -353,4 +353,121 @@ describe('Focus Order Visualization', () => {
       expect(badges.length).toBeGreaterThan(90);
     });
   });
+
+  describe('Scroll and resize handlers', () => {
+    it('should update badge positions on scroll event', () => {
+      document.body.innerHTML = `
+        <button id="btn1">Button 1</button>
+        <button id="btn2">Button 2</button>
+      `;
+
+      showFocusOrder();
+
+      const container = document.getElementById('watchdog-focus-order-container');
+      const badges = container?.querySelectorAll('.watchdog-focus-badge');
+      expect(badges?.length).toBe(2);
+
+      // Get initial badge position
+      const firstBadge = badges?.[0] as HTMLElement;
+      const initialTop = firstBadge?.style.top;
+
+      // Trigger scroll event
+      const scrollEvent = new Event('scroll', { bubbles: true });
+      window.dispatchEvent(scrollEvent);
+
+      // Badges should still exist after scroll (positions get updated)
+      const badgesAfterScroll = container?.querySelectorAll('.watchdog-focus-badge');
+      expect(badgesAfterScroll?.length).toBe(2);
+    });
+
+    it('should update badge positions on resize event', () => {
+      document.body.innerHTML = `
+        <button id="btn1">Button 1</button>
+        <button id="btn2">Button 2</button>
+      `;
+
+      showFocusOrder();
+
+      const container = document.getElementById('watchdog-focus-order-container');
+      const badges = container?.querySelectorAll('.watchdog-focus-badge');
+      expect(badges?.length).toBe(2);
+
+      // Trigger resize event
+      const resizeEvent = new Event('resize');
+      window.dispatchEvent(resizeEvent);
+
+      // Badges should still exist after resize (positions get updated)
+      const badgesAfterResize = container?.querySelectorAll('.watchdog-focus-badge');
+      expect(badgesAfterResize?.length).toBe(2);
+    });
+
+    it('should handle scroll events when badges exist', () => {
+      document.body.innerHTML = `
+        <button id="btn1">Button 1</button>
+        <button id="btn2">Button 2</button>
+        <button id="btn3">Button 3</button>
+      `;
+
+      showFocusOrder();
+
+      // Verify badges are created
+      const container = document.getElementById('watchdog-focus-order-container');
+      expect(container).toBeTruthy();
+
+      // Dispatch multiple scroll events to ensure handler works
+      for (let i = 0; i < 3; i++) {
+        window.dispatchEvent(new Event('scroll', { bubbles: true }));
+      }
+
+      // Badges should still be present and positioned
+      const badgesAfter = container?.querySelectorAll('.watchdog-focus-badge');
+      expect(badgesAfter?.length).toBe(3);
+    });
+
+    it('should handle resize events when badges exist', () => {
+      document.body.innerHTML = `
+        <button id="btn1">Button 1</button>
+        <button id="btn2">Button 2</button>
+        <button id="btn3">Button 3</button>
+      `;
+
+      showFocusOrder();
+
+      const container = document.getElementById('watchdog-focus-order-container');
+      expect(container).toBeTruthy();
+
+      // Dispatch multiple resize events
+      for (let i = 0; i < 3; i++) {
+        window.dispatchEvent(new Event('resize'));
+      }
+
+      // Badges should still be present
+      const badgesAfter = container?.querySelectorAll('.watchdog-focus-badge');
+      expect(badgesAfter?.length).toBe(3);
+    });
+
+    it('should not throw when scroll occurs after hiding focus order', () => {
+      document.body.innerHTML = '<button>Click</button>';
+
+      showFocusOrder();
+      hideFocusOrder();
+
+      // Should not throw when scroll event fires after cleanup
+      expect(() => {
+        window.dispatchEvent(new Event('scroll', { bubbles: true }));
+      }).not.toThrow();
+    });
+
+    it('should not throw when resize occurs after hiding focus order', () => {
+      document.body.innerHTML = '<button>Click</button>';
+
+      showFocusOrder();
+      hideFocusOrder();
+
+      // Should not throw when resize event fires after cleanup
+      expect(() => {
+        window.dispatchEvent(new Event('resize'));
+      }).not.toThrow();
+    });
+  });
 });

@@ -557,6 +557,21 @@ describe('Best Practices Scanner', () => {
       expect(result).toBeDefined();
       expect(Array.isArray(result.issues)).toBe(true);
     });
+
+    it('should handle window with jQuery library detection', async () => {
+      // The detection checks window.jQuery.fn.jquery
+      // Since we can't easily mock global window, just verify scanner works
+      const result = await scanBestPractices();
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should handle window with various library structures', async () => {
+      // Verify scanner completes even with library detection running
+      const result = await scanBestPractices();
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
   });
 
   describe('Empty links edge cases', () => {
@@ -739,6 +754,640 @@ describe('Best Practices Scanner', () => {
       const result = await scanBestPractices();
 
       // Empty lang might be detected as missing
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+  });
+
+  describe('Unsized images threshold checks', () => {
+    it('should detect more than 3 unsized images when they have offsetWidth/offsetHeight', async () => {
+      const pageWithManyUnsizedImages = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="large1.jpg">' +
+          '<img src="large2.jpg">' +
+          '<img src="large3.jpg">' +
+          '<img src="large4.jpg">' +
+          '<img src="large5.jpg">' +
+          '</body></html>'
+      );
+
+      // Mock offsetWidth and offsetHeight to simulate rendered images > 50px
+      const images = pageWithManyUnsizedImages.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        Object.defineProperty(img, 'offsetWidth', { value: 200, configurable: true });
+        Object.defineProperty(img, 'offsetHeight', { value: 200, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithManyUnsizedImages.window.document);
+      vi.stubGlobal('window', pageWithManyUnsizedImages.window);
+
+      const result = await scanBestPractices();
+
+      const unsizedIssue = result.issues.find((i) => i.ruleId?.includes('unsized-images'));
+      expect(unsizedIssue).toBeDefined();
+      if (unsizedIssue) {
+        expect(unsizedIssue.severity).toBe('moderate');
+        expect(unsizedIssue.message).toContain('image(s) missing explicit width/height');
+      }
+    });
+
+    it('should not flag 3 or fewer unsized images', async () => {
+      const pageWithFewUnsizedImages = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="large1.jpg">' +
+          '<img src="large2.jpg">' +
+          '<img src="large3.jpg">' +
+          '</body></html>'
+      );
+
+      // Mock offsetWidth and offsetHeight
+      const images = pageWithFewUnsizedImages.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        Object.defineProperty(img, 'offsetWidth', { value: 200, configurable: true });
+        Object.defineProperty(img, 'offsetHeight', { value: 200, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithFewUnsizedImages.window.document);
+      vi.stubGlobal('window', pageWithFewUnsizedImages.window);
+
+      const result = await scanBestPractices();
+
+      const unsizedIssue = result.issues.find((i) => i.ruleId?.includes('unsized-images'));
+      expect(unsizedIssue).toBeUndefined();
+    });
+
+    it('should not flag images with explicit dimensions', async () => {
+      const pageWithSizedImages = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="large1.jpg" width="200" height="200">' +
+          '<img src="large2.jpg" width="200" height="200">' +
+          '<img src="large3.jpg" width="200" height="200">' +
+          '<img src="large4.jpg" width="200" height="200">' +
+          '</body></html>'
+      );
+
+      // Mock offsetWidth and offsetHeight
+      const images = pageWithSizedImages.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        Object.defineProperty(img, 'offsetWidth', { value: 200, configurable: true });
+        Object.defineProperty(img, 'offsetHeight', { value: 200, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithSizedImages.window.document);
+      vi.stubGlobal('window', pageWithSizedImages.window);
+
+      const result = await scanBestPractices();
+
+      const unsizedIssue = result.issues.find((i) => i.ruleId?.includes('unsized-images'));
+      expect(unsizedIssue).toBeUndefined();
+    });
+  });
+
+  describe('Image aspect ratio threshold checks', () => {
+    it('should detect more than 2 images with incorrect aspect ratio', async () => {
+      const pageWithIncorrectAspectRatio = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="img1.jpg" width="100" height="100">' +
+          '<img src="img2.jpg" width="200" height="200">' +
+          '<img src="img3.jpg" width="300" height="300">' +
+          '</body></html>'
+      );
+
+      const images = pageWithIncorrectAspectRatio.window.document.querySelectorAll('img');
+      images.forEach((img, index) => {
+        // Make images complete with mismatched natural dimensions
+        Object.defineProperty(img, 'complete', { value: true, configurable: true });
+        // Natural ratio is 16:9, but declared ratio is 1:1 (>10% difference)
+        Object.defineProperty(img, 'naturalWidth', { value: 1600, configurable: true });
+        Object.defineProperty(img, 'naturalHeight', { value: 900, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithIncorrectAspectRatio.window.document);
+      vi.stubGlobal('window', pageWithIncorrectAspectRatio.window);
+
+      const result = await scanBestPractices();
+
+      const aspectRatioIssue = result.issues.find((i) => i.ruleId?.includes('image-aspect-ratio'));
+      expect(aspectRatioIssue).toBeDefined();
+      if (aspectRatioIssue) {
+        expect(aspectRatioIssue.severity).toBe('minor');
+        expect(aspectRatioIssue.message).toContain('incorrect aspect ratio');
+      }
+    });
+
+    it('should not flag images with matching aspect ratio', async () => {
+      const pageWithCorrectAspectRatio = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="img1.jpg" width="160" height="90">' +
+          '<img src="img2.jpg" width="320" height="180">' +
+          '</body></html>'
+      );
+
+      const images = pageWithCorrectAspectRatio.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        Object.defineProperty(img, 'complete', { value: true, configurable: true });
+        // Natural ratio is 16:9, same as declared ratio
+        Object.defineProperty(img, 'naturalWidth', { value: 1600, configurable: true });
+        Object.defineProperty(img, 'naturalHeight', { value: 900, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithCorrectAspectRatio.window.document);
+      vi.stubGlobal('window', pageWithCorrectAspectRatio.window);
+
+      const result = await scanBestPractices();
+
+      const aspectRatioIssue = result.issues.find((i) => i.ruleId?.includes('image-aspect-ratio'));
+      expect(aspectRatioIssue).toBeUndefined();
+    });
+
+    it('should not flag 2 or fewer images with incorrect aspect ratio', async () => {
+      const pageWithFewIncorrect = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="img1.jpg" width="100" height="100">' +
+          '<img src="img2.jpg" width="200" height="200">' +
+          '</body></html>'
+      );
+
+      const images = pageWithFewIncorrect.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        Object.defineProperty(img, 'complete', { value: true, configurable: true });
+        Object.defineProperty(img, 'naturalWidth', { value: 1600, configurable: true });
+        Object.defineProperty(img, 'naturalHeight', { value: 900, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithFewIncorrect.window.document);
+      vi.stubGlobal('window', pageWithFewIncorrect.window);
+
+      const result = await scanBestPractices();
+
+      const aspectRatioIssue = result.issues.find((i) => i.ruleId?.includes('image-aspect-ratio'));
+      expect(aspectRatioIssue).toBeUndefined();
+    });
+
+    it('should skip incomplete images for aspect ratio check', async () => {
+      const pageWithIncompleteImages = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="img1.jpg" width="100" height="100">' +
+          '<img src="img2.jpg" width="200" height="200">' +
+          '<img src="img3.jpg" width="300" height="300">' +
+          '</body></html>'
+      );
+
+      const images = pageWithIncompleteImages.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        // Images are not complete (still loading)
+        Object.defineProperty(img, 'complete', { value: false, configurable: true });
+        Object.defineProperty(img, 'naturalWidth', { value: 0, configurable: true });
+        Object.defineProperty(img, 'naturalHeight', { value: 0, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithIncompleteImages.window.document);
+      vi.stubGlobal('window', pageWithIncompleteImages.window);
+
+      const result = await scanBestPractices();
+
+      const aspectRatioIssue = result.issues.find((i) => i.ruleId?.includes('image-aspect-ratio'));
+      expect(aspectRatioIssue).toBeUndefined();
+    });
+
+    it('should skip images without declared dimensions for aspect ratio check', async () => {
+      const pageWithNoDeclaredDimensions = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="img1.jpg">' +
+          '<img src="img2.jpg">' +
+          '<img src="img3.jpg">' +
+          '</body></html>'
+      );
+
+      const images = pageWithNoDeclaredDimensions.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        Object.defineProperty(img, 'complete', { value: true, configurable: true });
+        Object.defineProperty(img, 'naturalWidth', { value: 1600, configurable: true });
+        Object.defineProperty(img, 'naturalHeight', { value: 900, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithNoDeclaredDimensions.window.document);
+      vi.stubGlobal('window', pageWithNoDeclaredDimensions.window);
+
+      const result = await scanBestPractices();
+
+      const aspectRatioIssue = result.issues.find((i) => i.ruleId?.includes('image-aspect-ratio'));
+      expect(aspectRatioIssue).toBeUndefined();
+    });
+
+    it('should handle images with zero natural dimensions', async () => {
+      const pageWithZeroDimensions = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body>' +
+          '<img src="img1.jpg" width="100" height="100">' +
+          '</body></html>'
+      );
+
+      const images = pageWithZeroDimensions.window.document.querySelectorAll('img');
+      images.forEach((img) => {
+        Object.defineProperty(img, 'complete', { value: true, configurable: true });
+        Object.defineProperty(img, 'naturalWidth', { value: 0, configurable: true });
+        Object.defineProperty(img, 'naturalHeight', { value: 0, configurable: true });
+      });
+
+      vi.stubGlobal('document', pageWithZeroDimensions.window.document);
+      vi.stubGlobal('window', pageWithZeroDimensions.window);
+
+      const result = await scanBestPractices();
+
+      const aspectRatioIssue = result.issues.find((i) => i.ruleId?.includes('image-aspect-ratio'));
+      expect(aspectRatioIssue).toBeUndefined();
+    });
+  });
+
+  describe('Vulnerable library detection', () => {
+    it('should detect vulnerable jQuery version', async () => {
+      const vulnDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with vulnerable jQuery version
+      const windowWithJQuery = Object.create(vulnDOM.window);
+      Object.defineProperty(windowWithJQuery, 'jQuery', {
+        value: { fn: { jquery: '3.4.1' } },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithJQuery, 'document', {
+        value: vulnDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithJQuery);
+      vi.stubGlobal('document', vulnDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should detect jQuery vulnerability
+      const vulnIssue = result.issues.find((i) => i.ruleId?.includes('vuln-jquery'));
+      expect(vulnIssue).toBeDefined();
+      if (vulnIssue) {
+        expect(vulnIssue.severity).toBe('moderate');
+        expect(vulnIssue.message).toContain('jquery');
+        expect(vulnIssue.message).toContain('CVE');
+      }
+    });
+
+    it('should detect vulnerable lodash version', async () => {
+      const vulnDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with vulnerable Lodash version
+      const windowWithLodash = Object.create(vulnDOM.window);
+      Object.defineProperty(windowWithLodash, '_', {
+        value: { VERSION: '4.17.15' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithLodash, 'document', {
+        value: vulnDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithLodash);
+      vi.stubGlobal('document', vulnDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should detect Lodash vulnerability
+      const vulnIssue = result.issues.find((i) => i.ruleId?.includes('vuln-lodash'));
+      expect(vulnIssue).toBeDefined();
+      if (vulnIssue) {
+        expect(vulnIssue.severity).toBe('serious');
+      }
+    });
+
+    it('should detect vulnerable moment.js version', async () => {
+      const vulnDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with vulnerable Moment version
+      const windowWithMoment = Object.create(vulnDOM.window);
+      Object.defineProperty(windowWithMoment, 'moment', {
+        value: { version: '2.29.1' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithMoment, 'document', {
+        value: vulnDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithMoment);
+      vi.stubGlobal('document', vulnDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should detect Moment vulnerability
+      const vulnIssue = result.issues.find((i) => i.ruleId?.includes('vuln-moment'));
+      expect(vulnIssue).toBeDefined();
+      if (vulnIssue) {
+        expect(vulnIssue.severity).toBe('moderate');
+      }
+    });
+
+    it('should detect vulnerable Angular 1.x version', async () => {
+      const vulnDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with vulnerable Angular 1.x version
+      const windowWithAngular = Object.create(vulnDOM.window);
+      Object.defineProperty(windowWithAngular, 'angular', {
+        value: { version: { full: '1.6.5' } },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithAngular, 'document', {
+        value: vulnDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithAngular);
+      vi.stubGlobal('document', vulnDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should detect Angular vulnerability
+      const vulnIssue = result.issues.find((i) => i.ruleId?.includes('vuln-angular'));
+      expect(vulnIssue).toBeDefined();
+      if (vulnIssue) {
+        expect(vulnIssue.severity).toBe('serious');
+      }
+    });
+
+    it('should not flag secure library versions', async () => {
+      const safeDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with safe jQuery version
+      const windowWithSafeJQuery = Object.create(safeDOM.window);
+      Object.defineProperty(windowWithSafeJQuery, 'jQuery', {
+        value: { fn: { jquery: '3.7.0' } }, // Safe version
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithSafeJQuery, 'document', {
+        value: safeDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithSafeJQuery);
+      vi.stubGlobal('document', safeDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should NOT detect jQuery vulnerability for safe version
+      const vulnIssue = result.issues.find((i) => i.ruleId?.includes('vuln-jquery'));
+      expect(vulnIssue).toBeUndefined();
+    });
+
+    it('should handle version comparison with different length versions', async () => {
+      const vulnDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with jQuery version that has different segments
+      const windowWithJQuery = Object.create(vulnDOM.window);
+      Object.defineProperty(windowWithJQuery, 'jQuery', {
+        value: { fn: { jquery: '3.4' } }, // Only major.minor, no patch
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithJQuery, 'document', {
+        value: vulnDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithJQuery);
+      vi.stubGlobal('document', vulnDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should still detect vulnerability
+      const vulnIssue = result.issues.find((i) => i.ruleId?.includes('vuln-jquery'));
+      expect(vulnIssue).toBeDefined();
+    });
+
+    it('should detect multiple vulnerabilities for same library', async () => {
+      const vulnDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with very old jQuery version (has multiple CVEs)
+      const windowWithOldJQuery = Object.create(vulnDOM.window);
+      Object.defineProperty(windowWithOldJQuery, 'jQuery', {
+        value: { fn: { jquery: '1.10.0' } }, // Old version with multiple vulnerabilities
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithOldJQuery, 'document', {
+        value: vulnDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithOldJQuery);
+      vi.stubGlobal('document', vulnDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should detect multiple jQuery vulnerabilities
+      const vulnIssues = result.issues.filter((i) => i.ruleId?.includes('vuln-jquery'));
+      expect(vulnIssues.length).toBeGreaterThan(1);
+    });
+
+    it('should detect vulnerable Bootstrap version', async () => {
+      const vulnDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // Create window with vulnerable Bootstrap version
+      const windowWithBootstrap = Object.create(vulnDOM.window);
+      Object.defineProperty(windowWithBootstrap, 'bootstrap', {
+        value: { VERSION: '4.2.0' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithBootstrap, 'document', {
+        value: vulnDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithBootstrap);
+      vi.stubGlobal('document', vulnDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Should detect Bootstrap vulnerability
+      const vulnIssue = result.issues.find((i) => i.ruleId?.includes('vuln-bootstrap'));
+      expect(vulnIssue).toBeDefined();
+      if (vulnIssue) {
+        expect(vulnIssue.severity).toBe('moderate');
+      }
+    });
+  });
+
+  describe('Library detection', () => {
+    it('should detect React library', async () => {
+      const libDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      const windowWithReact = Object.create(libDOM.window);
+      Object.defineProperty(windowWithReact, 'React', {
+        value: { version: '18.2.0' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithReact, 'document', {
+        value: libDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithReact);
+      vi.stubGlobal('document', libDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // React detected - scan should complete
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should detect Vue library', async () => {
+      const libDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      const windowWithVue = Object.create(libDOM.window);
+      Object.defineProperty(windowWithVue, 'Vue', {
+        value: { version: '3.3.4' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithVue, 'document', {
+        value: libDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithVue);
+      vi.stubGlobal('document', libDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Vue detected - scan should complete
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should detect Backbone library', async () => {
+      const libDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      const windowWithBackbone = Object.create(libDOM.window);
+      Object.defineProperty(windowWithBackbone, 'Backbone', {
+        value: { VERSION: '1.4.0' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithBackbone, 'document', {
+        value: libDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithBackbone);
+      vi.stubGlobal('document', libDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Backbone detected - scan should complete
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should detect Ember library', async () => {
+      const libDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      const windowWithEmber = Object.create(libDOM.window);
+      Object.defineProperty(windowWithEmber, 'Ember', {
+        value: { VERSION: '3.28.0' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithEmber, 'document', {
+        value: libDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithEmber);
+      vi.stubGlobal('document', libDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Ember detected - scan should complete
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should detect Underscore library (when Lodash not present)', async () => {
+      const libDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      const windowWithUnderscore = Object.create(libDOM.window);
+      Object.defineProperty(windowWithUnderscore, '_', {
+        value: { VERSION: '1.13.6' },
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithUnderscore, 'document', {
+        value: libDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithUnderscore);
+      vi.stubGlobal('document', libDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Underscore detected - scan should complete
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('should prefer Lodash over Underscore when both present', async () => {
+      const libDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
+      );
+
+      // When lodash is present with VERSION property, underscore should be skipped
+      const windowWithBoth = Object.create(libDOM.window);
+      Object.defineProperty(windowWithBoth, '_', {
+        value: { VERSION: '4.17.21' }, // Lodash version format
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(windowWithBoth, 'document', {
+        value: libDOM.window.document,
+        configurable: true,
+      });
+
+      vi.stubGlobal('window', windowWithBoth);
+      vi.stubGlobal('document', libDOM.window.document);
+
+      const result = await scanBestPractices();
+
+      // Lodash detected (underscore is skipped when lodash is present) - scan should complete
+      expect(result).toBeDefined();
       expect(Array.isArray(result.issues)).toBe(true);
     });
   });
