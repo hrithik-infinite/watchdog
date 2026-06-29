@@ -1,0 +1,29 @@
+WatchDog — All-in-One Website Auditor
+
+WatchDog checks any web page across six audits — Accessibility, Performance, SEO, Security, Best Practices, and PWA — and shows you what to fix in plain language, with problems highlighted right on the page.
+
+Why install WatchDog:
+
+- Six audits in one click - Accessibility (WCAG, via axe-core), Performance (Core Web Vitals), SEO, Security, Best Practices, and PWA readiness
+- Plain-language results - Site-owner mode explains what's wrong and why it matters, no jargon required; developers can switch to full technical detail and code fixes
+- Visual highlighting - See exactly where each problem is on the page, not just in a report
+- Top fixes first - The highest-impact changes are ranked so you know where to start
+- Private by design - Scans run in your browser; nothing about the pages you check is uploaded
+- Free and open - No subscriptions, no tracking
+
+Whether you own a website, build one, or test one before launch, WatchDog turns a page into a clear, prioritized to-do list.
+
+Make the web better, one page at a time.
+
+---
+
+HOST PERMISSION JUSTIFICATION:
+
+WatchDog requires broad host access to audit any website you visit. This permission allows the extension to:
+
+1. Analyze the DOM structure and content for accessibility issues across all sites
+2. Run axe-core accessibility scanner to detect WCAG compliance problems
+3. Visually highlight accessibility issues directly on the page
+
+Without this access, WatchDog couldn't perform instant audits or highlight problems—defeating its core purpose. 
+The extension processes all data locally and never sends your page content elsewhere. Your privacy is protected while you get instant accessibility insights on any website.

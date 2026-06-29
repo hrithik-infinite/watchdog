@@ -1,7 +1,7 @@
 {
   "name": "watchdog",
   "version": "1.0.1",
-  "description": "Instant accessibility audits with visual highlighting",
+  "description": "All-in-one website auditor: Accessibility, Performance, SEO, Security, Best Practices & PWA",
   "type": "module",
   "scripts": {
     "dev": "vite",
