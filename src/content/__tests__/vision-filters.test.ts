@@ -329,6 +329,59 @@ describe('Vision Filters', () => {
       expect(matrix).toBeTruthy();
       expect(matrix?.getAttribute('type')).toBe('matrix');
     });
+
+    it('should build feColorMatrix nodes as SVG-namespaced elements (no innerHTML)', () => {
+      applyVisionFilter('protanopia');
+
+      const svg = document.getElementById('watchdog-vision-filters');
+      const matrices = svg?.querySelectorAll('feColorMatrix');
+
+      // One feColorMatrix per colorblind type, each a real SVG element node
+      // (innerHTML parsing would produce HTML-namespaced/lowercased nodes).
+      expect(matrices?.length).toBeGreaterThanOrEqual(4);
+      matrices?.forEach((matrix) => {
+        expect(matrix.namespaceURI).toBe('http://www.w3.org/2000/svg');
+        expect(matrix.getAttribute('type')).toBe('matrix');
+        expect(matrix.getAttribute('values')).toBeTruthy();
+      });
+    });
+
+    it('should not use innerHTML to build filters', () => {
+      applyVisionFilter('protanopia');
+
+      const svg = document.getElementById('watchdog-vision-filters');
+      const filter = svg?.querySelector('filter');
+
+      // Children are appended elements, not parsed from a markup string.
+      expect(filter?.children.length).toBeGreaterThanOrEqual(1);
+      expect(filter?.firstElementChild?.namespaceURI).toBe('http://www.w3.org/2000/svg');
+    });
+
+    it('should set color-interpolation-filters to sRGB on each filter', () => {
+      applyVisionFilter('protanopia');
+
+      const svg = document.getElementById('watchdog-vision-filters');
+      const filters = svg?.querySelectorAll('filter');
+
+      expect(filters?.length).toBeGreaterThanOrEqual(4);
+      filters?.forEach((filter) => {
+        expect(filter.getAttribute('color-interpolation-filters')).toBe('sRGB');
+      });
+    });
+
+    it('should preserve the protanopia matrix values', () => {
+      applyVisionFilter('protanopia');
+
+      const matrix = document
+        .getElementById('watchdog-vision-filters')
+        ?.querySelector('#watchdog-vision-filter-protanopia feColorMatrix');
+
+      // Whitespace-normalized comparison of the preserved matrix values.
+      const values = matrix?.getAttribute('values')?.replace(/\s+/g, ' ').trim();
+      expect(values).toBe(
+        '0.567, 0.433, 0, 0, 0 0.558, 0.442, 0, 0, 0 0, 0.242, 0.758, 0, 0 0, 0, 0, 1, 0'
+      );
+    });
   });
 
   describe('Edge cases', () => {
