@@ -1036,10 +1036,12 @@ describe('Best Practices Scanner', () => {
         '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
       );
 
-      // Create window with vulnerable Lodash version
+      // Create window with vulnerable Lodash version. Real lodash exposes
+      // runInContext (underscore does not); the scanner uses it to tell them
+      // apart, so a faithful lodash mock must include it.
       const windowWithLodash = Object.create(vulnDOM.window);
       Object.defineProperty(windowWithLodash, '_', {
-        value: { VERSION: '4.17.15' },
+        value: { VERSION: '4.17.15', runInContext: () => ({}) },
         configurable: true,
         writable: true,
       });
@@ -1359,36 +1361,65 @@ describe('Best Practices Scanner', () => {
 
       const result = await scanBestPractices();
 
-      // Underscore detected - scan should complete
+      // Underscore (window._ without runInContext) must not be misattributed as
+      // lodash and tagged with lodash CVEs.
       expect(result).toBeDefined();
       expect(Array.isArray(result.issues)).toBe(true);
+      expect(result.issues.some((i) => i.ruleId?.includes('vuln-lodash'))).toBe(false);
     });
 
-    it('should prefer Lodash over Underscore when both present', async () => {
+    it('does not flag underscore as vulnerable lodash even when version strings overlap', async () => {
       const libDOM = new JSDOM(
         '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
       );
 
-      // When lodash is present with VERSION property, underscore should be skipped
-      const windowWithBoth = Object.create(libDOM.window);
-      Object.defineProperty(windowWithBoth, '_', {
-        value: { VERSION: '4.17.21' }, // Lodash version format
+      // window._ with a string that matches a KNOWN vulnerable lodash version,
+      // but underscore semantics (no runInContext). The scanner must classify it
+      // as underscore and emit no lodash CVE — the exact misattribution bug.
+      const windowWithUnderscore = Object.create(libDOM.window);
+      Object.defineProperty(windowWithUnderscore, '_', {
+        value: { VERSION: '4.17.15' }, // collides with vulnerable lodash version
         configurable: true,
         writable: true,
       });
-      Object.defineProperty(windowWithBoth, 'document', {
+      Object.defineProperty(windowWithUnderscore, 'document', {
         value: libDOM.window.document,
         configurable: true,
       });
 
-      vi.stubGlobal('window', windowWithBoth);
+      vi.stubGlobal('window', windowWithUnderscore);
       vi.stubGlobal('document', libDOM.window.document);
 
       const result = await scanBestPractices();
 
-      // Lodash detected (underscore is skipped when lodash is present) - scan should complete
-      expect(result).toBeDefined();
-      expect(Array.isArray(result.issues)).toBe(true);
+      expect(result.issues.some((i) => i.ruleId?.includes('vuln-lodash'))).toBe(false);
+    });
+  });
+
+  describe('Image check accuracy', () => {
+    it('counts only finished-loading zero-size images as broken (not loading/lazy ones)', async () => {
+      const imgDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body><img id="a"><img id="b"><img id="c"></body></html>'
+      );
+      const doc = imgDOM.window.document;
+      const define = (id: string, complete: boolean, naturalWidth: number) => {
+        const el = doc.getElementById(id) as HTMLImageElement;
+        Object.defineProperty(el, 'complete', { value: complete, configurable: true });
+        Object.defineProperty(el, 'naturalWidth', { value: naturalWidth, configurable: true });
+      };
+      define('a', false, 0); // still loading (e.g. loading="lazy") -> not broken
+      define('b', true, 0); // load finished but zero natural size -> broken
+      define('c', true, 300); // loaded with intrinsic size -> fine
+
+      vi.stubGlobal('window', imgDOM.window);
+      vi.stubGlobal('document', doc);
+
+      const result = await scanBestPractices();
+
+      const broken = result.issues.find((i) => i.ruleId === 'broken-images');
+      expect(broken).toBeDefined();
+      // Exactly one image (b) is broken; the still-loading "a" must not be counted.
+      expect(broken?.message).toContain('1 image');
     });
   });
 });

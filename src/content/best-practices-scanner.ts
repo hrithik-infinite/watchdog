@@ -138,10 +138,18 @@ function detectLibraries(): LibraryInfo[] {
     libraries.push({ name: 'jquery', version: jQuery.fn.jquery, detected: true });
   }
 
-  // Lodash
-  const lodash = win._ as { VERSION?: string } | undefined;
-  if (lodash?.VERSION) {
-    libraries.push({ name: 'lodash', version: lodash.VERSION, detected: true });
+  // Lodash vs Underscore — both expose window._ with a VERSION string, so
+  // distinguish them by a lodash-only method: runInContext exists in lodash but
+  // not underscore. (Without this, underscore was always mislabeled "lodash" and
+  // tagged with lodash CVEs, and the separate underscore branch below was dead.)
+  const underscoreLike = win._ as { VERSION?: string; runInContext?: unknown } | undefined;
+  if (underscoreLike?.VERSION) {
+    const isLodash = typeof underscoreLike.runInContext === 'function';
+    libraries.push({
+      name: isLodash ? 'lodash' : 'underscore',
+      version: underscoreLike.VERSION,
+      detected: true,
+    });
   }
 
   // React
@@ -184,12 +192,6 @@ function detectLibraries(): LibraryInfo[] {
   const Ember = win.Ember as { VERSION?: string } | undefined;
   if (Ember?.VERSION) {
     libraries.push({ name: 'ember', version: Ember.VERSION, detected: true });
-  }
-
-  // Underscore
-  const underscore = win._ as { VERSION?: string } | undefined;
-  if (underscore?.VERSION && !lodash?.VERSION) {
-    libraries.push({ name: 'underscore', version: underscore.VERSION, detected: true });
   }
 
   return libraries;
@@ -331,15 +333,23 @@ function checkUnsizedImages(): BestPracticeCheck[] {
   let firstUnsized: HTMLImageElement | null = null;
 
   images.forEach((img) => {
-    const hasWidth = img.hasAttribute('width') || img.style.width;
-    const hasHeight = img.hasAttribute('height') || img.style.height;
+    // Only meaningfully-sized, visible images cause noticeable layout shift.
+    if (img.offsetWidth <= 50 || img.offsetHeight <= 50) {
+      return;
+    }
 
-    // Check if image is visible and significant size
-    if (img.offsetWidth > 50 && img.offsetHeight > 50) {
-      if (!hasWidth || !hasHeight) {
-        unsizedCount++;
-        if (!firstUnsized) firstUnsized = img;
-      }
+    const hasWidth = img.hasAttribute('width') || !!img.style.width;
+    const hasHeight = img.hasAttribute('height') || !!img.style.height;
+    // A non-auto CSS aspect-ratio reserves space before the image loads and is
+    // the modern CLS-safe pattern (browsers also synthesize it from width/height
+    // attributes). Honoring it avoids flagging images sized via a stylesheet,
+    // which the attribute/inline-only check used to mis-flag on responsive pages.
+    const aspectRatio = getComputedStyle(img).aspectRatio;
+    const hasAspectRatio = !!aspectRatio && aspectRatio !== 'auto';
+
+    if (!hasAspectRatio && (!hasWidth || !hasHeight)) {
+      unsizedCount++;
+      if (!firstUnsized) firstUnsized = img;
     }
   });
 
@@ -608,7 +618,10 @@ function checkBrokenImages(): BestPracticeCheck[] {
   let firstBroken: HTMLImageElement | null = null;
 
   images.forEach((img) => {
-    if (!img.complete || img.naturalHeight === 0) {
+    // A genuinely broken image has finished its load attempt (complete === true)
+    // yet has zero natural size. Images still loading — including not-yet-in-view
+    // loading="lazy" images — report complete === false and are not failures.
+    if (img.complete && img.naturalWidth === 0) {
       brokenCount++;
       if (!firstBroken) firstBroken = img;
     }
