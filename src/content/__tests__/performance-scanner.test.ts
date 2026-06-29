@@ -917,6 +917,76 @@ describe('Performance Scanner', () => {
     });
   });
 
+  describe('Buffered entries counted once (CLS/TBT double-count regression)', () => {
+    // A single observer with `buffered: true` reports every entry already
+    // recorded before observe() PLUS new ones — exactly once. These tests put the
+    // SAME entries in both getEntriesByType (the removed manual pre-read) and the
+    // observer callback, proving the scanner no longer sums them twice. On the
+    // pre-fix code each entry was counted twice, doubling CLS/TBT.
+    function stubObserver(forType: string, entries: unknown[]) {
+      const original = window.PerformanceObserver;
+      vi.stubGlobal(
+        'PerformanceObserver',
+        class {
+          private cb: (list: { getEntries: () => unknown[] }) => void;
+          constructor(cb: (list: { getEntries: () => unknown[] }) => void) {
+            this.cb = cb;
+          }
+          observe(options: { type: string }) {
+            if (options.type === forType) this.cb({ getEntries: () => entries });
+          }
+          disconnect() {}
+        } as any
+      );
+      return () => {
+        if (original) vi.stubGlobal('PerformanceObserver', original);
+      };
+    }
+
+    it('counts each layout-shift once: two good shifts (sum 0.08) stay "good", no CLS issue', async () => {
+      const shifts = [
+        { value: 0.05, hadRecentInput: false, sources: [] },
+        { value: 0.03, hadRecentInput: false, sources: [] },
+      ];
+      mockGetEntriesByType.mockImplementation((type) => (type === 'layout-shift' ? shifts : []));
+      const restore = stubObserver('layout-shift', shifts);
+
+      const result = await runScanWithTimers();
+
+      // Single count: 0.08 ≤ 0.1 → "good" → no issue. Double count → 0.16 → issue.
+      expect(result.issues.some((i) => i.ruleId === 'performance-cls')).toBe(false);
+      restore();
+    });
+
+    it('counts each long task once: blocking 150ms stays "good", no TBT issue', async () => {
+      const tasks = [
+        { duration: 150, startTime: 0, attribution: [] }, // blocking 100ms
+        { duration: 100, startTime: 200, attribution: [] }, // blocking 50ms
+      ];
+      mockGetEntriesByType.mockImplementation((type) => (type === 'longtask' ? tasks : []));
+      const restore = stubObserver('longtask', tasks);
+
+      const result = await runScanWithTimers();
+
+      // Single count: 150ms ≤ 200 → "good" → no issue. Double count → 300ms → issue.
+      expect(result.issues.some((i) => i.ruleId === 'performance-tbt')).toBe(false);
+      restore();
+    });
+
+    it('still emits a CLS issue when real shifts exceed the good threshold', async () => {
+      const shifts = [{ value: 0.18, hadRecentInput: false, sources: [] }];
+      mockGetEntriesByType.mockReturnValue([]);
+      const restore = stubObserver('layout-shift', shifts);
+
+      const result = await runScanWithTimers();
+
+      const cls = result.issues.find((i) => i.ruleId === 'performance-cls');
+      expect(cls).toBeDefined();
+      expect(cls?.description).toContain('0.180');
+      restore();
+    });
+  });
+
   describe('getSelector edge cases', () => {
     it('should use element ID for selector', async () => {
       const mockElement = {

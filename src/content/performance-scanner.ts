@@ -125,28 +125,12 @@ async function measureCLS(): Promise<CLSResult> {
       return;
     }
 
-    // First, check for buffered layout-shift entries
-    const bufferedEntries = performance.getEntriesByType('layout-shift') as LayoutShiftEntry[];
-
-    for (const entry of bufferedEntries) {
-      // Only count shifts without recent user input
-      if (!entry.hadRecentInput) {
-        clsValue += entry.value;
-
-        // Track which elements are causing shifts
-        if (entry.sources) {
-          for (const source of entry.sources) {
-            if (source.node && source.node instanceof Element) {
-              const selector = getSelector(source.node);
-              const currentShift = shiftingElements.get(selector) || 0;
-              shiftingElements.set(selector, currentShift + entry.value);
-            }
-          }
-        }
-      }
-    }
-
-    // Also observe for any new shifts during measurement period
+    // Collect layout-shift entries with a single buffered observer. Passing
+    // `buffered: true` delivers every shift already recorded before this call
+    // PLUS any new shift during the measurement window — each entry exactly
+    // once. (A prior version pre-read getEntriesByType('layout-shift') and THEN
+    // re-observed with buffered:true, counting every buffered shift twice and
+    // roughly doubling CLS — enough to flip a "good" page to "needs improvement".)
     let observer: PerformanceObserver | null = null;
 
     try {
@@ -312,25 +296,11 @@ async function measureTBT(): Promise<TBTResult> {
       return;
     }
 
-    // Get buffered long task entries
-    try {
-      const entries = performance.getEntriesByType('longtask') as LongTaskEntry[];
-
-      for (const entry of entries) {
-        const blockingTime = Math.max(0, entry.duration - 50); // Blocking = duration - 50ms
-        totalBlockingTime += blockingTime;
-
-        longTasks.push({
-          duration: entry.duration,
-          blockingTime,
-          startTime: entry.startTime,
-        });
-      }
-    } catch {
-      // longtask not supported
-    }
-
-    // Also observe for new long tasks
+    // Collect long tasks with a single buffered observer (see measureCLS): one
+    // observer with `buffered: true` reports every long task — already-recorded
+    // and new — exactly once. A prior version pre-read
+    // getEntriesByType('longtask') and ALSO re-observed buffered, double-counting
+    // blocking time and duplicating entries in the longTasks list.
     let observer: PerformanceObserver | null = null;
 
     try {
