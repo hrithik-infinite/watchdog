@@ -305,6 +305,56 @@ describe('useHighlight Hook', () => {
     });
   });
 
+  describe('highlightAll function (WAVE-style overlay)', () => {
+    it('sends one HIGHLIGHT_ALL message carrying every item', async () => {
+      (getCurrentTab as any).mockResolvedValue({ id: 321, url: 'https://example.com' });
+      const items = [
+        { selector: '.a', severity: 'critical' as const },
+        { selector: '.b', severity: 'minor' as const },
+      ];
+
+      const { result } = renderHook(() => useHighlight());
+      await act(async () => {
+        await result.current.highlightAll(items);
+      });
+
+      expect(chrome.tabs.sendMessage).toHaveBeenCalledTimes(1);
+      expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(321, {
+        type: 'HIGHLIGHT_ALL',
+        payload: { items },
+      });
+    });
+
+    it('does nothing when there is no active tab', async () => {
+      (getCurrentTab as any).mockResolvedValue(null);
+
+      const { result } = renderHook(() => useHighlight());
+      await act(async () => {
+        await result.current.highlightAll([{ selector: '.a', severity: 'critical' }]);
+      });
+
+      expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('swallows sendMessage errors', async () => {
+      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
+      (chrome.tabs.sendMessage as any).mockRejectedValue(new Error('boom'));
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const { result } = renderHook(() => useHighlight());
+      await act(async () => {
+        await result.current.highlightAll([{ selector: '.a', severity: 'critical' }]);
+      });
+
+      expect(errorSpy).toHaveBeenCalledWith(
+        '[WatchDog]',
+        'Failed to highlight all elements',
+        expect.any(Object)
+      );
+      errorSpy.mockRestore();
+    });
+  });
+
   describe('Multiple operations', () => {
     it('should handle highlight then clear sequence', async () => {
       const mockTab = { id: 888, url: 'https://example.com' };

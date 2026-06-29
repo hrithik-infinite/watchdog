@@ -3,7 +3,7 @@
 // declarative content_scripts.css.
 import './styles.css';
 import { scanPage } from './scanner';
-import { highlightElement, clearHighlights } from './overlay';
+import { highlightElement, highlightMultiple, clearHighlights } from './overlay';
 import { applyVisionFilter, removeVisionFilter } from './vision-filters';
 import { toggleFocusOrder, hideFocusOrder } from './focus-order';
 import type { Message, ScanResponse, AuditType } from '@/shared/messaging';
@@ -58,6 +58,15 @@ async function handleMessage(message: Message): Promise<unknown> {
     case 'HIGHLIGHT_ELEMENT': {
       const { selector, severity } = message.payload as { selector: string; severity: Severity };
       highlightElement(selector, severity);
+      return { success: true };
+    }
+
+    case 'HIGHLIGHT_ALL': {
+      // WAVE-style whole-page overlay: mark every issue's element at once.
+      const { items } = message.payload as {
+        items: Array<{ selector: string; severity: Severity }>;
+      };
+      highlightMultiple(items);
       return { success: true };
     }
 

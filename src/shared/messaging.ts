@@ -18,6 +18,7 @@ export type MessageType =
   | 'SCAN_PAGE'
   | 'SCAN_RESULT'
   | 'HIGHLIGHT_ELEMENT'
+  | 'HIGHLIGHT_ALL'
   | 'CLEAR_HIGHLIGHTS'
   | 'APPLY_VISION_FILTER'
   | 'TOGGLE_FOCUS_ORDER'
@@ -47,6 +48,13 @@ export interface HighlightElementMessage {
   payload: {
     selector: string;
     severity: Severity;
+  };
+}
+
+export interface HighlightAllMessage {
+  type: 'HIGHLIGHT_ALL';
+  payload: {
+    items: Array<{ selector: string; severity: Severity }>;
   };
 }
 
@@ -87,6 +95,7 @@ export type Message =
   | ScanPageMessage
   | ScanResultMessage
   | HighlightElementMessage
+  | HighlightAllMessage
   | ClearHighlightsMessage
   | ApplyVisionFilterMessage
   | ToggleFocusOrderMessage

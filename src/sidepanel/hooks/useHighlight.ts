@@ -19,6 +19,25 @@ export function useHighlight() {
     }
   }, []);
 
+  // WAVE-style whole-page overlay: highlight every issue's element at once.
+  const highlightAll = useCallback(
+    async (items: Array<{ selector: string; severity: Severity }>) => {
+      try {
+        const tab = await getCurrentTab();
+        if (!tab?.id) return;
+
+        logger.debug('Highlighting all elements', { count: items.length });
+        await chrome.tabs.sendMessage(tab.id, {
+          type: 'HIGHLIGHT_ALL',
+          payload: { items },
+        });
+      } catch (err) {
+        logger.error('Failed to highlight all elements', { error: err });
+      }
+    },
+    []
+  );
+
   const clearHighlights = useCallback(async () => {
     try {
       const tab = await getCurrentTab();
@@ -33,6 +52,7 @@ export function useHighlight() {
 
   return {
     highlightElement,
+    highlightAll,
     clearHighlights,
   };
 }
