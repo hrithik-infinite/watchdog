@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Info, Eye, Ban } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, Eye, Ban, Code } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { Badge } from '@/sidepanel/components/ui/badge';
 import { Card, CardContent } from '@/sidepanel/components/ui/card';
@@ -7,6 +7,8 @@ import CodeBlock from './CodeBlock';
 import IgnoreIssueModal from './IgnoreIssueModal';
 import type { Issue, Severity } from '@/shared/types';
 import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { describeElement } from '@/sidepanel/lib/element-descriptor';
 
 interface IssueDetailProps {
   issue: Issue;
@@ -51,7 +53,11 @@ export default function IssueDetail({
   hasNext,
   canHighlight = false,
 }: IssueDetailProps) {
+  const isSiteOwner = useIsSiteOwner();
   const [showIgnoreModal, setShowIgnoreModal] = useState(false);
+  // Site owners see the element described in plain language with the raw markup
+  // collapsed behind this toggle; developers keep the code visible by default.
+  const [showCode, setShowCode] = useState(false);
 
   return (
     <div className="flex flex-col h-full animate-slide-in bg-background">
@@ -81,6 +87,16 @@ export default function IssueDetail({
             {SEVERITY_LABELS[issue.severity]}
           </Badge>
         </div>
+
+        {/* Why this matters (ux-public-3): the plain-language consequence, led
+            above the technical description so non-developers get the stakes
+            first. Omitted when the scanner supplied no copy for this rule. */}
+        {issue.whyItMatters && (
+          <div className="rounded-lg border-l-4 border-primary bg-primary/5 p-3">
+            <p className="text-sm font-semibold text-primary-light mb-1">Why this matters</p>
+            <p className="text-sm text-foreground">{issue.whyItMatters}</p>
+          </div>
+        )}
 
         {/* Standard info: WCAG criterion for accessibility, a neutral label
             (e.g. "Performance metric") for the other audits. */}
@@ -119,11 +135,34 @@ export default function IssueDetail({
                 className="gap-1.5 text-muted-foreground hover:text-foreground"
               >
                 <Ban className="h-4 w-4" />
-                Mark Known
+                {isSiteOwner ? 'Hide' : 'Mark Known'}
               </Button>
             </div>
           </div>
-          <CodeBlock code={issue.element.html} />
+          {isSiteOwner ? (
+            <>
+              <p className="text-body text-foreground mb-2">
+                {describeElement(issue.element.html)}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCode((v) => !v)}
+                aria-expanded={showCode}
+                className="gap-1.5 text-muted-foreground hover:text-foreground"
+              >
+                <Code className="h-4 w-4" />
+                {showCode ? 'Hide code' : 'Show code'}
+              </Button>
+              {showCode && (
+                <div className="mt-2">
+                  <CodeBlock code={issue.element.html} />
+                </div>
+              )}
+            </>
+          ) : (
+            <CodeBlock code={issue.element.html} />
+          )}
         </div>
 
         {/* How to Fix */}

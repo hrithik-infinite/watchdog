@@ -1,8 +1,10 @@
 import type { ComponentProps } from 'react';
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, createEvent } from '@testing-library/react';
 import IssueCard from '../IssueCard';
 import type { Issue } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
+import { DEFAULT_SETTINGS } from '@/shared/constants';
 
 const mockIssue: Issue = {
   id: 'issue-1',
@@ -45,10 +47,27 @@ function renderCard(overrides: Partial<ComponentProps<typeof IssueCard>> = {}) {
   return { onSelect, onHighlight, container };
 }
 
+// The activatable card is a role="button" with tabindex=0. In Site-owner mode a
+// real <button> "Show code" toggle is rendered as a sibling, so there can be two
+// elements with the button role — pick the activatable region by its tabindex.
+function getCardRegion(): HTMLElement {
+  const region = screen
+    .getAllByRole('button')
+    .find((el) => el.getAttribute('tabindex') === '0');
+  if (!region) throw new Error('activatable card region not found');
+  return region;
+}
+
 describe('IssueCard', () => {
+  beforeEach(() => {
+    // The store defaults to Site-owner; reset before each test so a developer-mode
+    // case can't leak into the others.
+    useScanStore.setState({ settings: { ...DEFAULT_SETTINGS } });
+  });
+
   it('activates the card when Space is pressed', () => {
     const { onSelect } = renderCard();
-    const card = screen.getByRole('button');
+    const card = getCardRegion();
 
     fireEvent.keyDown(card, { key: ' ' });
 
@@ -58,7 +77,7 @@ describe('IssueCard', () => {
 
   it('prevents the default scroll behavior when Space activates the card', () => {
     renderCard();
-    const card = screen.getByRole('button');
+    const card = getCardRegion();
 
     const spaceEvent = createEvent.keyDown(card, { key: ' ' });
     fireEvent(card, spaceEvent);
@@ -68,7 +87,7 @@ describe('IssueCard', () => {
 
   it('still activates the card when Enter is pressed', () => {
     const { onSelect } = renderCard();
-    const card = screen.getByRole('button');
+    const card = getCardRegion();
 
     fireEvent.keyDown(card, { key: 'Enter' });
 
@@ -78,7 +97,7 @@ describe('IssueCard', () => {
 
   it('does not activate the card for unrelated keys', () => {
     const { onSelect } = renderCard();
-    const card = screen.getByRole('button');
+    const card = getCardRegion();
 
     fireEvent.keyDown(card, { key: 'a' });
 
@@ -87,7 +106,7 @@ describe('IssueCard', () => {
 
   it('renders the "Learn more" link outside the role="button" region', () => {
     renderCard();
-    const card = screen.getByRole('button');
+    const card = getCardRegion();
     const link = screen.getByRole('link', { name: /learn more/i });
 
     // The activatable element must NOT contain a nested interactive control
@@ -107,7 +126,7 @@ describe('IssueCard', () => {
 
   it('selects the issue when the card region is clicked', () => {
     const { onSelect } = renderCard();
-    const card = screen.getByRole('button');
+    const card = getCardRegion();
 
     fireEvent.click(card);
 
@@ -157,5 +176,53 @@ describe('IssueCard', () => {
     fireEvent.mouseEnter(container.firstChild as Element);
 
     expect(onHighlight).not.toHaveBeenCalled();
+  });
+
+  // --- Site-owner presentation (the store default) -------------------------
+
+  it('leads with the plain element descriptor and hides raw markup in site-owner mode', () => {
+    renderCard();
+
+    // Plain descriptor instead of raw HTML up front.
+    expect(screen.getByText('a button')).toBeInTheDocument();
+    // Raw markup stays collapsed until requested.
+    expect(screen.queryByText('<button class="submit"></button>')).not.toBeInTheDocument();
+  });
+
+  it('reveals the raw markup when "Show code" is clicked, without selecting the issue', () => {
+    const { onSelect } = renderCard();
+    const toggle = screen.getByRole('button', { name: /show code/i });
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByText('<button class="submit"></button>')).toBeInTheDocument();
+    expect(toggle).toHaveAccessibleName(/hide code/i);
+    // The toggle is a sibling of the activatable region, so it never selects.
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('shows the plain "why this matters" subtitle when the scanner supplied one', () => {
+    const whyItMatters = 'Visitors using a screen reader cannot tell what this button does.';
+    renderCard({ issue: { ...mockIssue, whyItMatters } });
+
+    expect(screen.getByText(whyItMatters)).toBeInTheDocument();
+  });
+
+  it('omits the "why this matters" subtitle when absent', () => {
+    renderCard(); // mockIssue has no whyItMatters
+
+    expect(screen.queryByText(/screen reader cannot tell/i)).not.toBeInTheDocument();
+  });
+
+  // --- Developer presentation ---------------------------------------------
+
+  it('leads with raw markup and offers no "Show code" toggle in developer mode', () => {
+    useScanStore.setState({ settings: { ...DEFAULT_SETTINGS, persona: 'developer' } });
+    renderCard();
+
+    // Raw HTML is shown directly, with no plain descriptor or toggle.
+    expect(screen.getByText('<button class="submit"></button>')).toBeInTheDocument();
+    expect(screen.queryByText('a button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /show code/i })).not.toBeInTheDocument();
   });
 });
