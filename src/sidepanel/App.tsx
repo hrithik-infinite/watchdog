@@ -10,6 +10,7 @@ import Settings from './components/Settings';
 import AuditSelector from './components/AuditSelector';
 import ScanProgress from './components/ScanProgress';
 import CopyDropdown from './components/CopyDropdown';
+import IncompleteSection from './components/IncompleteSection';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
@@ -319,6 +320,9 @@ export default function App() {
               />
             </>
           )}
+
+          {/* Axe "needs manual review" items, gated on the Show Incomplete setting */}
+          {settings.showIncomplete && <IncompleteSection issues={scanResult.incomplete} />}
         </>
       )}
     </div>
