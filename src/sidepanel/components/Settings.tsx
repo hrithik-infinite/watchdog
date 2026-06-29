@@ -11,8 +11,7 @@ import {
   SelectValue,
 } from '@/sidepanel/components/ui/select';
 import type { Settings as SettingsType, WCAGLevel, VisionMode, Persona } from '@/shared/types';
-import { getCurrentTab } from '@/shared/messaging';
-import { ensureContentScript } from '@/shared/inject';
+import { usePageOverlays } from '@/sidepanel/hooks/usePageOverlays';
 
 interface SettingsProps {
   settings: SettingsType;
@@ -63,43 +62,11 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   const colorBlindValue = isColorBlindMode ? settings.visionMode : 'none';
   const blurValue = isBlurMode ? settings.visionMode : 'none';
 
-  const handleVisionModeChange = async (mode: VisionMode) => {
-    onUpdate({ visionMode: mode });
-
-    // Apply filter to the current tab. The scanner is no longer always-on, so
-    // inject it on demand first (vision filters can be toggled without scanning).
-    try {
-      const tab = await getCurrentTab();
-      if (tab?.id) {
-        await ensureContentScript(tab.id);
-        await chrome.tabs.sendMessage(tab.id, {
-          type: 'APPLY_VISION_FILTER',
-          payload: { mode },
-        });
-      }
-    } catch (error) {
-      console.error('Failed to apply vision filter:', error);
-    }
-  };
-
-  const handleFocusOrderToggle = async (checked: boolean) => {
-    onUpdate({ showFocusOrder: checked });
-
-    // Toggle focus order visualization on the current tab (inject on demand —
-    // the scanner is no longer a declarative content script).
-    try {
-      const tab = await getCurrentTab();
-      if (tab?.id) {
-        await ensureContentScript(tab.id);
-        await chrome.tabs.sendMessage(tab.id, {
-          type: 'TOGGLE_FOCUS_ORDER',
-          payload: { show: checked },
-        });
-      }
-    } catch (error) {
-      console.error('Failed to toggle focus order:', error);
-    }
-  };
+  // Vision-simulator and focus-order application live in a shared hook so the
+  // results-view "Experience" controls and the contrast deep-link apply them the
+  // same way (persist + inject-on-demand + message the page).
+  const { setVisionMode: handleVisionModeChange, setFocusOrder: handleFocusOrderToggle } =
+    usePageOverlays();
 
   return (
     <div className="h-full flex flex-col bg-background">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Info, Eye, Ban, Code } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Info, Eye, Ban, Code, Glasses } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { Badge } from '@/sidepanel/components/ui/badge';
 import { Card, CardContent } from '@/sidepanel/components/ui/card';
@@ -8,6 +8,7 @@ import IgnoreIssueModal from './IgnoreIssueModal';
 import type { Issue, Severity } from '@/shared/types';
 import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
 import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { usePageOverlays } from '@/sidepanel/hooks/usePageOverlays';
 import { describeElement } from '@/sidepanel/lib/element-descriptor';
 
 interface IssueDetailProps {
@@ -54,7 +55,15 @@ export default function IssueDetail({
   canHighlight = false,
 }: IssueDetailProps) {
   const isSiteOwner = useIsSiteOwner();
+  const { visionMode, setVisionMode } = usePageOverlays();
   const [showIgnoreModal, setShowIgnoreModal] = useState(false);
+
+  // Deep-link the colorblind simulator from color-contrast issues (ux-public-10):
+  // the most direct way to *see* why low contrast matters. Toggles a colorblind
+  // mode on the live page.
+  const isColorIssue = issue.ruleId === 'color-contrast' || issue.category === 'color';
+  const isPreviewingCVD = visionMode !== 'none' && !visionMode.startsWith('blur');
+  const togglePreview = () => setVisionMode(isPreviewingCVD ? 'none' : 'deuteranopia');
   // Site owners see the element described in plain language with the raw markup
   // collapsed behind this toggle; developers keep the code visible by default.
   const [showCode, setShowCode] = useState(false);
@@ -124,6 +133,18 @@ export default function IssueDetail({
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-h3 text-foreground">Current Element</h3>
             <div className="flex items-center gap-2">
+              {isColorIssue && canHighlight && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={togglePreview}
+                  aria-pressed={isPreviewingCVD}
+                  className="gap-1.5"
+                >
+                  <Glasses className="h-4 w-4" />
+                  {isPreviewingCVD ? 'Stop preview' : 'Preview color blindness'}
+                </Button>
+              )}
               {canHighlight && (
                 <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
                   <Eye className="h-4 w-4" />
