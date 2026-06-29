@@ -339,3 +339,21 @@
     box-shadow: 0 0 25px rgba(0, 122, 255, 0.15);
   }
 }
+
+/* Accessibility: respect the user's reduced-motion preference.
+   Neutralizes all motion globally (infinite ping/spin/bounce/pulse, scan
+   sweeps, skeleton shimmer, transitions) so an a11y tool isn't itself a
+   motion offender. Kept outside @layer and uses !important to override
+   Tailwind animation/transition utilities regardless of cascade order. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
