@@ -8,7 +8,7 @@ the **fixes**.
 
 **Legend:** ✅ done · 🚧 in progress · ⬜ pending  ·  Eff: S `<1d` / M `~days` / L `1–2wk` / XL `>2wk`
 
-**Status summary:** Phase 0 (trust + core-loop) **and most of Phase 1** (CWS launch gate) have landed on `fix/scanner-accuracy` / **PR #3** — 19 commits, **1077 tests green**, tsc + eslint + build clean. Still pending in Phase 1: owner-dependent store assets (`cws-1`, `cws-2`), the cross-cutting WCAG-relabel (`ux-public-2`), and the on-demand-injection decision (`secpriv-6`); plus Phase-0 leftovers CI (`testing-3`), coverage config (`testing-5`), dead Settings toggles (`cws-6`), background tests (`testing-1`).
+**Status summary:** Phase 0 (trust + core-loop) and **nearly all of Phase 1** (CWS launch gate) have landed on `fix/scanner-accuracy` / **PR #3** — 27 commits, **1086 tests green**, tsc + eslint + build clean, CI workflow added. Done this round: WCAG relabel (`ux-public-2`), all 3 Settings toggles (`cws-6`) + needs-review section (`deadcode-4`), CI (`testing-3`), coverage (`testing-5`). Still pending: owner-dependent store assets (`cws-1`, `cws-2` package.json copy), the on-demand-injection decision (`secpriv-6`), background tests (`testing-1`), a coverage threshold gate.
 
 ---
 
@@ -42,10 +42,10 @@ the **fixes**.
 
 | ✓ | ID | Fix | file:line | Sev | Eff |
 |---|----|-----|-----------|-----|-----|
-| ⬜ | testing-3 | Add CI (typecheck/lint/test/build on PR, Node 22) | `.github/` (absent) | med | S |
-| ⬜ | testing-5 | Broaden coverage `include` to all of `src`, set `all:true` + thresholds | `vitest.config.ts:15` | med | S |
+| ✅ | testing-3 | CI workflow (typecheck/lint/test/build, Node 22) on PR + master | `.github/workflows/ci.yml` | med | S |
+| ✅ | testing-5 | Broadened coverage `include` to all `src`, `all:true` (honest ~77%) *(threshold gate still pending)* | `vitest.config.ts` | med | S |
 | ✅ | correctness-8 / secpriv-2 | Escape page-derived `selector`/`message`/`url` in `exportHTML` *(done with the export cluster)* | `export.ts` | med | S |
-| ⬜ | cws-6 / correctness-26 | Wire or delete the 3 dead Settings toggles (WCAG level, Show Incomplete, Auto-highlight) | `Settings.tsx:108`, `store/index.ts:123` | high(trust) | S–M |
+| ✅ | cws-6 / correctness-26 | All 3 Settings toggles wired: WCAG-level filter, Auto-highlight-on-hover, Show-Incomplete (+ "Needs manual review" section) | `store/index.ts`, `IssueCard.tsx`, `IncompleteSection.tsx` | high(trust) | S–M |
 | ⬜ | testing-1 | Background/service-worker unit tests (routing, badge, install, settings) | `background/*` | med | S |
 | ✅ | testing-2 | Export-module tests (escaping + CSV neutralization) *(done with the export cluster)* | `lib/__tests__/export.test.ts` | high | S |
 
@@ -72,7 +72,7 @@ the **fixes**.
 
 | ✓ | ID | Fix | file:line | Sev | Eff |
 |---|----|-----|-----------|-----|-----|
-| ⬜ | ux-public-2 | Stop labeling every issue "WCAG" (add audit-type field) — **deferred** (cross-cutting: scanners + types + IssueCard) | `IssueCard.tsx:63`, scanners | med | S |
+| ✅ | ux-public-2 | Issues labelled by audit standard, not always "WCAG" (`standard` field tagged in scanPage; IssueCard/IssueDetail relabel) | `types.ts`, `scanner.ts`, `IssueCard.tsx`, `IssueDetail.tsx` | med | S |
 | ✅ | deadcode-13 / cws-3 | Removed false "With screenshot" option; audit-aware report titles | `export.ts`, `ExportButton.tsx` | low | S |
 | ⬜ | cws-1 | Capture store screenshots + promo tiles *(needs owner)* | `store-assets/` | high | S |
 | ⬜ | cws-2 | Broaden listing/manifest copy to all six audits — README updated; **`package.json` description pending** *(stop-and-ask)* | `package.json:4` | high | S |
@@ -97,7 +97,7 @@ the **fixes**.
 | ⬜ | deadcode-2 / feat-compet-5 | Wire the built-but-unused history/trends layer to UI (summary snapshots) | `shared/storage.ts` | — | L |
 | ⬜ | correctness-35 | History: wrap `set()` in try/catch; prune cross-domain; size guard | `shared/storage.ts:12,77` | low | S |
 | ⬜ | correctness-32 | History: fix duplicate `selector::ruleId` miscount in `compareScanResults` | `shared/storage.ts:173` | low | S |
-| ⬜ | deadcode-4 / correctness-27 | Render or remove the collected-but-unused axe `incomplete[]` ("needs review") | scanner + UI | low | S |
+| ✅ | deadcode-4 / correctness-27 | axe `incomplete[]` now rendered in a "Needs manual review" section (gated on Show-Incomplete) | `IncompleteSection.tsx`, `App.tsx` | low | S |
 | ⬜ | deadcode-1 | Implement i18n/mobile/privacy audits; delete the `links` stub | `scanner.ts:193`, union (×3) | — | S–M |
 | ⬜ | deadcode-5 | `useTheme` is built/tested but unused — wire real theming or delete | `hooks/useTheme.ts` | low | S |
 | ⬜ | deadcode-6/7/8/9 | Remove/wire dead exports (`highlightMultiple`, `sendMessage`, `EmptyState.initial`, etc.) | various | low | S |
