@@ -316,6 +316,31 @@ describe('PWA Scanner', () => {
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
+
+    it('flags a linked manifest that fails to load instead of grading it installable', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+      // Manifest link present but the file returns a non-OK response → null.
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }));
+
+      const result = await scanPWA();
+
+      const unreachable = result.issues.find((i) => i.ruleId === 'manifest-unreachable');
+      expect(unreachable).toBeDefined();
+      expect(unreachable?.severity).toBe('critical');
+    });
   });
 
   describe('Service worker checks', () => {

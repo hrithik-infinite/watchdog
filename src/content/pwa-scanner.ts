@@ -506,14 +506,36 @@ export async function scanPWA(): Promise<ScanResult> {
 
   // Fetch and validate manifest
   let manifest: ManifestData | null = null;
+  const manifestChecks: PWACheck[] = [manifestLinkCheck];
   if (manifestLinkCheck.passed) {
     manifest = await fetchManifest();
+    if (manifest) {
+      manifestChecks.push(...checkManifestContent(manifest));
+    } else {
+      // The <link rel="manifest"> exists but the manifest could not be fetched or
+      // parsed (404, network/CORS error, or invalid JSON). Without a valid
+      // manifest the app is NOT installable, so surface a failure instead of
+      // silently skipping every content check and grading the page installable.
+      manifestChecks.push({
+        id: 'manifest-unreachable',
+        name: 'Web App Manifest',
+        severity: 'critical',
+        passed: false,
+        message: 'Web app manifest is linked but could not be loaded or parsed',
+        description:
+          'The linked manifest returned an error, was blocked, or was not valid JSON. Browsers cannot install the app without a valid manifest.',
+        fix: {
+          description:
+            'Ensure the manifest URL resolves with HTTP 200, is served as JSON, and contains valid JSON.',
+          code: '<link rel="manifest" href="/manifest.json">\n<!-- /manifest.json must return HTTP 200 with valid JSON -->',
+        },
+      });
+    }
   }
 
   // Run all PWA checks
   const allChecks: PWACheck[] = [
-    manifestLinkCheck,
-    ...checkManifestContent(manifest),
+    ...manifestChecks,
     await checkServiceWorker(),
     checkHTTPS(),
     checkViewportMeta(),
