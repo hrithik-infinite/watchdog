@@ -26,6 +26,7 @@ export default function App() {
     error,
     scan,
     scanMultiple,
+    cancelScan,
     clearResults,
     currentAuditIndex,
     totalAudits,
@@ -201,6 +202,7 @@ export default function App() {
           currentAuditType={currentAuditType}
           currentAuditIndex={currentAuditIndex}
           totalAudits={totalAudits}
+          onCancel={cancelScan}
         />
       </div>
     );

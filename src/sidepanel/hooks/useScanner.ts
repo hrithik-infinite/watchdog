@@ -1,8 +1,33 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useScanStore, type AuditType } from '../store';
 import { getCurrentTab } from '@/shared/messaging';
 import type { ScanResult, Issue, ScanSummary, Severity, Category } from '@/shared/types';
 import logger from '@/shared/logger';
+
+// A single audit must not hang the panel forever (e.g. axe.run on a huge DOM).
+// After this budget the scan is failed with a timeout (E004) so the UI recovers.
+const SCAN_TIMEOUT_MS = 30000;
+
+// Rejects after `ms`; returns a clear() so the timer never outlives the scan.
+function rejectAfter(ms: number, message: string): { promise: Promise<never>; clear: () => void } {
+  let timer: ReturnType<typeof setTimeout>;
+  const promise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  return { promise, clear: () => clearTimeout(timer) };
+}
+
+// Rejects as soon as the signal aborts, so a user Cancel interrupts an in-flight
+// (possibly hung) scan instead of waiting for it to resolve.
+function rejectOnAbort(signal: AbortSignal): Promise<never> {
+  return new Promise<never>((_, reject) => {
+    if (signal.aborted) {
+      reject(new Error('Scan cancelled'));
+      return;
+    }
+    signal.addEventListener('abort', () => reject(new Error('Scan cancelled')), { once: true });
+  });
+}
 
 async function ensureContentScriptLoaded(tabId: number): Promise<void> {
   try {
@@ -86,26 +111,47 @@ export function useScanner() {
   const [totalAudits, setTotalAudits] = useState<number>(0);
   const [currentAuditType, setCurrentAuditType] = useState<AuditType | null>(null);
 
+  // Controller for the in-flight scan; cancelScan() aborts it.
+  const abortRef = useRef<AbortController | null>(null);
+
   // Single scan implementation
-  const scanSingle = useCallback(async (auditType: string, tabId: number): Promise<ScanResult> => {
-    logger.time(`scan-${auditType}`);
+  const scanSingle = useCallback(
+    async (auditType: string, tabId: number, signal: AbortSignal): Promise<ScanResult> => {
+      logger.time(`scan-${auditType}`);
 
-    const response = await chrome.tabs.sendMessage(tabId, {
-      type: 'SCAN_PAGE',
-      payload: { auditType },
-    });
+      const timeout = rejectAfter(
+        SCAN_TIMEOUT_MS,
+        `${auditType} scan timeout after ${SCAN_TIMEOUT_MS / 1000}s`
+      );
 
-    logger.timeEnd(`scan-${auditType}`);
+      let response;
+      try {
+        // Race the page response against the timeout and a user cancellation, so
+        // a hung scan can never leave the panel stuck on the progress screen.
+        response = await Promise.race([
+          chrome.tabs.sendMessage(tabId, { type: 'SCAN_PAGE', payload: { auditType } }),
+          timeout.promise,
+          rejectOnAbort(signal),
+        ]);
+      } finally {
+        timeout.clear();
+        logger.timeEnd(`scan-${auditType}`);
+      }
 
-    if (response?.success && response.result) {
-      return response.result as ScanResult;
-    } else {
-      throw new Error(response?.error || `${auditType} scan failed`);
-    }
-  }, []);
+      if (response?.success && response.result) {
+        return response.result as ScanResult;
+      } else {
+        throw new Error(response?.error || `${auditType} scan failed`);
+      }
+    },
+    []
+  );
 
   const scan = useCallback(
     async (auditTypeOverride?: string) => {
+      const controller = new AbortController();
+      abortRef.current = controller;
+
       setScanning(true);
       setError(null);
       setCurrentAuditIndex(0);
@@ -139,7 +185,7 @@ export function useScanner() {
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScriptLoaded(tab.id);
 
-        const result = await scanSingle(auditType, tab.id);
+        const result = await scanSingle(auditType, tab.id, controller.signal);
         logger.info('Scan completed', {
           auditType,
           issueCount: result.issues.length,
@@ -147,6 +193,11 @@ export function useScanner() {
         });
         setScanResult(result);
       } catch (err) {
+        if (controller.signal.aborted) {
+          // User cancelled: leave any prior results in place and surface no error.
+          logger.info('Scan cancelled by user');
+          return;
+        }
         const message = err instanceof Error ? err.message : 'Unknown error occurred';
         const stack = err instanceof Error ? err.stack : undefined;
         logger.error('Scan failed', { error: message, stack });
@@ -155,6 +206,7 @@ export function useScanner() {
       } finally {
         setScanning(false);
         setCurrentAuditType(null);
+        abortRef.current = null;
         logger.groupEnd();
       }
     },
@@ -166,11 +218,14 @@ export function useScanner() {
     async (auditTypes: AuditType[]) => {
       if (auditTypes.length === 0) return;
 
-      // If only one audit, use regular scan
+      // If only one audit, use regular scan (which manages its own controller)
       if (auditTypes.length === 1) {
         await scan(auditTypes[0]);
         return;
       }
+
+      const controller = new AbortController();
+      abortRef.current = controller;
 
       setScanning(true);
       setError(null);
@@ -212,7 +267,7 @@ export function useScanner() {
           setCurrentAuditType(auditType);
 
           try {
-            const result = await scanSingle(auditType, tab.id);
+            const result = await scanSingle(auditType, tab.id, controller.signal);
             totalDuration += result.duration;
 
             // Tag issues with audit type (add to id to make unique)
@@ -230,6 +285,9 @@ export function useScanner() {
             allIncomplete.push(...taggedIncomplete);
             successCount++;
           } catch (err) {
+            // A cancellation must stop the whole multi-scan, not be recorded as a
+            // failed audit and skipped past — rethrow to the outer handler.
+            if (controller.signal.aborted) throw err;
             const message = err instanceof Error ? err.message : 'Unknown error';
             const stack = err instanceof Error ? err.stack : undefined;
             logger.error(`Audit ${auditType} failed`, { error: message, stack });
@@ -267,6 +325,11 @@ export function useScanner() {
           }
         }
       } catch (err) {
+        if (controller.signal.aborted) {
+          // User cancelled: leave any prior results in place and surface no error.
+          logger.info('Multi-scan cancelled by user');
+          return;
+        }
         const message = err instanceof Error ? err.message : 'Unknown error occurred';
         const stack = err instanceof Error ? err.stack : undefined;
         logger.error('Multi-scan failed', { error: message, stack });
@@ -277,6 +340,7 @@ export function useScanner() {
         setCurrentAuditType(null);
         setCurrentAuditIndex(0);
         setTotalAudits(0);
+        abortRef.current = null;
         logger.groupEnd();
       }
     },
@@ -288,12 +352,19 @@ export function useScanner() {
     setError(null);
   }, [setScanResult, setError]);
 
+  // Abort the in-flight scan (if any). The scan/scanMultiple handlers detect the
+  // aborted signal and reset state without recording an error.
+  const cancelScan = useCallback(() => {
+    abortRef.current?.abort();
+  }, []);
+
   return {
     isScanning,
     scanResult,
     error,
     scan,
     scanMultiple,
+    cancelScan,
     clearResults,
     // Progress info for multi-scan
     currentAuditIndex,

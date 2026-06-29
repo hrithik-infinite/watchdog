@@ -7,6 +7,7 @@ interface ScanProgressProps {
   currentAuditType: AuditType | null;
   currentAuditIndex: number;
   totalAudits: number;
+  onCancel?: () => void;
 }
 
 const auditIcons: Record<AuditType, React.ComponentType<{ className?: string }>> = {
@@ -47,6 +48,7 @@ export default function ScanProgress({
   currentAuditType,
   currentAuditIndex,
   totalAudits,
+  onCancel,
 }: ScanProgressProps) {
   const [messageIndex, setMessageIndex] = useState(0);
   const [dots, setDots] = useState('');
@@ -147,6 +149,17 @@ export default function ScanProgress({
           />
         ))}
       </div>
+
+      {/* Cancel control — lets the user bail out of a slow or stuck scan */}
+      {onCancel && (
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-8 text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+        >
+          Cancel scan
+        </button>
+      )}
 
       {/* Skeleton preview of results */}
       <div className="w-full max-w-sm mt-10 space-y-3 opacity-40">

@@ -929,4 +929,62 @@ describe('useScanner Hook', () => {
       expect(result.current.scanResult?.summary.bySeverity.serious).toBeGreaterThanOrEqual(0);
     });
   });
+
+  describe('Timeout and cancellation', () => {
+    it('fails a scan with a timeout error when the page never responds', async () => {
+      vi.useFakeTimers();
+      try {
+        const { getCurrentTab } = await import('@/shared/messaging');
+        (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
+        (chrome.tabs.sendMessage as any).mockImplementation((_t: number, msg: { type: string }) =>
+          msg.type === 'PING'
+            ? Promise.resolve({ success: true })
+            : new Promise(() => {})
+        );
+
+        const { result } = renderHook(() => useScanner());
+
+        await act(async () => {
+          const scanPromise = result.current.scan('accessibility');
+          // Advance past the render tick and the 30s scan budget.
+          await vi.advanceTimersByTimeAsync(31000);
+          await scanPromise;
+        });
+
+        expect(result.current.scanResult).toBeNull();
+        expect(result.current.error?.toLowerCase()).toContain('timeout');
+        expect(result.current.isScanning).toBe(false);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('cancelScan aborts an in-flight scan and leaves no error', async () => {
+      vi.useFakeTimers();
+      try {
+        const { getCurrentTab } = await import('@/shared/messaging');
+        (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
+        (chrome.tabs.sendMessage as any).mockImplementation((_t: number, msg: { type: string }) =>
+          msg.type === 'PING'
+            ? Promise.resolve({ success: true })
+            : new Promise(() => {}) // only a cancel ends this scan
+        );
+
+        const { result } = renderHook(() => useScanner());
+
+        await act(async () => {
+          const scanPromise = result.current.scan('accessibility');
+          await vi.advanceTimersByTimeAsync(10); // reach the awaiting scanSingle
+          result.current.cancelScan();
+          await scanPromise;
+        });
+
+        expect(result.current.isScanning).toBe(false);
+        expect(result.current.error).toBeNull();
+        expect(result.current.scanResult).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
 });
