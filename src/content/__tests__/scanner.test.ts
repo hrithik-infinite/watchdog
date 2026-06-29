@@ -59,6 +59,7 @@ vi.stubGlobal('performance', {
 });
 
 import { scanPage } from '../scanner';
+import { WHY_IT_MATTERS } from '@/shared/why-it-matters';
 import { scanPerformance } from '../performance-scanner';
 import { scanSEO } from '../seo-scanner';
 import { scanSecurity } from '../security-scanner';
@@ -405,6 +406,71 @@ describe('Scanner - scanPage', () => {
       expect(result.issues[0].id).not.toBe(result.issues[1].id);
       expect(result.issues[0].id).toMatch(/^issue-/);
       expect(result.issues[1].id).toMatch(/^issue-/);
+    });
+  });
+
+  describe('whyItMatters tagging', () => {
+    it('attaches the plain-language whyItMatters line for a known ruleId', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Images must have alt text',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['img.hero'], html: '<img class="hero">', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage('accessibility');
+
+      expect(result.issues[0].whyItMatters).toBe(
+        "People using a screen reader can't tell what these images show."
+      );
+      expect(result.issues[0].whyItMatters).toBe(WHY_IT_MATTERS['image-alt']);
+    });
+
+    it('also tags incomplete issues with whyItMatters', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [
+          {
+            id: 'color-contrast',
+            impact: 'serious',
+            help: 'Color contrast may be insufficient',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['p.text'], html: '<p class="text">Text</p>', failureSummary: 'test' }],
+          },
+        ],
+      });
+
+      const result = await scanPage('accessibility');
+
+      expect(result.incomplete[0].whyItMatters).toBe(WHY_IT_MATTERS['color-contrast']);
+    });
+
+    it('leaves whyItMatters undefined for an unmapped ruleId', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'unknown-rule-xyz',
+            impact: 'minor',
+            help: 'Unknown issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage('accessibility');
+
+      expect(result.issues[0].whyItMatters).toBeUndefined();
     });
   });
 

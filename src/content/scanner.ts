@@ -20,6 +20,7 @@ const AUDIT_STANDARD: Partial<Record<AuditType, IssueStandard>> = {
   pwa: 'pwa',
 };
 import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/shared/constants';
+import { WHY_IT_MATTERS } from '@/shared/why-it-matters';
 import { generateFix } from '@/shared/fixes';
 import { scanPerformance } from './performance-scanner';
 import { scanSEO } from './seo-scanner';
@@ -212,11 +213,18 @@ export async function scanPage(auditType: AuditType): Promise<ScanResult> {
     }
 
     // Tag every issue with the standard/audit it came from so display code can
-    // label non-accessibility issues correctly instead of calling them "WCAG".
+    // label non-accessibility issues correctly instead of calling them "WCAG",
+    // and attach a plain-language "why this matters" line (without clobbering one
+    // a scanner already supplied) so Site-owner mode can explain the stakes.
     const standard = AUDIT_STANDARD[auditType];
     if (standard) {
-      result.issues = result.issues.map((issue) => ({ ...issue, standard }));
-      result.incomplete = result.incomplete.map((issue) => ({ ...issue, standard }));
+      const tag = (issue: Issue): Issue => ({
+        ...issue,
+        standard,
+        whyItMatters: WHY_IT_MATTERS[issue.ruleId] ?? issue.whyItMatters,
+      });
+      result.issues = result.issues.map(tag);
+      result.incomplete = result.incomplete.map(tag);
     }
 
     logger.info('Scan finished', {
