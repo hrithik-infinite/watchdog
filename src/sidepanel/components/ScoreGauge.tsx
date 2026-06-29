@@ -96,10 +96,16 @@ export default function ScoreGauge({
   const viewBoxSize = (config.radius + config.strokeWidth) * 2;
   const center = viewBoxSize / 2;
 
+  // Accessible name describing the gauge. Uses the actual (non-animated) score
+  // so the announced value stays stable, plus the human-readable label/grade.
+  const ariaLabel = `Score: ${scoreResult.score} out of 100, ${scoreResult.label}`;
+
   return (
     <div className={cn('flex flex-col items-center gap-1', className)}>
       <div className={cn('relative', config.container)}>
         <svg
+          role="img"
+          aria-label={ariaLabel}
           className="transform -rotate-90 w-full h-full"
           viewBox={`0 0 ${viewBoxSize} ${viewBoxSize}`}
         >
