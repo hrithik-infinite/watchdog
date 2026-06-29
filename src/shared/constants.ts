@@ -1,6 +1,6 @@
 import type { Category, Severity } from './types';
 
-// Expanded accessibility rules from axe-core (35 rules total)
+// Expanded accessibility rules from axe-core (39 rules total)
 export const MVP_RULES = [
   // Original 15 rules
   'image-alt',

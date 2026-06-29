@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/sidepanel/components/ui/tooltip';
+import { MVP_RULES } from '@/shared/constants';
 
 export type AuditType =
   | 'accessibility'
@@ -37,7 +38,7 @@ const auditTypes: AuditTypeConfig[] = [
     label: 'Accessibility',
     description: 'WCAG compliance & screen reader support',
     icon: Eye,
-    ruleCount: 15,
+    ruleCount: MVP_RULES.length,
     checks: [
       'WCAG 2.1 AA',
       'Screen reader compatibility',
@@ -218,134 +219,133 @@ export default function AuditSelector({
 
       {/* Audit Grid - Scrollable */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        <div className="grid grid-cols-2 gap-2.5">
+        <div className="grid grid-cols-2 gap-2.5" role="group" aria-label="Audit types">
           {auditTypes.map((audit, index) => {
             const Icon = audit.icon;
             const isSelected = selectedAudits.has(audit.id);
             const isHovered = hoveredAudit === audit.id;
 
             return (
-              <button
-                key={audit.id}
-                onClick={() => toggleAudit(audit.id)}
-                onMouseEnter={() => setHoveredAudit(audit.id)}
-                onMouseLeave={() => setHoveredAudit(null)}
-                disabled={isScanning}
-                aria-label={`${audit.label} audit - ${audit.description}`}
-                aria-pressed={isSelected}
-                role="checkbox"
-                aria-checked={isSelected}
-                tabIndex={0}
-                className={cn(
-                  'group relative p-3 rounded-lg border-2 text-left transition-all duration-200',
-                  'bg-card hover:bg-card/80',
-                  'animate-fade-in cursor-pointer',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                  isSelected
-                    ? 'border-[#007aff] bg-primary/5 shadow-md shadow-[#007aff]/10'
-                    : 'border-border/40 hover:border-border hover:scale-[1.01]'
-                )}
-                style={{
-                  animationDelay: `${index * 50}ms`,
-                }}
-              >
-                {/* Checkbox indicator - top right */}
-                <div className="absolute top-2 right-2">
-                  <div
-                    className={cn(
-                      'h-5 w-5 rounded border-2 flex items-center justify-center transition-all',
-                      isSelected
-                        ? 'bg-primary border-primary'
-                        : 'border-muted-foreground/30 group-hover:border-muted-foreground/50'
-                    )}
-                  >
-                    {isSelected && <Check className="h-3 w-3 text-white" />}
-                  </div>
-                </div>
-
-                {/* Scan line effect on hover */}
-                {isHovered && !isSelected && (
-                  <div className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
+              <div key={audit.id} className="relative">
+                <button
+                  onClick={() => toggleAudit(audit.id)}
+                  onMouseEnter={() => setHoveredAudit(audit.id)}
+                  onMouseLeave={() => setHoveredAudit(null)}
+                  disabled={isScanning}
+                  aria-label={`${audit.label} audit - ${audit.description}`}
+                  role="checkbox"
+                  aria-checked={isSelected}
+                  tabIndex={0}
+                  className={cn(
+                    'group relative w-full h-full p-3 rounded-lg border-2 text-left transition-all duration-200',
+                    'bg-card hover:bg-card/80',
+                    'animate-fade-in cursor-pointer',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                    isSelected
+                      ? 'border-[#007aff] bg-primary/5 shadow-md shadow-[#007aff]/10'
+                      : 'border-border/40 hover:border-border hover:scale-[1.01]'
+                  )}
+                  style={{
+                    animationDelay: `${index * 50}ms`,
+                  }}
+                >
+                  {/* Checkbox indicator - top right */}
+                  <div className="absolute top-2 right-2">
                     <div
-                      className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-30"
-                      style={{
-                        animation: 'scan 2s ease-in-out infinite',
-                      }}
-                    />
+                      className={cn(
+                        'h-5 w-5 rounded border-2 flex items-center justify-center transition-all',
+                        isSelected
+                          ? 'bg-primary border-primary'
+                          : 'border-muted-foreground/30 group-hover:border-muted-foreground/50'
+                      )}
+                    >
+                      {isSelected && <Check className="h-3 w-3 text-white" />}
+                    </div>
                   </div>
-                )}
 
-                {/* Icon and Label Row */}
-                <div className="flex items-center gap-2 mb-2 pr-6">
-                  <Icon
-                    className={cn(
-                      'h-5 w-5 flex-shrink-0 transition-transform duration-200',
-                      isSelected
-                        ? 'text-primary scale-110'
-                        : 'text-muted-foreground group-hover:text-foreground group-hover:scale-105'
-                    )}
-                  />
-                  <h3
-                    className={cn(
-                      'text-sm font-semibold transition-colors flex-1',
-                      isSelected
-                        ? 'text-foreground'
-                        : 'text-foreground/90 group-hover:text-foreground'
-                    )}
-                  >
-                    {audit.label}
-                  </h3>
-                </div>
+                  {/* Scan line effect on hover */}
+                  {isHovered && !isSelected && (
+                    <div className="absolute inset-0 overflow-hidden rounded-lg pointer-events-none">
+                      <div
+                        className="absolute inset-x-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-30"
+                        style={{
+                          animation: 'scan 2s ease-in-out infinite',
+                        }}
+                      />
+                    </div>
+                  )}
 
-                {/* Description */}
-                <p className="text-xs leading-relaxed text-muted-foreground mb-2">
-                  {audit.description}
-                </p>
+                  {/* Icon and Label Row */}
+                  <div className="flex items-center gap-2 mb-2 pr-6">
+                    <Icon
+                      className={cn(
+                        'h-5 w-5 flex-shrink-0 transition-transform duration-200',
+                        isSelected
+                          ? 'text-primary scale-110'
+                          : 'text-muted-foreground group-hover:text-foreground group-hover:scale-105'
+                      )}
+                    />
+                    <h3
+                      className={cn(
+                        'text-sm font-semibold transition-colors flex-1',
+                        isSelected
+                          ? 'text-foreground'
+                          : 'text-foreground/90 group-hover:text-foreground'
+                      )}
+                    >
+                      {audit.label}
+                    </h3>
+                  </div>
 
-                {/* Rule Count and Info Tooltip */}
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span
-                    className={cn(
-                      'font-medium',
-                      isSelected ? 'text-primary' : 'text-muted-foreground'
-                    )}
-                  >
-                    {audit.ruleCount} checks
-                  </span>
-                  <TooltipProvider delayDuration={200}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span
-                          role="button"
-                          tabIndex={-1}
-                          className="p-0.5 rounded hover:bg-muted/50 transition-colors cursor-help"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-xs p-3">
-                        <div className="space-y-2">
-                          <div>
-                            <p className="text-xs font-semibold text-foreground mb-1">✓ Checks:</p>
-                            <p className="text-xs text-muted-foreground">
-                              {audit.checks.join(', ')}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold text-foreground mb-1">
-                              ✗ Does NOT check:
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {audit.doesNotCheck.join(', ')}
-                            </p>
-                          </div>
+                  {/* Description */}
+                  <p className="text-xs leading-relaxed text-muted-foreground mb-2">
+                    {audit.description}
+                  </p>
+
+                  {/* Rule Count */}
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span
+                      className={cn(
+                        'font-medium',
+                        isSelected ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                    >
+                      {audit.ruleCount} checks
+                    </span>
+                  </div>
+                </button>
+
+                {/* Info tooltip - separate focusable control, kept out of the card button */}
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`What the ${audit.label} audit checks and does not check`}
+                        className="absolute bottom-3 right-3 p-0.5 rounded hover:bg-muted/50 transition-colors cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <Info className="h-3 w-3 text-muted-foreground/60 hover:text-muted-foreground" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-xs p-3">
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-xs font-semibold text-foreground mb-1">✓ Checks:</p>
+                          <p className="text-xs text-muted-foreground">{audit.checks.join(', ')}</p>
                         </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                </div>
-              </button>
+                        <div>
+                          <p className="text-xs font-semibold text-foreground mb-1">
+                            ✗ Does NOT check:
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {audit.doesNotCheck.join(', ')}
+                          </p>
+                        </div>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             );
           })}
         </div>
