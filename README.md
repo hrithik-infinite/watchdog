@@ -3,7 +3,7 @@
 > Instant accessibility audits with visual highlighting - A browser extension that helps developers identify and fix accessibility issues.
 
 [![License](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.0.1-green.svg)](package.json)
 
 ---
 
@@ -58,7 +58,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/watchdog.git
+git clone https://github.com/hrithik-infinite/watchdog.git
 cd watchdog
 
 # Install dependencies
@@ -191,13 +191,16 @@ All rules map to specific WCAG 2.1 criteria (Level A or AA).
 
 ## Permissions Explained
 
-WatchDog requires the following permissions:
+WatchDog requests the following four permissions:
 
 - **activeTab** - Access the current tab to scan for accessibility issues
-- **storage** - Save your settings and preferences
+- **storage** - Save your settings, preferences, and the list of issues you choose to ignore
 - **sidePanel** - Display the results panel alongside web pages
+- **scripting** - Inject the scanner and overlay scripts into pages (also used to inject into already-open tabs when the extension is installed or updated, so you don't have to reload them)
 
-**Privacy Note:** WatchDog processes everything locally in your browser. No data is sent to external servers. See [PRIVACY.md](PRIVACY.md) for details.
+**Content script on all sites:** WatchDog also registers a static content script that matches `<all_urls>` and runs at `document_idle`, so it loads on every page you open rather than only when you click the icon. Combined with the `scripting` permission, this is why Chrome shows the warning **"Read and change all your data on all websites"** when you install the extension. The scripts read the page DOM to perform audits and draw highlight overlays; they do not transmit page content anywhere.
+
+**Privacy Note:** WatchDog processes everything locally in your browser and sends nothing to third-party servers. Some audits make _same-origin_ requests to the page you are scanning (the Security audit issues a `HEAD` request to read response headers; the PWA audit fetches the page's own web app manifest). See [PRIVACY.md](PRIVACY.md) for details.
 
 ---
 
@@ -351,7 +354,7 @@ ISC License - See [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- **Issues:** [GitHub Issues](https://github.com/your-username/watchdog/issues)
+- **Issues:** [GitHub Issues](https://github.com/hrithik-infinite/watchdog/issues)
 - **Documentation:** [docs/](docs/)
 - **Privacy Policy:** [PRIVACY.md](PRIVACY.md)
 

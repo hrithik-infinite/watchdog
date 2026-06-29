@@ -1,5 +1,13 @@
 # watchdog
 
+## 1.0.1 (2026-06-29)
+
+### Patch Changes
+
+- **Scanner accuracy fixes** — Corrected several audits so they report fewer false positives and more accurate results, including header detection that honors `<meta http-equiv>` policies and tightened SEO/Security/Best-Practices/PWA checks.
+- **Scan resilience fixes** — Hardened the scanners against pages that throw, block requests, or change during a scan so a single failing check no longer aborts the whole audit, and the side panel recovers cleanly from failed scans.
+- **Documentation reconciliation** — Updated `README.md` and `PRIVACY.md` to match the shipped code: documented the `scripting` permission and the `<all_urls>` content script (and the resulting "read and change all your data on all websites" warning), clarified that the Security and PWA audits make same-origin requests, corrected the storage/retention details (in-memory scan results, indefinitely persisted ignored issues, no stored theme preference), canonicalized repository links, and added a `LICENSE` file (ISC).
+
 ## 1.0.0 (2026-01-17)
 
 ### Major Changes

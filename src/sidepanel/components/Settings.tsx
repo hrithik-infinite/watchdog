@@ -220,7 +220,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
 
       {/* Footer */}
       <div className="px-4 py-4 border-t border-border">
-        <p className="text-caption text-muted-foreground text-center">WatchDog v1.0.0</p>
+        <p className="text-caption text-muted-foreground text-center">WatchDog v1.0.1</p>
       </div>
     </div>
   );

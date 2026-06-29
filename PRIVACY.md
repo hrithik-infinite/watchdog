@@ -1,6 +1,6 @@
 # Privacy Policy for WatchDog
 
-**Last Updated:** January 17, 2026
+**Last Updated:** June 29, 2026
 
 ## Introduction
 
@@ -24,20 +24,23 @@ WatchDog processes the following information **locally in your browser only**:
 
 2. **User Settings**
    - Your preferred WCAG conformance level (A, AA, or AAA)
-   - Theme preference (light/dark mode)
-   - Vision simulator selections
+   - Vision simulator selection, "show incomplete", "auto-highlight", and "focus order" toggles
    - Stored locally using Chrome's `storage.local` API
 
 3. **Scan Results**
-   - Accessibility issues detected on scanned pages
-   - Temporarily cached during your browsing session
-   - Automatically cleared when you close the browser
+   - Accessibility and other audit issues detected on scanned pages
+   - Held in memory only (the side panel's in-app state) while the panel is open
+   - Not written to disk; discarded when you close the side panel or the browser
+
+4. **Ignored Issues**
+   - When you dismiss ("ignore") an issue, WatchDog stores the page **domain**, the element **CSS selector**, the **rule ID**, and the issue **message** (plus your chosen reason and an optional note) in Chrome's `storage.local`
+   - This lets the extension keep that issue hidden on future scans of the same domain
+   - Persists indefinitely until you un-ignore the issue or clear the extension's data
 
 ### Data We Do NOT Collect
 
 - Personal information (name, email, address, etc.)
-- Browsing history
-- URLs of pages you visit or scan
+- Browsing history or a log of the pages you visit (the page domain is stored only for an issue you explicitly choose to ignore — see "Ignored Issues" above)
 - Cookies or tracking identifiers
 - Login credentials
 - Form data or user input
@@ -58,7 +61,7 @@ All data processing happens entirely within your browser:
    - Performance: Core Web Vitals metrics collected via browser APIs
    - SEO, Security, Best Practices, PWA: Page metadata and structure analyzed
    - Results are displayed in the side panel
-   - No data leaves your device
+   - Nothing is sent to third-party servers. Some audits do make **same-origin** requests to the page you are scanning: the Security audit issues a `HEAD` request to the current URL to read its HTTP response headers, and the PWA audit `fetch()`es the page's own web app manifest. These requests go only to the site being scanned, never to us or any third party.
 
 2. **Element Highlighting**
    - Visual overlays are drawn directly on the page
@@ -81,14 +84,15 @@ All data processing happens entirely within your browser:
 
 ### Local Storage Only
 
-- **Chrome Storage API:** Used to save user preferences (WCAG level, theme)
-- **Session Storage:** Temporarily stores scan results during active browsing
+- **Chrome Storage API (`storage.local`):** Saves your settings (WCAG level, vision/toggle preferences) and the list of issues you choose to ignore
+- **In-memory only:** Scan results live in the side panel's in-app state and are never written to disk
 - **No External Databases:** We do not use any cloud storage or external servers
 
 ### Data Retention
 
 - **User Settings:** Persist until you uninstall the extension or clear browser data
-- **Scan Results:** Cleared when you close the browser or navigate away
+- **Ignored Issues:** Persist indefinitely in `storage.local` until you un-ignore them or clear the extension's data
+- **Scan Results:** Held in memory only; discarded when you close the side panel or the browser
 - **Exported Reports:** Saved to your device only (you manage these files)
 
 ---
@@ -105,33 +109,41 @@ WatchDog uses the open-source [axe-core](https://github.com/dequelabs/axe-core) 
 ### No External Connections
 
 WatchDog does **not**:
-- Make network requests to external servers
+- Send data to our servers or any third-party servers
 - Use third-party analytics (no Google Analytics, no telemetry)
 - Connect to CDNs or remote resources at runtime
 - Share data with advertisers or data brokers
+
+The only network requests WatchDog makes are **same-origin** requests to the page you are actively scanning — a `HEAD` request used by the Security audit to read response headers, and a `fetch()` of the page's own web app manifest used by the PWA audit. The contents of these responses are analyzed locally and never transmitted onward.
 
 ---
 
 ## Permissions Explained
 
-WatchDog requires the following Chrome permissions:
+WatchDog requests four Chrome permissions: `activeTab`, `storage`, `sidePanel`, and `scripting`.
 
 ### activeTab
-- **Purpose:** Access the current tab's content to perform accessibility scans
-- **Scope:** Only when you actively click the extension icon and scan
+- **Purpose:** Access the current tab's content to perform audits
 - **Data Access:** Read-only access to page HTML, CSS, and DOM structure
-- **No Background Access:** Cannot access tabs you're not actively scanning
 
 ### storage
-- **Purpose:** Save your preferences and settings
-- **Scope:** Stores data locally using Chrome's storage API
-- **Data Stored:** WCAG level preference, theme settings, vision simulator state
-- **No Remote Sync:** Data stays on your device (does not sync to Chrome account)
+- **Purpose:** Save your preferences and the issues you choose to ignore
+- **Scope:** Stores data locally using Chrome's `storage.local` API
+- **Data Stored:** WCAG level preference, vision simulator and toggle settings, and ignored-issue records (domain, selector, rule ID, message)
+- **No Remote Sync:** Data stays on your device (does not sync to your Chrome account)
 
 ### sidePanel
-- **Purpose:** Display the accessibility report panel alongside web pages
+- **Purpose:** Display the audit report panel alongside web pages
 - **Scope:** UI component only, no data collection
 - **Functionality:** Shows scan results and controls
+
+### scripting
+- **Purpose:** Inject the scanner and overlay scripts into pages
+- **Scope:** Also injects into already-open tabs when the extension is installed or updated, so existing tabs work without a manual reload
+
+### Why Chrome warns "Read and change all your data on all websites"
+
+In addition to the permissions above, WatchDog registers a **static content script that matches `<all_urls>` and runs at `document_idle`**. This means its scanning/overlay code loads on every page you open, not only when you click the icon. Together with the `scripting` permission, this broad host access is why Chrome displays the **"Read and change all your data on all websites"** warning at install time. The scripts read the page to run audits and draw highlight overlays; they do not collect or transmit your data. There is no truly background access to tab _contents_ beyond running these on-page scripts.
 
 ---
 
@@ -258,7 +270,7 @@ WatchDog is open-source software. You can:
 
 **TL;DR:**
 - ✅ All processing happens locally in your browser
-- ✅ No data sent to external servers
+- ✅ Nothing sent to third-party servers (some audits make same-origin requests to the page you scan)
 - ✅ No analytics or tracking
 - ✅ No personal information collected
 - ✅ You control all data (stored on your device only)
@@ -268,4 +280,4 @@ WatchDog is open-source software. You can:
 
 ---
 
-*This privacy policy applies to WatchDog version 1.0.0 (Released January 2026) and later.*
+*This privacy policy applies to WatchDog version 1.0.1 and later.*
