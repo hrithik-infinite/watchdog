@@ -172,9 +172,25 @@ the **fixes**.
 | ✅ | ux-public-7 | Score explainer tooltip + grade-F renamed "Failing" (no Critical-severity collision) | `Summary.tsx`, `scoring.ts` | `a6eb8b2` |
 | ✅ | ux-public-14 | Category filter derived from categories present; hidden when ≤1 | `FilterBar.tsx` | `a6eb8b2` |
 
-### Still to do (Tier B/C differentiators — Phase 3 in the roadmap)
+### Tier B/C differentiators — Phase 3 (partially landed)
 
-Tracked in [`PRODUCT_ANALYSIS.md` §4](./PRODUCT_ANALYSIS.md) Tier B/C — promote vision-sim/focus-order to results (`ux-public-10`), WAVE-style whole-page overlay (`feat-compet-10`), contrast eyedropper (`feat-compet-2`), real report screenshots (`feat-compet-9`), import-report (`feat-compet-8`), element-scoped scan, live preview-fix. Plus the export.ts report **content** rewrite (the menu now leads with "Share report", but the HTML/PDF body is not yet jargon-free/why-it-matters-led).
+**Done (PR #3, verifiable-first):**
+
+| ✓ | ID | Feature | file:line | Commit |
+|---|----|---------|-----------|--------|
+| ✅ | feat-compet-10 | WAVE-style "show all on page" overlay (wired the dead `highlightMultiple`; HIGHLIGHT_ALL message + results toggle) | `overlay.ts`, `messaging.ts`, `useHighlight.ts`, `App.tsx` | `f5f130b` |
+| ✅ | feat-compet-8 | Open a previously-exported JSON report (`parseReport` + `ImportReportButton` on home) | `import-report.ts`, `ImportReportButton.tsx` | `d5d7bb9` |
+| ✅ | ux-public-10 | Colorblind-sim deep-link from contrast issues; vision/focus logic centralized in `usePageOverlays` (Settings refactored onto it) | `usePageOverlays.ts`, `IssueDetail.tsx`, `Settings.tsx` | `53468e7` |
+
+**Deferred (need a real-browser smoke-test loop — canvas/EyeDropper):**
+
+| ✓ | ID | Feature | Why deferred |
+|---|----|---------|--------------|
+| ⬜ | feat-compet-2 | Interactive contrast eyedropper | `EyeDropper` API + `captureVisibleTab` + canvas — runtime-only verification |
+| ⬜ | feat-compet-9 | Real element screenshot in PDF/HTML reports | `captureVisibleTab` + canvas crop — runtime-only verification |
+| ⬜ | feat-compet-13 / feat-compet-20 | Element-scoped scan; live preview-fix | larger, lower priority |
+
+Plus the export.ts report **content** rewrite (menu leads "Share report" but the HTML/PDF body is not yet jargon-free/why-it-matters-led), and a standalone results-view "Experience your site" launcher (the contrast deep-link + WAVE overlay cover most of ux-public-10's intent).
 
 ---
 
