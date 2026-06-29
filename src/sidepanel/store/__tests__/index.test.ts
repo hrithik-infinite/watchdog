@@ -90,7 +90,7 @@ describe('Scan Store (Zustand)', () => {
       expect(useScanStore.getState().scanResult).toEqual(mockResult);
     });
 
-    it('should clear error when setting result', () => {
+    it('does not clear the error when setting a result (error is owned independently)', () => {
       const { setError, setScanResult } = useScanStore.getState();
 
       setError('Previous error');
@@ -119,7 +119,9 @@ describe('Scan Store (Zustand)', () => {
       };
 
       setScanResult(mockResult);
-      expect(useScanStore.getState().error).toBe(null);
+      // setScanResult must NOT wipe the error: a failed scan sets the error and
+      // then clears the stale result, and that must not erase the message.
+      expect(useScanStore.getState().error).toBe('Previous error');
     });
 
     it('should reset selected issue when setting new result', () => {

@@ -178,6 +178,7 @@ export function useScanner() {
         const allIssues: Issue[] = [];
         const allIncomplete: Issue[] = [];
         const errors: string[] = [];
+        let successCount = 0;
         let totalDuration = 0;
 
         // Run each audit sequentially
@@ -203,6 +204,7 @@ export function useScanner() {
 
             allIssues.push(...taggedIssues);
             allIncomplete.push(...taggedIncomplete);
+            successCount++;
           } catch (err) {
             const message = err instanceof Error ? err.message : 'Unknown error';
             const stack = err instanceof Error ? err.stack : undefined;
@@ -227,10 +229,18 @@ export function useScanner() {
           failedAudits: errors.length,
         });
 
-        setScanResult(combinedResult);
-
-        if (errors.length > 0) {
-          setError(`Some audits failed: ${errors.join('; ')}`);
+        if (successCount === 0) {
+          // Every audit errored — there are no partial results to show, so surface
+          // the failure on the error screen rather than an empty result.
+          setScanResult(null);
+          setError(`All audits failed: ${errors.join('; ')}`);
+        } else {
+          // At least one audit produced results: keep them and, if some failed,
+          // attach a non-blocking message so the partial results stay visible.
+          setScanResult(combinedResult);
+          if (errors.length > 0) {
+            setError(`Some audits failed: ${errors.join('; ')}`);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Unknown error occurred';

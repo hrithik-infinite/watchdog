@@ -81,10 +81,13 @@ export const useScanStore = create<ScanState>((set, get) => ({
   // Actions
   setScanning: (isScanning) => set({ isScanning }),
 
+  // Note: setScanResult does NOT touch `error`. Error is owned independently and
+  // cleared explicitly at the start of each scan. Coupling them here caused a
+  // failed scan (setError then setScanResult(null)) to wipe its own message, and
+  // a partial multi-scan (setScanResult then setError) to be hidden by the UI.
   setScanResult: (result) =>
     set({
       scanResult: result,
-      error: null,
       selectedIssueId: null,
       view: 'list',
     }),

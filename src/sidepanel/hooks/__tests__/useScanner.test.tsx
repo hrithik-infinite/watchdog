@@ -155,8 +155,10 @@ describe('useScanner Hook', () => {
       });
 
       rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.error).toBeDefined();
+      // The error message must survive: setScanResult(null) in the catch must not
+      // wipe the error the same handler just set (the home-screen-with-no-message bug).
+      expect(result.current.error).toBeTruthy();
+      expect(result.current.error).not.toBeNull();
       expect(result.current.scanResult).toBeNull();
       expect(result.current.isScanning).toBe(false);
     });
@@ -643,7 +645,33 @@ describe('useScanner Hook', () => {
       rerender();
       expect(result.current.error).toBeDefined();
       expect(result.current.error).toContain('Some audits failed');
+      // Partial results must survive alongside the error (not be hidden by it).
       expect(result.current.scanResult).toBeDefined();
+      expect(result.current.scanResult?.issues.length).toBeGreaterThan(0);
+    });
+
+    it('shows the error (not an empty result) when every audit in a multi-scan fails', async () => {
+      const { getCurrentTab } = await import('@/shared/messaging');
+      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
+
+      // PING handshake succeeds; every SCAN_PAGE fails.
+      (chrome.tabs.sendMessage as any).mockImplementation((_tabId: number, msg: { type: string }) =>
+        msg.type === 'PING'
+          ? Promise.resolve({ success: true })
+          : Promise.resolve({ success: false, error: 'audit boom' })
+      );
+
+      const { result, rerender } = renderHook(() => useScanner());
+
+      await act(async () => {
+        await result.current.scanMultiple(['accessibility', 'performance']);
+      });
+
+      rerender();
+      // No audit produced results, so there is nothing to show — surface the error
+      // instead of an empty "no issues" result.
+      expect(result.current.scanResult).toBeNull();
+      expect(result.current.error).toContain('All audits failed');
     });
 
     it('should handle missing tab error in multi-scan', async () => {
@@ -702,12 +730,14 @@ describe('useScanner Hook', () => {
       (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
 
       const result1: ScanResult = { ...mockScanResult };
-      let callCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation(() => {
-        callCount++;
-        if (callCount <= 2) return Promise.resolve({ success: true });
-        return Promise.resolve({ success: true, result: result1 });
-      });
+      // PING handshake succeeds, then the audit returns a real result, so the scan
+      // genuinely succeeds and the prior error is cleared at start (not wiped by a
+      // failure — that masking bug is gone now that setScanResult leaves error alone).
+      (chrome.tabs.sendMessage as any).mockImplementation((_tabId: number, msg: { type: string }) =>
+        msg.type === 'PING'
+          ? Promise.resolve({ success: true })
+          : Promise.resolve({ success: true, result: result1 })
+      );
 
       const { result, rerender } = renderHook(() => useScanner());
 

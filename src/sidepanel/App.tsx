@@ -235,11 +235,21 @@ export default function App() {
         <ScanButton isScanning={isScanning} onScan={handleRescan} hasResults={!!scanResult} />
       </div>
 
-      {/* Error state */}
-      {error && <EmptyState type="error" error={error} onScan={handleRescan} />}
+      {/* Full-screen error only when there are no results to show */}
+      {error && !scanResult && <EmptyState type="error" error={error} onScan={handleRescan} />}
+
+      {/* Partial-failure banner: some audits failed but others returned results */}
+      {error && scanResult && (
+        <div
+          role="alert"
+          className="mx-4 my-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300"
+        >
+          {error}
+        </div>
+      )}
 
       {/* Results */}
-      {!error && scanResult && (
+      {scanResult && (
         <>
           {scanResult.issues.length === 0 ? (
             <EmptyState type="no-issues" onScan={handleRescan} />
