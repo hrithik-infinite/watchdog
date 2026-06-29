@@ -493,6 +493,47 @@ describe('Security Scanner', () => {
       // If cookies exist, an issue should be created (not visible in this test without setting cookies)
       expect(Array.isArray(result.issues)).toBe(true);
     });
+
+    it('does not flag benign JavaScript-readable cookies as missing HttpOnly', async () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+        url: 'https://example.com',
+      });
+      dom.window.document.cookie = 'theme=dark';
+      dom.window.document.cookie = '_ga=GA1.2.3.4';
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+      });
+      vi.stubGlobal('document', dom.window.document);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ headers: new Map() }));
+
+      const result = await scanSecurity();
+
+      // Analytics/theme cookies are legitimately readable — the old check fired on
+      // any non-empty document.cookie, flagging nearly every site.
+      expect(result.issues.some((i) => i.ruleId === 'cookies-accessible')).toBe(false);
+    });
+
+    it('flags a session/auth cookie that is readable by JavaScript', async () => {
+      const dom = new JSDOM('<!DOCTYPE html><html><head></head><body></body></html>', {
+        url: 'https://example.com',
+      });
+      dom.window.document.cookie = 'sessionid=abc123';
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+      });
+      vi.stubGlobal('document', dom.window.document);
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ headers: new Map() }));
+
+      const result = await scanSecurity();
+
+      const cookieIssue = result.issues.find((i) => i.ruleId === 'cookies-accessible');
+      expect(cookieIssue).toBeDefined();
+      expect(cookieIssue?.message).toContain('sessionid');
+    });
   });
 
   describe('Security headers checks', () => {
@@ -539,6 +580,28 @@ describe('Security Scanner', () => {
       // Should find no missing header issues
       const headerIssues = result.issues.filter((i) => i.ruleId?.includes('header'));
       expect(headerIssues.length).toBe(0);
+    });
+
+    it('does not report missing CSP when delivered via <meta http-equiv>', async () => {
+      const dom = new JSDOM(
+        `<!DOCTYPE html><html><head><meta http-equiv="Content-Security-Policy" content="default-src 'self'"></head><body></body></html>`,
+        { url: 'https://example.com' }
+      );
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: dom.window.document,
+        matchMedia: vi.fn(),
+      });
+      vi.stubGlobal('document', dom.window.document);
+      // CSP absent from the HTTP response headers...
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ headers: new Map() }));
+
+      const result = await scanSecurity();
+
+      // ...but a <meta> CSP is honored by browsers, so it must not be "missing".
+      expect(result.issues.some((i) => i.ruleId === 'header-content-security-policy')).toBe(false);
+      // A header that cannot be meta-delivered (HSTS) is still reported missing.
+      expect(result.issues.some((i) => i.ruleId === 'header-strict-transport-security')).toBe(true);
     });
   });
 });
