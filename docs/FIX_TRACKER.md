@@ -8,7 +8,7 @@ the **fixes**.
 
 **Legend:** ✅ done · 🚧 in progress · ⬜ pending  ·  Eff: S `<1d` / M `~days` / L `1–2wk` / XL `>2wk`
 
-**Status summary:** Phase 0 (trust + core-loop) and **nearly all of Phase 1** (CWS launch gate) have landed on `fix/scanner-accuracy` / **PR #3** — 27 commits, **1086 tests green**, tsc + eslint + build clean, CI workflow added. Done this round: WCAG relabel (`ux-public-2`), all 3 Settings toggles (`cws-6`) + needs-review section (`deadcode-4`), CI (`testing-3`), coverage (`testing-5`). Still pending: owner-dependent store assets (`cws-1`, `cws-2` package.json copy), the on-demand-injection decision (`secpriv-6`), background tests (`testing-1`), a coverage threshold gate.
+**Status summary:** Phase 0 (trust + core-loop), **nearly all of Phase 1** (CWS launch gate), and **Phase 2 — Site-owner repositioning** (roadmap §8; = this tracker's "Phase 4 — New features" below) have landed on `fix/scanner-accuracy` / **PR #3** — **1117 tests green**, tsc + eslint + build clean, CI workflow added. Phase 2 this round (7 commits): persona spine + Settings toggle (`ux-public-17`), first-run onboarding (`ux-public-1`), Top-fixes card (`ux-public-11`), "why this matters" per issue (`ux-public-3`), plain issue cards + element descriptor + Hide (`ux-public-13,15`), shareable-report-led exports (`ux-public-6`), plain audit one-liners + broad default scan (`ux-public-8,9`), score explainer + plain severity + derived category filter (`ux-public-5,7,14`), audit-aware empty state (`ux-public-16`). Still pending: owner-dependent store assets (`cws-1`, `cws-2` package.json copy), the on-demand-injection decision (`secpriv-6`), background tests (`testing-1`), a coverage threshold gate; tracker "Phase 2/3" (history/trends layer, remaining P1–P3 bug cleanup).
 
 ---
 
@@ -150,7 +150,31 @@ the **fixes**.
 
 ## Phase 4 — New features (additions, not fixes)
 
-Tracked in [`PRODUCT_ANALYSIS.md` §4](./PRODUCT_ANALYSIS.md) — Site-owner mode, "Why this matters", "Top fixes" card, plain-language severity/exports, vision-sim/focus-order promotion, WAVE-style overlay, contrast eyedropper, real report screenshots, etc. Deferred until the fix backlog above is in good shape; sequence per the analysis.
+> Roadmap §8 calls this cluster **"Phase 2 — Site-owner repositioning"**; the
+> tracker numbers it Phase 4. Same work. The Tier-A legibility backlog has now
+> landed (PR #3); Tier-B/C differentiators remain.
+
+### Site-owner repositioning — DONE (PR #3)
+
+| ✓ | ID | Feature | file:line | Commit |
+|---|----|---------|-----------|--------|
+| ✅ | ux-public-17 | Developer/Site-owner persona setting (the umbrella) + `lib/persona.ts` selectors/copy maps | `types.ts`, `constants.ts`, `Settings.tsx` | `e370fce` |
+| ✅ | ux-public-1 / cws-5 | First-run onboarding (persona picker, privacy reassurance, primary CTA), gated on `hasSeenOnboarding` | `Onboarding.tsx`, `App.tsx` | `2049fe0` |
+| ✅ | ux-public-11 | "Top fixes" action card (group by ruleId, rank by severity×count) | `TopFixesCard.tsx` | `2049fe0` |
+| ✅ | ux-public-16 / deadcode-13 | Audit-aware success/empty copy (no more "passed all accessibility checks" after a perf scan) | `EmptyState.tsx`, `App.tsx` | `2049fe0` |
+| ✅ | ux-public-3 | "Why this matters" per issue — ruleId→consequence map tagged in scanPage, rendered above the description | `why-it-matters.ts`, `scanner.ts`, `IssueDetail.tsx`, `IssueCard.tsx` | `fa3dc9e`, `74d9534` |
+| ✅ | ux-public-13 | Plain element descriptor (`describeElement`) leads; raw markup behind "Show code" (site-owner) | `element-descriptor.ts`, `IssueCard.tsx`, `IssueDetail.tsx` | `74d9534` |
+| ✅ | ux-public-15 | Plain "Hide" / "Not actually a problem" ignore flow (site-owner; codes unchanged) | `IssueDetail.tsx`, `IgnoreIssueModal.tsx` | `74d9534`, `a6eb8b2` |
+| ✅ | ux-public-6 | Lead with shareable report; tuck JSON/CSV/Markdown/GitHub under "Advanced" (site-owner) | `ExportButton.tsx`, `CopyDropdown.tsx` | `22d3a2c` |
+| ✅ | ux-public-8 | Plain audit one-liners; acronyms moved to the technical-details tooltip | `AuditSelector.tsx` | `b8f2fba` |
+| ✅ | ux-public-9 | Default to a broad scan (all six) in site-owner mode | `AuditSelector.tsx` | `b8f2fba` |
+| ✅ | ux-public-5 | Plain-language severity subtitles (Summary + filter options) | `Summary.tsx`, `FilterBar.tsx` | `a6eb8b2` |
+| ✅ | ux-public-7 | Score explainer tooltip + grade-F renamed "Failing" (no Critical-severity collision) | `Summary.tsx`, `scoring.ts` | `a6eb8b2` |
+| ✅ | ux-public-14 | Category filter derived from categories present; hidden when ≤1 | `FilterBar.tsx` | `a6eb8b2` |
+
+### Still to do (Tier B/C differentiators — Phase 3 in the roadmap)
+
+Tracked in [`PRODUCT_ANALYSIS.md` §4](./PRODUCT_ANALYSIS.md) Tier B/C — promote vision-sim/focus-order to results (`ux-public-10`), WAVE-style whole-page overlay (`feat-compet-10`), contrast eyedropper (`feat-compet-2`), real report screenshots (`feat-compet-9`), import-report (`feat-compet-8`), element-scoped scan, live preview-fix. Plus the export.ts report **content** rewrite (the menu now leads with "Share report", but the HTML/PDF body is not yet jargon-free/why-it-matters-led).
 
 ---
 
