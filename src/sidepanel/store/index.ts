@@ -1,6 +1,11 @@
 import { create } from 'zustand';
-import type { Issue, ScanResult, FilterState, Settings } from '@/shared/types';
+import type { Issue, ScanResult, FilterState, Settings, WCAGLevel } from '@/shared/types';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
+import { isWcagIssue } from '../lib/standards';
+
+// Higher number = stricter conformance level. Selecting a level shows that level
+// and everything below it (AA shows A+AA; A shows only A).
+const WCAG_LEVEL_RANK: Record<WCAGLevel, number> = { A: 1, AA: 2, AAA: 3 };
 
 export type AuditType =
   | 'accessibility'
@@ -124,7 +129,7 @@ export const useScanStore = create<ScanState>((set, get) => ({
 
   // Computed
   getFilteredIssues: () => {
-    const { scanResult, filters, hideIgnored, ignoredHashes } = get();
+    const { scanResult, filters, hideIgnored, ignoredHashes, settings } = get();
     if (!scanResult) return [];
 
     let issues = [...scanResult.issues];
@@ -136,6 +141,13 @@ export const useScanStore = create<ScanState>((set, get) => ({
         return !ignoredHashes.has(hash);
       });
     }
+
+    // WCAG conformance-level filter — applies only to accessibility issues; other
+    // audits (Performance/SEO/…) are not graded by WCAG level and pass through.
+    const maxLevel = WCAG_LEVEL_RANK[settings.wcagLevel];
+    issues = issues.filter((issue) =>
+      isWcagIssue(issue.standard) ? WCAG_LEVEL_RANK[issue.wcag.level] <= maxLevel : true
+    );
 
     // Filter by severity
     if (filters.severity !== 'all') {

@@ -476,6 +476,66 @@ describe('Scan Store (Zustand)', () => {
       expect(filtered).toHaveLength(3);
     });
 
+    const emptySummary = {
+      total: 0,
+      bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+      byCategory: {
+        images: 0,
+        interactive: 0,
+        forms: 0,
+        color: 0,
+        document: 0,
+        structure: 0,
+        aria: 0,
+        technical: 0,
+      },
+    };
+
+    it('hides accessibility issues above the selected WCAG conformance level', () => {
+      const { updateSettings, setScanResult, getFilteredIssues } = useScanStore.getState();
+      const aaaIssue: Issue = {
+        ...mockIssues[0],
+        id: 'aaa-issue',
+        wcag: { id: '1.4.6', level: 'AAA', name: 'Contrast (Enhanced)', description: 'x' },
+      };
+      setScanResult({
+        url: 'https://example.com',
+        timestamp: 0,
+        duration: 0,
+        issues: [...mockIssues, aaaIssue],
+        incomplete: [],
+        summary: emptySummary,
+      });
+
+      updateSettings({ wcagLevel: 'AA' });
+      expect(getFilteredIssues().some((i) => i.id === 'aaa-issue')).toBe(false);
+
+      updateSettings({ wcagLevel: 'AAA' });
+      expect(getFilteredIssues().some((i) => i.id === 'aaa-issue')).toBe(true);
+    });
+
+    it('does not apply the WCAG level filter to non-accessibility issues', () => {
+      const { updateSettings, setScanResult, getFilteredIssues } = useScanStore.getState();
+      const perfIssue: Issue = {
+        ...mockIssues[0],
+        id: 'perf-issue',
+        standard: 'performance',
+        wcag: { id: 'n/a', level: 'AAA', name: 'x', description: 'x' },
+      };
+      setScanResult({
+        url: 'https://example.com',
+        timestamp: 0,
+        duration: 0,
+        issues: [perfIssue],
+        incomplete: [],
+        summary: emptySummary,
+      });
+
+      updateSettings({ wcagLevel: 'A' }); // strictest WCAG filter
+      // A Performance issue isn't WCAG-graded, so it passes through regardless.
+      expect(getFilteredIssues().some((i) => i.id === 'perf-issue')).toBe(true);
+    });
+
     it('should filter by severity', () => {
       const { setFilter, getFilteredIssues } = useScanStore.getState();
 
