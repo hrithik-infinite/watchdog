@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/sidepanel/components/ui/dropdown-menu';
 import { exportJSON, exportCSV, exportHTML, exportPDF } from '@/sidepanel/lib/export';
+import { useScanStore } from '@/sidepanel/store';
 import type { ScanResult } from '@/shared/types';
 
 interface ExportButtonProps {
@@ -18,6 +19,7 @@ interface ExportButtonProps {
 
 export default function ExportButton({ scanResult }: ExportButtonProps) {
   const [isExporting, setIsExporting] = useState(false);
+  const auditType = useScanStore((state) => state.selectedAuditType);
 
   if (!scanResult) {
     return null;
@@ -35,10 +37,10 @@ export default function ExportButton({ scanResult }: ExportButtonProps) {
           exportCSV(scanResult);
           break;
         case 'html':
-          exportHTML(scanResult);
+          exportHTML(scanResult, auditType);
           break;
         case 'pdf':
-          await exportPDF(scanResult);
+          await exportPDF(scanResult, auditType);
           break;
       }
     } catch (error) {
@@ -110,7 +112,7 @@ export default function ExportButton({ scanResult }: ExportButtonProps) {
           <FileText className="h-4 w-4 mr-2" />
           <div className="flex flex-col">
             <span className="text-sm font-medium">PDF</span>
-            <span className="text-xs text-muted-foreground">With screenshot</span>
+            <span className="text-xs text-muted-foreground">Printable report</span>
           </div>
         </DropdownMenuItem>
       </DropdownMenuContent>

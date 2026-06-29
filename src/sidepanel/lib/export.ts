@@ -46,6 +46,36 @@ function formatTimestamp(timestamp: number): string {
 }
 
 /**
+ * Escape HTML special characters to prevent stored HTML/script injection when
+ * interpolating page-derived text into generated reports.
+ */
+export function escapeHtml(value: string): string {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Validate a page-derived URL for safe use in an href. Only http(s) URLs are
+ * allowed through; anything else (javascript:, data:, etc.) collapses to '#'.
+ * The returned value is HTML-attribute escaped.
+ */
+function sanitizeUrl(rawUrl: string): string {
+  try {
+    const parsed = new URL(rawUrl);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return escapeHtml(parsed.href);
+    }
+  } catch {
+    // Not a valid absolute URL — fall through to the safe default.
+  }
+  return '#';
+}
+
+/**
  * Export scan results as JSON
  */
 export function exportJSON(result: ScanResult): void {
@@ -84,6 +114,12 @@ export function exportCSV(result: ScanResult): void {
     issue.helpUrl,
   ]);
 
+  // Neutralize CSV/formula injection: a cell whose value begins with =, +, -, or
+  // @ is treated as a formula by spreadsheet apps. Prefix it with a single quote
+  // so it is rendered as literal text instead of being evaluated.
+  const neutralizeCsvInjection = (value: string): string =>
+    /^[=+\-@]/.test(value) ? `'${value}` : value;
+
   // Escape CSV values
   const escapeCsvValue = (value: string): string => {
     if (value.includes(',') || value.includes('"') || value.includes('\n')) {
@@ -94,7 +130,9 @@ export function exportCSV(result: ScanResult): void {
 
   const csvContent = [
     headers.map(escapeCsvValue).join(','),
-    ...rows.map((row) => row.map(escapeCsvValue).join(',')),
+    ...rows.map((row) =>
+      row.map((cell) => escapeCsvValue(neutralizeCsvInjection(cell))).join(',')
+    ),
   ].join('\n');
 
   const filename = `watchdog-report-${formatTimestamp(result.timestamp)}.csv`;
@@ -104,9 +142,10 @@ export function exportCSV(result: ScanResult): void {
 /**
  * Export scan results as HTML
  */
-export function exportHTML(result: ScanResult): void {
+export function exportHTML(result: ScanResult, auditType: AuditType = 'accessibility'): void {
   const severityCounts = result.summary.bySeverity;
   const totalIssues = result.summary.total;
+  const auditLabel = AUDIT_TYPE_LABELS[auditType];
 
   // Group issues by severity
   const issuesBySeverity: Record<Severity, Issue[]> = {
@@ -125,7 +164,7 @@ export function exportHTML(result: ScanResult): void {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>WatchDog Accessibility Report</title>
+  <title>WatchDog ${auditLabel} Report</title>
   <style>
     * {
       margin: 0;
@@ -394,15 +433,15 @@ export function exportHTML(result: ScanResult): void {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🐕 WatchDog Accessibility Report</h1>
-      <p>Automated accessibility audit powered by axe-core</p>
+      <h1>🐕 WatchDog ${auditLabel} Report</h1>
+      <p>Automated ${auditLabel} audit</p>
     </div>
 
     <div class="meta">
       <div class="meta-grid">
         <div class="meta-item">
           <span class="meta-label">URL</span>
-          <span class="meta-value">${result.url}</span>
+          <span class="meta-value">${escapeHtml(result.url)}</span>
         </div>
         <div class="meta-item">
           <span class="meta-label">Date</span>
@@ -458,24 +497,24 @@ export function exportHTML(result: ScanResult): void {
                   (issue) => `
                 <div class="issue-card">
                   <div class="issue-header">
-                    <div class="issue-title">${issue.message}</div>
-                    <div class="issue-wcag">WCAG ${issue.wcag.id} (${issue.wcag.level})</div>
+                    <div class="issue-title">${escapeHtml(issue.message)}</div>
+                    <div class="issue-wcag">WCAG ${escapeHtml(issue.wcag.id)} (${escapeHtml(issue.wcag.level)})</div>
                   </div>
-                  <div class="issue-description">${issue.description}</div>
+                  <div class="issue-description">${escapeHtml(issue.description)}</div>
                   <div class="issue-element">
                     <div class="issue-element-label">Element</div>
-                    <div class="code-block">${issue.element.html.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+                    <div class="code-block">${escapeHtml(issue.element.html)}</div>
                   </div>
                   <div class="issue-element">
                     <div class="issue-element-label">Selector</div>
-                    <div class="code-block">${issue.element.selector}</div>
+                    <div class="code-block">${escapeHtml(issue.element.selector)}</div>
                   </div>
                   <div class="issue-fix">
                     <div class="issue-fix-label">How to Fix</div>
-                    <div class="issue-fix-description">${issue.fix.description}</div>
+                    <div class="issue-fix-description">${escapeHtml(issue.fix.description)}</div>
                     ${
                       issue.fix.code
-                        ? `<div class="code-block">${issue.fix.code.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>`
+                        ? `<div class="code-block">${escapeHtml(issue.fix.code)}</div>`
                         : ''
                     }
                   </div>
@@ -492,7 +531,7 @@ export function exportHTML(result: ScanResult): void {
     <div class="footer">
       <p>Generated by WatchDog v1.0.0 on ${new Date().toLocaleString()}</p>
       <p style="margin-top: 0.5rem;">
-        <a href="${result.url}" style="color: #2563eb;">View Original Page</a>
+        <a href="${sanitizeUrl(result.url)}" style="color: #2563eb;">View Original Page</a>
       </p>
     </div>
   </div>
@@ -506,8 +545,12 @@ export function exportHTML(result: ScanResult): void {
 /**
  * Export scan results as PDF using pdf-lib
  */
-export async function exportPDF(result: ScanResult): Promise<void> {
+export async function exportPDF(
+  result: ScanResult,
+  auditType: AuditType = 'accessibility'
+): Promise<void> {
   const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+  const auditLabel = AUDIT_TYPE_LABELS[auditType];
 
   const doc = await PDFDocument.create();
   const helvetica = await doc.embedFont(StandardFonts.Helvetica);
@@ -567,7 +610,7 @@ export async function exportPDF(result: ScanResult): Promise<void> {
   });
 
   // Header text
-  page.drawText('WatchDog Accessibility Report', {
+  page.drawText(`WatchDog ${auditLabel} Report`, {
     x: margin,
     y: pageHeight - 50,
     size: 22,
