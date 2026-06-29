@@ -24,6 +24,14 @@ export default defineManifest({
     },
   },
 
+  commands: {
+    _execute_action: {},
+  },
+
+  content_security_policy: {
+    extension_pages: "script-src 'self'; object-src 'self'",
+  },
+
   side_panel: {
     default_path: 'src/sidepanel/index.html',
   },
@@ -48,11 +56,4 @@ export default defineManifest({
     '48': 'icons/icon-48.png',
     '128': 'icons/icon-128.png',
   },
-
-  web_accessible_resources: [
-    {
-      resources: ['src/content/styles.css'],
-      matches: ['<all_urls>'],
-    },
-  ],
 });
