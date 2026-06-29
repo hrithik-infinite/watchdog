@@ -3,6 +3,7 @@ import { Badge } from '@/sidepanel/components/ui/badge';
 import { Button } from '@/sidepanel/components/ui/button';
 import type { Issue, Severity } from '@/shared/types';
 import { cn } from '@/sidepanel/lib/utils';
+import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
 
 interface IssueCardProps {
   issue: Issue;
@@ -73,12 +74,23 @@ export default function IssueCard({
           {/* Issue Title */}
           <h3 className="text-h3 text-foreground mb-1.5 leading-snug">{issue.message}</h3>
 
-          {/* WCAG Reference */}
+          {/* Standard reference: WCAG criterion for accessibility, a neutral
+              label otherwise. */}
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-mono text-[10px] text-muted-foreground tracking-wider px-2 py-0.5 bg-muted/30 rounded border border-border/50">
-              WCAG {issue.wcag.id}
-            </span>
-            <span className="text-caption text-muted-foreground/70">Level {issue.wcag.level}</span>
+            {issue.standard && !isWcagIssue(issue.standard) ? (
+              <span className="text-mono text-[10px] text-muted-foreground tracking-wider px-2 py-0.5 bg-muted/30 rounded border border-border/50">
+                {STANDARD_LABELS[issue.standard]}
+              </span>
+            ) : (
+              <>
+                <span className="text-mono text-[10px] text-muted-foreground tracking-wider px-2 py-0.5 bg-muted/30 rounded border border-border/50">
+                  WCAG {issue.wcag.id}
+                </span>
+                <span className="text-caption text-muted-foreground/70">
+                  Level {issue.wcag.level}
+                </span>
+              </>
+            )}
           </div>
 
           {/* Description */}

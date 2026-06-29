@@ -5,8 +5,20 @@ import type {
   Severity,
   Category,
   WCAGCriteria,
+  IssueStandard,
 } from '@/shared/types';
 import type { AuditType } from '@/shared/messaging';
+
+// Maps each implemented audit to the standard its issues belong to, so scanPage
+// can tag results centrally (see below) without editing every scanner.
+const AUDIT_STANDARD: Partial<Record<AuditType, IssueStandard>> = {
+  accessibility: 'wcag',
+  performance: 'performance',
+  seo: 'seo',
+  security: 'security',
+  'best-practices': 'best-practice',
+  pwa: 'pwa',
+};
 import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/shared/constants';
 import { generateFix } from '@/shared/fixes';
 import { scanPerformance } from './performance-scanner';
@@ -197,6 +209,14 @@ export async function scanPage(auditType: AuditType): Promise<ScanResult> {
         throw new Error(`${auditType} audit is not yet implemented`);
       default:
         throw new Error(`Unknown audit type: ${auditType}`);
+    }
+
+    // Tag every issue with the standard/audit it came from so display code can
+    // label non-accessibility issues correctly instead of calling them "WCAG".
+    const standard = AUDIT_STANDARD[auditType];
+    if (standard) {
+      result.issues = result.issues.map((issue) => ({ ...issue, standard }));
+      result.incomplete = result.incomplete.map((issue) => ({ ...issue, standard }));
     }
 
     logger.info('Scan finished', {

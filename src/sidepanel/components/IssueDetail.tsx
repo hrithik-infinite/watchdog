@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/sidepanel/components/ui/card';
 import CodeBlock from './CodeBlock';
 import IgnoreIssueModal from './IgnoreIssueModal';
 import type { Issue, Severity } from '@/shared/types';
+import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
 
 interface IssueDetailProps {
   issue: Issue;
@@ -81,16 +82,21 @@ export default function IssueDetail({
           </Badge>
         </div>
 
-        {/* WCAG Info */}
+        {/* Standard info: WCAG criterion for accessibility, a neutral label
+            (e.g. "Performance metric") for the other audits. */}
         <Card className="bg-wcag-bg border-wcag-border">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-2">
               <Info className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary-light">WCAG Info</span>
+              <span className="text-sm font-medium text-primary-light">
+                {isWcagIssue(issue.standard) ? 'WCAG Info' : `${STANDARD_LABELS[issue.standard!]} Info`}
+              </span>
             </div>
-            <p className="text-foreground font-medium mb-1">
-              WCAG {issue.wcag.id} (Level {issue.wcag.level})
-            </p>
+            {isWcagIssue(issue.standard) && (
+              <p className="text-foreground font-medium mb-1">
+                WCAG {issue.wcag.id} (Level {issue.wcag.level})
+              </p>
+            )}
             <p className="text-sm text-muted-foreground">{issue.description}</p>
           </CardContent>
         </Card>

@@ -37,6 +37,12 @@ export interface WCAGCriteria {
   description: string;
 }
 
+// Which audit / standard an issue belongs to. Drives how it is labelled in the
+// UI and exports: only `wcag` issues are genuine WCAG/accessibility findings —
+// the other scanners reuse the `wcag` field with placeholder values, so display
+// code must key off `standard` to avoid calling e.g. a Performance issue "WCAG".
+export type IssueStandard = 'wcag' | 'performance' | 'seo' | 'security' | 'best-practice' | 'pwa';
+
 // Individual accessibility issue
 export interface Issue {
   id: string;
@@ -47,6 +53,9 @@ export interface Issue {
   description: string;
   helpUrl: string;
   wcag: WCAGCriteria;
+  // Optional for backward compatibility; set centrally in scanPage(). Absent is
+  // treated as 'wcag' (the original accessibility-only behaviour).
+  standard?: IssueStandard;
   element: ElementInfo;
   fix: FixSuggestion;
 }

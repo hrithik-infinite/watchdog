@@ -122,4 +122,24 @@ describe('IssueCard', () => {
 
     expect(onSelect).not.toHaveBeenCalled();
   });
+
+  it('labels accessibility issues with their WCAG criterion', () => {
+    renderCard({ issue: { ...mockIssue, standard: 'wcag' } });
+
+    expect(screen.getByText(/WCAG 4\.1\.2/)).toBeInTheDocument();
+    expect(screen.getByText(/Level A/)).toBeInTheDocument();
+  });
+
+  it('labels a non-accessibility issue with a neutral standard, not "WCAG"', () => {
+    renderCard({ issue: { ...mockIssue, standard: 'performance' } });
+
+    expect(screen.getByText('Performance metric')).toBeInTheDocument();
+    expect(screen.queryByText(/WCAG/)).not.toBeInTheDocument();
+  });
+
+  it('treats a legacy issue without a standard as accessibility (WCAG)', () => {
+    renderCard(); // mockIssue has no `standard`
+
+    expect(screen.getByText(/WCAG 4\.1\.2/)).toBeInTheDocument();
+  });
 });
