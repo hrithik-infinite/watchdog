@@ -8,7 +8,7 @@ the **fixes**.
 
 **Legend:** ✅ done · 🚧 in progress · ⬜ pending  ·  Eff: S `<1d` / M `~days` / L `1–2wk` / XL `>2wk`
 
-**Status summary:** Phase 0 trust+core-loop landed in **PR #3** (`fix/scanner-accuracy`, 8 commits, 1035 tests green). Everything below Phase 0's "remaining" block is not started.
+**Status summary:** Phase 0 (trust + core-loop) **and most of Phase 1** (CWS launch gate) have landed on `fix/scanner-accuracy` / **PR #3** — 19 commits, **1077 tests green**, tsc + eslint + build clean. Still pending in Phase 1: owner-dependent store assets (`cws-1`, `cws-2`), the cross-cutting WCAG-relabel (`ux-public-2`), and the on-demand-injection decision (`secpriv-6`); plus Phase-0 leftovers CI (`testing-3`), coverage config (`testing-5`), dead Settings toggles (`cws-6`), background tests (`testing-1`).
 
 ---
 
@@ -44,10 +44,10 @@ the **fixes**.
 |---|----|-----|-----------|-----|-----|
 | ⬜ | testing-3 | Add CI (typecheck/lint/test/build on PR, Node 22) | `.github/` (absent) | med | S |
 | ⬜ | testing-5 | Broaden coverage `include` to all of `src`, set `all:true` + thresholds | `vitest.config.ts:15` | med | S |
-| ⬜ | correctness-8 / secpriv-2 | Escape page-derived `selector`/`message`/`url` in `exportHTML` | `export.ts:461,464,471,475,405,495` | med | S |
+| ✅ | correctness-8 / secpriv-2 | Escape page-derived `selector`/`message`/`url` in `exportHTML` *(done with the export cluster)* | `export.ts` | med | S |
 | ⬜ | cws-6 / correctness-26 | Wire or delete the 3 dead Settings toggles (WCAG level, Show Incomplete, Auto-highlight) | `Settings.tsx:108`, `store/index.ts:123` | high(trust) | S–M |
 | ⬜ | testing-1 | Background/service-worker unit tests (routing, badge, install, settings) | `background/*` | med | S |
-| ⬜ | testing-2 | Export-module tests (snapshot each format; assert escaping) | `lib/export.ts` | high | S |
+| ✅ | testing-2 | Export-module tests (escaping + CSV neutralization) *(done with the export cluster)* | `lib/__tests__/export.test.ts` | high | S |
 
 ---
 
@@ -57,36 +57,36 @@ the **fixes**.
 
 | ✓ | ID | Fix | file:line | Sev | Eff |
 |---|----|-----|-----------|-----|-----|
-| ⬜ | cws-15 | `IgnoreIssueModal` → real dialog (`role`, focus trap, Esc, labels) | `IgnoreIssueModal.tsx` | med | S |
-| ⬜ | cws-16 | `AuditSelector` conflicting ARIA + keyboard-unreachable tooltip | `AuditSelector.tsx` | med | S |
-| ⬜ | cws-17 | `IssueCard` Space key + nested interactive `<a>` | `IssueCard.tsx` | med | S |
-| ⬜ | cws-18 | `ScoreGauge` accessible name (`role=img` + label) | `ScoreGauge.tsx` | low | S |
-| ⬜ | cws-12 | App-level `aria-live` region for scan progress/completion | `App.tsx`/`ScanProgress.tsx` | med | S |
-| ⬜ | cws-13 | `role=progressbar` + `aria-valuenow` on the progress bar | `ScanProgress.tsx` | low | S |
-| ⬜ | cws-19 | `aria-pressed` on severity/hide-known filter toggles | `Summary.tsx`/`FilterBar.tsx` | med | S |
-| ⬜ | cws-20 | `aria-label` on the search input | `FilterBar.tsx` | low | S |
-| ⬜ | cws-14 | Global `prefers-reduced-motion` guard | `styles/globals.css` | med | S |
-| ⬜ | cws-8 | Add `_execute_action` command; fix misleading README shortcut line | `manifest.config.ts` | low | S |
+| ✅ | cws-15 | `IgnoreIssueModal` → real focus-trapping dialog (role/aria-modal/labelledby, Esc, radio group) | `IgnoreIssueModal.tsx` | med | S |
+| ✅ | cws-16 | `AuditSelector` ARIA fixed (checkbox+aria-checked only, role=group, focusable info) | `AuditSelector.tsx` | med | S |
+| ✅ | cws-17 | `IssueCard` Space key + "Learn more" link moved out of the button role | `IssueCard.tsx` | med | S |
+| ✅ | cws-18 | `ScoreGauge` `role=img` + computed aria-label | `ScoreGauge.tsx` | low | S |
+| ✅ | cws-12 | App-level `aria-live` region announcing scan start/completion | `App.tsx` | med | S |
+| ✅ | cws-13 | `role=progressbar` + aria-valuemin/max/now on the progress bar | `ScanProgress.tsx` | low | S |
+| ✅ | cws-19 | `aria-pressed` on severity/hide-ignored toggles | `Summary.tsx`/`FilterBar.tsx` | med | S |
+| ✅ | cws-20 | `aria-label="Search issues"` on the search input | `FilterBar.tsx` | low | S |
+| ✅ | cws-14 | Global `prefers-reduced-motion` guard | `styles/globals.css` | med | S |
+| ✅ | cws-8 | `_execute_action` command added *(README shortcut wording: minor follow-up)* | `manifest.config.ts` | low | S |
 
 ### Listing / docs / correctness of claims
 
 | ✓ | ID | Fix | file:line | Sev | Eff |
 |---|----|-----|-----------|-----|-----|
-| ⬜ | ux-public-2 | Stop labeling every issue "WCAG" (add audit-type field) | `IssueCard.tsx:63`, scanners | med | S |
-| ⬜ | deadcode-13 / cws-3 | Remove false "With screenshot" PDF claim; audit-aware report titles | `export.ts:397`, `ExportButton.tsx` | low | S |
+| ⬜ | ux-public-2 | Stop labeling every issue "WCAG" (add audit-type field) — **deferred** (cross-cutting: scanners + types + IssueCard) | `IssueCard.tsx:63`, scanners | med | S |
+| ✅ | deadcode-13 / cws-3 | Removed false "With screenshot" option; audit-aware report titles | `export.ts`, `ExportButton.tsx` | low | S |
 | ⬜ | cws-1 | Capture store screenshots + promo tiles *(needs owner)* | `store-assets/` | high | S |
-| ⬜ | cws-2 | Broaden listing/manifest copy to all six audits | `package.json:4`, `watchdog_description.txt` | high | S |
-| ⬜ | secpriv-1 / cws-21 | Privacy doc: "no network" is false (scanners `fetch()`) — reword | `PRIVACY.md` | med | S |
-| ⬜ | secpriv-4 / cws-22 | Privacy doc: storage mechanism/retention misstated | `PRIVACY.md` | med | S |
-| ⬜ | secpriv-5 | Privacy/README: `<all_urls>` content script + `scripting` undocumented | `PRIVACY.md`, `README.md` | med | S |
-| ⬜ | secpriv-7 / cws-23 | Document `scripting` permission; "4 permissions" lists 3 | `README.md`, `PRIVACY.md` | low | S |
-| ⬜ | cws-4 / cws-10 | Fix repo/support links, version drift (footer `v1.0.0` on 1.0.1), add LICENSE | README, `Settings.tsx`, `CHANGELOG.md` | low | S |
-| ⬜ | deadcode-10/11/12 | Single-source the a11y rule count (39) — UI/docs disagree (15/12/20/35) | `constants.ts:3`, `AuditSelector.tsx:40` | low | S |
-| ⬜ | secpriv-3 | CSV formula-injection prefix guard (`= + - @`) | `export.ts` | low | S |
-| ⬜ | secpriv-8 | Explicit `content_security_policy.extension_pages` | `manifest.config.ts` | low | S |
-| ⬜ | secpriv-9 | Drop redundant `styles.css` from `web_accessible_resources` | `manifest.config.ts:47` | low | S |
-| ⬜ | secpriv-10 | Build SVG vision filters via `createElementNS` (not `innerHTML`) | `vision-filters.ts:66` | low | S |
-| ⬜ | secpriv-6 | **Decision:** drop `<all_urls>` for on-demand injection (removes install warning) | `manifest.config.ts` | med | M |
+| ⬜ | cws-2 | Broaden listing/manifest copy to all six audits — README updated; **`package.json` description pending** *(stop-and-ask)* | `package.json:4` | high | S |
+| ✅ | secpriv-1 / cws-21 | Privacy/README: reworded to same-origin reads (no third-party data) | `PRIVACY.md`, `README.md` | med | S |
+| ✅ | secpriv-4 / cws-22 | Corrected storage mechanism/retention; dropped theme claim | `PRIVACY.md` | med | S |
+| ✅ | secpriv-5 | Documented `<all_urls>` content script + install warning | `PRIVACY.md`, `README.md` | med | S |
+| ✅ | secpriv-7 / cws-23 | Documented `scripting`; fixed the permission count | `README.md`, `PRIVACY.md` | low | S |
+| ✅ | cws-4 / cws-10 | Canonical repo/support links, footer → 1.0.1, CHANGELOG entry, LICENSE added | README, `Settings.tsx`, `CHANGELOG.md`, `LICENSE` | low | S |
+| ✅ | deadcode-10/11/12 | a11y rule count derived from `MVP_RULES.length`; comment corrected to 39 | `constants.ts`, `AuditSelector.tsx` | low | S |
+| ✅ | secpriv-3 | CSV formula-injection prefix guard (`= + - @`) | `export.ts` | low | S |
+| ✅ | secpriv-8 | Explicit `content_security_policy.extension_pages` | `manifest.config.ts` | low | S |
+| ✅ | secpriv-9 | Removed redundant `styles.css` `web_accessible_resources` (verified safe) | `manifest.config.ts` | low | S |
+| ✅ | secpriv-10 | SVG vision filters via `createElementNS` + `sRGB` color space | `vision-filters.ts` | low | S |
+| ⬜ | secpriv-6 | **Decision:** drop `<all_urls>` for on-demand injection (removes install warning) — **deferred** | `manifest.config.ts` | med | M |
 
 ---
 
