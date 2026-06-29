@@ -10,6 +10,15 @@ vi.stubGlobal('chrome', {
   tabs: {
     sendMessage: vi.fn(),
   },
+  scripting: {
+    executeScript: vi.fn().mockResolvedValue([]),
+    insertCSS: vi.fn().mockResolvedValue([]),
+  },
+  runtime: {
+    getManifest: vi.fn().mockReturnValue({
+      content_scripts: [{ js: ['content.js'], css: ['content.css'] }],
+    }),
+  },
 });
 
 // Mock the messaging module
@@ -208,12 +217,14 @@ describe('useScanner Hook', () => {
       expect(result.current.isScanning).toBe(false);
     });
 
-    it('should check if content script is loaded', async () => {
+    it('errors when the content script is absent and on-demand injection fails', async () => {
       const { getCurrentTab } = await import('@/shared/messaging');
       (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
       (chrome.tabs.sendMessage as any).mockRejectedValueOnce(
         new Error('Content script not loaded')
       );
+      // The page also disallows programmatic injection, so the scan gives up.
+      (chrome.scripting.executeScript as any).mockRejectedValueOnce(new Error('Cannot inject'));
 
       const { result, rerender } = renderHook(() => useScanner());
 
@@ -225,6 +236,35 @@ describe('useScanner Hook', () => {
       expect(result.current.error).toBeDefined();
       expect(result.current.scanResult).toBeNull();
       expect(result.current.isScanning).toBe(false);
+    });
+
+    it('injects the content script on demand and proceeds when the first PING fails', async () => {
+      const { getCurrentTab } = await import('@/shared/messaging');
+      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
+
+      const scanResult: ScanResult = { ...mockScanResult };
+      let pingCount = 0;
+      (chrome.tabs.sendMessage as any).mockImplementation((_t: number, msg: { type: string }) => {
+        if (msg.type === 'PING') {
+          pingCount++;
+          // First PING fails (not injected); the retry after injection succeeds.
+          return pingCount === 1
+            ? Promise.reject(new Error('not loaded'))
+            : Promise.resolve({ success: true });
+        }
+        return Promise.resolve({ success: true, result: scanResult });
+      });
+
+      const { result, rerender } = renderHook(() => useScanner());
+
+      await act(async () => {
+        await result.current.scan('accessibility');
+      });
+
+      rerender();
+      expect(chrome.scripting.executeScript).toHaveBeenCalled();
+      expect(result.current.scanResult).toBeDefined();
+      expect(result.current.error).toBeNull();
     });
 
     it('should handle scan failure response', async () => {
@@ -711,6 +751,8 @@ describe('useScanner Hook', () => {
       (chrome.tabs.sendMessage as any).mockRejectedValueOnce(
         new Error('Content script not loaded')
       );
+      // On-demand injection also fails, so the multi-scan reports the error.
+      (chrome.scripting.executeScript as any).mockRejectedValueOnce(new Error('Cannot inject'));
 
       const { result, rerender } = renderHook(() => useScanner());
 

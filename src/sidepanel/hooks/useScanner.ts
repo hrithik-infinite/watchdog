@@ -8,6 +8,30 @@ async function ensureContentScriptLoaded(tabId: number): Promise<void> {
   try {
     await chrome.tabs.sendMessage(tabId, { type: 'PING' });
     logger.info('Content script loaded', { tabId });
+    return;
+  } catch {
+    // Not injected yet — common for tabs that were already open when the
+    // extension was installed/updated (the declarative content script only runs
+    // on page load). We hold the `scripting` permission, so inject on demand and
+    // retry instead of telling the user to refresh.
+    logger.info('Content script not present; injecting on demand', { tabId });
+  }
+
+  try {
+    const contentScript = chrome.runtime.getManifest().content_scripts?.[0];
+    const jsFiles = contentScript?.js ?? [];
+    const cssFiles = contentScript?.css ?? [];
+
+    if (jsFiles.length > 0) {
+      await chrome.scripting.executeScript({ target: { tabId }, files: jsFiles });
+    }
+    if (cssFiles.length > 0) {
+      await chrome.scripting.insertCSS({ target: { tabId }, files: cssFiles });
+    }
+
+    // Confirm the freshly-injected script is responsive before scanning.
+    await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+    logger.info('Content script injected on demand', { tabId });
   } catch {
     throw new Error('Content script not loaded. Please refresh the page and try again.');
   }
