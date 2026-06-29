@@ -33,7 +33,7 @@ const mockIssue: Issue = {
 function renderCard(overrides: Partial<ComponentProps<typeof IssueCard>> = {}) {
   const onSelect = vi.fn();
   const onHighlight = vi.fn();
-  render(
+  const { container } = render(
     <IssueCard
       issue={mockIssue}
       isSelected={false}
@@ -42,7 +42,7 @@ function renderCard(overrides: Partial<ComponentProps<typeof IssueCard>> = {}) {
       {...overrides}
     />
   );
-  return { onSelect, onHighlight };
+  return { onSelect, onHighlight, container };
 }
 
 describe('IssueCard', () => {
@@ -141,5 +141,21 @@ describe('IssueCard', () => {
     renderCard(); // mockIssue has no `standard`
 
     expect(screen.getByText(/WCAG 4\.1\.2/)).toBeInTheDocument();
+  });
+
+  it('auto-highlights on hover when enabled and highlighting is possible', () => {
+    const { onHighlight, container } = renderCard({ canHighlight: true, autoHighlight: true });
+
+    fireEvent.mouseEnter(container.firstChild as Element);
+
+    expect(onHighlight).toHaveBeenCalled();
+  });
+
+  it('does not auto-highlight on hover when the setting is off', () => {
+    const { onHighlight, container } = renderCard({ canHighlight: true, autoHighlight: false });
+
+    fireEvent.mouseEnter(container.firstChild as Element);
+
+    expect(onHighlight).not.toHaveBeenCalled();
   });
 });

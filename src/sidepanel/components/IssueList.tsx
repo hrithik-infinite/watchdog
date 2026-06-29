@@ -8,6 +8,7 @@ interface IssueListProps {
   onSelectIssue: (id: string) => void;
   onHighlightIssue: (selector: string, severity: Severity) => void;
   canHighlight?: boolean;
+  autoHighlight?: boolean;
 }
 
 export default function IssueList({
@@ -16,6 +17,7 @@ export default function IssueList({
   onSelectIssue,
   onHighlightIssue,
   canHighlight = false,
+  autoHighlight = true,
 }: IssueListProps) {
   if (issues.length === 0) {
     return (
@@ -39,6 +41,7 @@ export default function IssueList({
           onSelect={onSelectIssue}
           onHighlight={() => onHighlightIssue(issue.element.selector, issue.severity)}
           canHighlight={canHighlight}
+          autoHighlight={autoHighlight}
         />
       ))}
     </div>

@@ -315,6 +315,7 @@ export default function App() {
                 onSelectIssue={handleSelectIssue}
                 onHighlightIssue={handleHighlightIssue}
                 canHighlight={selectedAuditTypes.includes('accessibility')}
+                autoHighlight={settings.autoHighlight}
               />
             </>
           )}

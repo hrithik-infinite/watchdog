@@ -11,6 +11,10 @@ interface IssueCardProps {
   onSelect: (id: string) => void;
   onHighlight: () => void;
   canHighlight?: boolean;
+  // When false, hovering a card does not auto-highlight its element on the page
+  // (the "Auto-highlight on Hover" setting). Highlighting is still possible via
+  // explicit actions in the detail view.
+  autoHighlight?: boolean;
 }
 
 const SEVERITY_VARIANTS: Record<Severity, 'critical' | 'serious' | 'moderate' | 'minor'> = {
@@ -33,6 +37,7 @@ export default function IssueCard({
   onSelect,
   onHighlight,
   canHighlight = false,
+  autoHighlight = true,
 }: IssueCardProps) {
   const truncateHtml = (html: string, maxLength: number = 80) => {
     const stripped = html.replace(/<[^>]*>/g, '').trim();
@@ -46,7 +51,7 @@ export default function IssueCard({
         'mb-2 transition-all animate-fade-in hover:bg-accent',
         isSelected && 'ring-2 ring-primary'
       )}
-      onMouseEnter={canHighlight ? onHighlight : undefined}
+      onMouseEnter={canHighlight && autoHighlight ? onHighlight : undefined}
     >
       <CardContent className="p-3">
         {/*
