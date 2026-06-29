@@ -391,7 +391,11 @@ describe('Errors - Custom error classes and error details', () => {
         { input: 'Refresh the page', code: 'E003' },
         // E009 must win over the generic E003 content-script match for the
         // activeTab/permission case (secpriv-6 on-demand injection).
-        { input: 'WatchDog needs permission for this tab. Click the WatchDog icon in your toolbar, then try again.', code: 'E009' },
+        {
+          input:
+            'WatchDog needs permission for this tab. Click the WatchDog icon in your toolbar, then try again.',
+          code: 'E009',
+        },
         { input: 'click the watchdog icon in your toolbar', code: 'E009' },
       ];
 

@@ -130,9 +130,7 @@ export function exportCSV(result: ScanResult): void {
 
   const csvContent = [
     headers.map(escapeCsvValue).join(','),
-    ...rows.map((row) =>
-      row.map((cell) => escapeCsvValue(neutralizeCsvInjection(cell))).join(',')
-    ),
+    ...rows.map((row) => row.map((cell) => escapeCsvValue(neutralizeCsvInjection(cell))).join(',')),
   ].join('\n');
 
   const filename = `watchdog-report-${formatTimestamp(result.timestamp)}.csv`;

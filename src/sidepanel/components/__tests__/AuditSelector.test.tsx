@@ -98,9 +98,7 @@ describe('AuditSelector persona copy (ux-public-8)', () => {
 
     // Plain one-liner replaces the jargon description on the card face.
     expect(screen.getByText(AUDIT_ONE_LINERS.accessibility)).toBeInTheDocument();
-    expect(
-      screen.queryByText('WCAG compliance & screen reader support')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('WCAG compliance & screen reader support')).not.toBeInTheDocument();
   });
 
   it('keeps the jargon description on the card in developer mode', () => {

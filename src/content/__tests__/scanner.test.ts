@@ -443,7 +443,9 @@ describe('Scanner - scanPage', () => {
             help: 'Color contrast may be insufficient',
             description: 'Description',
             helpUrl: 'https://example.com/help',
-            nodes: [{ target: ['p.text'], html: '<p class="text">Text</p>', failureSummary: 'test' }],
+            nodes: [
+              { target: ['p.text'], html: '<p class="text">Text</p>', failureSummary: 'test' },
+            ],
           },
         ],
       });

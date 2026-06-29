@@ -51,9 +51,7 @@ function renderCard(overrides: Partial<ComponentProps<typeof IssueCard>> = {}) {
 // real <button> "Show code" toggle is rendered as a sibling, so there can be two
 // elements with the button role — pick the activatable region by its tabindex.
 function getCardRegion(): HTMLElement {
-  const region = screen
-    .getAllByRole('button')
-    .find((el) => el.getAttribute('tabindex') === '0');
+  const region = screen.getAllByRole('button').find((el) => el.getAttribute('tabindex') === '0');
   if (!region) throw new Error('activatable card region not found');
   return region;
 }

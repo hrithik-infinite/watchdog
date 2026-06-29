@@ -73,9 +73,7 @@ function renderFilterBar(overrides: Partial<ComponentProps<typeof FilterBar>> = 
 
 describe('Summary severity filter accessibility (cws-19)', () => {
   it('reflects the active severity via aria-pressed', () => {
-    render(
-      <Summary summary={summary} activeSeverity="critical" onFilterBySeverity={vi.fn()} />
-    );
+    render(<Summary summary={summary} activeSeverity="critical" onFilterBySeverity={vi.fn()} />);
 
     // Only the active severity button is pressed.
     const pressed = screen.getByRole('button', { pressed: true });

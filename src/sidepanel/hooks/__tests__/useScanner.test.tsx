@@ -695,10 +695,11 @@ describe('useScanner Hook', () => {
       (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
 
       // PING handshake succeeds; every SCAN_PAGE fails.
-      (chrome.tabs.sendMessage as any).mockImplementation((_tabId: number, msg: { type: string }) =>
-        msg.type === 'PING'
-          ? Promise.resolve({ success: true })
-          : Promise.resolve({ success: false, error: 'audit boom' })
+      (chrome.tabs.sendMessage as any).mockImplementation(
+        (_tabId: number, msg: { type: string }) =>
+          msg.type === 'PING'
+            ? Promise.resolve({ success: true })
+            : Promise.resolve({ success: false, error: 'audit boom' })
       );
 
       const { result, rerender } = renderHook(() => useScanner());
@@ -775,10 +776,11 @@ describe('useScanner Hook', () => {
       // PING handshake succeeds, then the audit returns a real result, so the scan
       // genuinely succeeds and the prior error is cleared at start (not wiped by a
       // failure — that masking bug is gone now that setScanResult leaves error alone).
-      (chrome.tabs.sendMessage as any).mockImplementation((_tabId: number, msg: { type: string }) =>
-        msg.type === 'PING'
-          ? Promise.resolve({ success: true })
-          : Promise.resolve({ success: true, result: result1 })
+      (chrome.tabs.sendMessage as any).mockImplementation(
+        (_tabId: number, msg: { type: string }) =>
+          msg.type === 'PING'
+            ? Promise.resolve({ success: true })
+            : Promise.resolve({ success: true, result: result1 })
       );
 
       const { result, rerender } = renderHook(() => useScanner());
@@ -937,9 +939,7 @@ describe('useScanner Hook', () => {
         const { getCurrentTab } = await import('@/shared/messaging');
         (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
         (chrome.tabs.sendMessage as any).mockImplementation((_t: number, msg: { type: string }) =>
-          msg.type === 'PING'
-            ? Promise.resolve({ success: true })
-            : new Promise(() => {})
+          msg.type === 'PING' ? Promise.resolve({ success: true }) : new Promise(() => {})
         );
 
         const { result } = renderHook(() => useScanner());
@@ -964,10 +964,9 @@ describe('useScanner Hook', () => {
       try {
         const { getCurrentTab } = await import('@/shared/messaging');
         (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-        (chrome.tabs.sendMessage as any).mockImplementation((_t: number, msg: { type: string }) =>
-          msg.type === 'PING'
-            ? Promise.resolve({ success: true })
-            : new Promise(() => {}) // only a cancel ends this scan
+        (chrome.tabs.sendMessage as any).mockImplementation(
+          (_t: number, msg: { type: string }) =>
+            msg.type === 'PING' ? Promise.resolve({ success: true }) : new Promise(() => {}) // only a cancel ends this scan
         );
 
         const { result } = renderHook(() => useScanner());

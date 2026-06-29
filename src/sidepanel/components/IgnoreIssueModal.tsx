@@ -3,7 +3,13 @@
  * Allows users to mark an issue as known/ignored with a reason
  */
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react';
 import { X, Ban, Check } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';

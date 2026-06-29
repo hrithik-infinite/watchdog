@@ -16,7 +16,11 @@ const mockIssue: Issue = {
   helpUrl: 'https://example.com/button-name',
   wcag: { id: '4.1.2', level: 'A', name: 'Name, Role, Value', description: 'Name and role.' },
   element: { selector: 'button.submit', html: '<button></button>', failureSummary: 'No name' },
-  fix: { description: 'Add text', code: '<button>Go</button>', learnMoreUrl: 'https://example.com' },
+  fix: {
+    description: 'Add text',
+    code: '<button>Go</button>',
+    learnMoreUrl: 'https://example.com',
+  },
 };
 
 const scanResult: ScanResult = {

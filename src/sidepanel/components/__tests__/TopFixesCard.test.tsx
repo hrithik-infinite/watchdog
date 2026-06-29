@@ -54,11 +54,7 @@ describe('TopFixesCard', () => {
     const onSelectIssue = vi.fn();
     const minor = makeIssue('color-contrast', 'minor', 'Low contrast text');
     const critical = makeIssue('color-contrast', 'critical', 'Low contrast text');
-    const issues = [
-      minor,
-      critical,
-      makeIssue('image-alt', 'serious', 'Images missing alt text'),
-    ];
+    const issues = [minor, critical, makeIssue('image-alt', 'serious', 'Images missing alt text')];
 
     render(<TopFixesCard issues={issues} onSelectIssue={onSelectIssue} />);
 

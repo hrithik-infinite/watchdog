@@ -105,7 +105,9 @@ export default function IssueDetail({
             <div className="flex items-center gap-2 mb-2">
               <Info className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-primary-light">
-                {isWcagIssue(issue.standard) ? 'WCAG Info' : `${STANDARD_LABELS[issue.standard!]} Info`}
+                {isWcagIssue(issue.standard)
+                  ? 'WCAG Info'
+                  : `${STANDARD_LABELS[issue.standard!]} Info`}
               </span>
             </div>
             {isWcagIssue(issue.standard) && (

@@ -4,9 +4,7 @@ import ScanProgress from '../ScanProgress';
 
 describe('ScanProgress', () => {
   it('exposes progressbar semantics for a multi-audit scan', () => {
-    render(
-      <ScanProgress currentAuditType="accessibility" currentAuditIndex={1} totalAudits={4} />
-    );
+    render(<ScanProgress currentAuditType="accessibility" currentAuditIndex={1} totalAudits={4} />);
 
     const progressbar = screen.getByRole('progressbar');
     expect(progressbar).toHaveAttribute('aria-valuemin', '0');

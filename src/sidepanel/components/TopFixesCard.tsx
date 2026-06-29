@@ -73,8 +73,7 @@ function buildGroups(issues: Issue[]): FixGroup[] {
 
   // Rank by impact: severity weight × how many elements are affected.
   groups.sort(
-    (a, b) =>
-      SEVERITY_WEIGHTS[b.topSeverity] * b.count - SEVERITY_WEIGHTS[a.topSeverity] * a.count
+    (a, b) => SEVERITY_WEIGHTS[b.topSeverity] * b.count - SEVERITY_WEIGHTS[a.topSeverity] * a.count
   );
   return groups;
 }

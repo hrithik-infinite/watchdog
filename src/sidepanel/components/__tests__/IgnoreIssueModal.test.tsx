@@ -140,7 +140,9 @@ describe('IgnoreIssueModal', () => {
       renderModal();
 
       expect(screen.getByRole('dialog', { name: 'Hide this issue' })).toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: "It's from another company's code" })).toBeInTheDocument();
+      expect(
+        screen.getByRole('radio', { name: "It's from another company's code" })
+      ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument();
     });
 
@@ -150,7 +152,9 @@ describe('IgnoreIssueModal', () => {
 
       expect(screen.getByRole('dialog', { name: 'Mark as Known Issue' })).toBeInTheDocument();
       expect(screen.getByRole('radio', { name: 'False positive' })).toBeInTheDocument();
-      expect(screen.getByRole('radio', { name: "Third-party code (can't modify)" })).toBeInTheDocument();
+      expect(
+        screen.getByRole('radio', { name: "Third-party code (can't modify)" })
+      ).toBeInTheDocument();
       expect(screen.getByRole('button', { name: /mark as known/i })).toBeInTheDocument();
     });
   });

@@ -88,7 +88,9 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
           <p id="onboarding-persona-label" className="text-h3 text-foreground mb-1">
             How should we show results?
           </p>
-          <p className="text-sm text-muted-foreground mb-3">You can change this anytime in Settings.</p>
+          <p className="text-sm text-muted-foreground mb-3">
+            You can change this anytime in Settings.
+          </p>
 
           <div role="radiogroup" aria-labelledby="onboarding-persona-label" className="space-y-2.5">
             {PERSONA_OPTIONS.map((option, index) => {
