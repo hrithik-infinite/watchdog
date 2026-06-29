@@ -27,7 +27,7 @@ chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) =>
   return true;
 });
 
-async function handleMessage(message: Message, sender: chrome.runtime.MessageSender) {
+export async function handleMessage(message: Message, sender: chrome.runtime.MessageSender) {
   switch (message.type) {
     case 'SCAN_RESULT': {
       const result = message.payload as ScanResult;
