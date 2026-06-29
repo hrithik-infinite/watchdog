@@ -211,7 +211,7 @@ describe('Scoring - Audit scoring logic', () => {
       if (result.score < 25) {
         expect(result.grade).toBe('F');
         expect(result.color).toBe('#FF3D00');
-        expect(result.label).toBe('Critical');
+        expect(result.label).toBe('Failing');
       }
     });
   });

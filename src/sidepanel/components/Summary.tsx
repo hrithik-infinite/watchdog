@@ -1,7 +1,15 @@
+import { Info } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/sidepanel/components/ui/tooltip';
 import type { ScanSummary, Severity } from '@/shared/types';
 import { cn } from '@/sidepanel/lib/utils';
 import { calculateScoreFromSummary } from '@/shared/scoring';
+import { useIsSiteOwner, SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
 import ScoreGauge from './ScoreGauge';
 
 interface SummaryProps {
@@ -27,11 +35,30 @@ const SEVERITY_LABELS: Record<Severity, string> = {
 export default function Summary({ summary, onFilterBySeverity, activeSeverity }: SummaryProps) {
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
   const scoreResult = calculateScoreFromSummary(summary);
+  const isSiteOwner = useIsSiteOwner();
 
   return (
     <div className="flex items-center gap-4 animate-fade-in">
-      {/* Score Gauge */}
-      <ScoreGauge scoreResult={scoreResult} size="sm" showLabel={false} />
+      {/* Score Gauge with a universal "what does this number mean?" explainer */}
+      <div className="flex items-center gap-1">
+        <ScoreGauge scoreResult={scoreResult} size="sm" showLabel={false} />
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                type="button"
+                aria-label="How the score is calculated"
+                className="p-0.5 rounded hover:bg-muted/50 transition-colors cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              100 = no problems found. A lower score means more — or more serious — problems.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
       {/* Severity breakdown */}
       <div className="flex items-center gap-1 flex-1">
@@ -61,6 +88,14 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
               >
                 {SEVERITY_LABELS[severity]}
               </span>
+              {/* Plain-language subtitle for the Site-owner audience. Supplements
+                  the canonical severity label rather than replacing it, so the
+                  accessible name still contains "Critical"/"Serious"/etc. */}
+              {isSiteOwner && (
+                <span className="text-[9px] leading-tight mt-1 text-center text-muted-foreground/80">
+                  {SEVERITY_PLAIN[severity]}
+                </span>
+              )}
             </Button>
           );
         })}

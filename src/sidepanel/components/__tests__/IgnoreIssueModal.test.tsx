@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import IgnoreIssueModal from '../IgnoreIssueModal';
+import { useScanStore } from '@/sidepanel/store';
+import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Issue } from '@/shared/types';
 
 // Keep the real reason labels, but stub the storage write so submitting does
@@ -43,6 +45,9 @@ function renderModal(overrides: { onClose?: () => void; onIgnored?: () => void }
 describe('IgnoreIssueModal', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Store defaults to the Site-owner persona (DEFAULT_SETTINGS); reset it so
+    // each test starts from a known persona.
+    useScanStore.setState({ settings: { ...DEFAULT_SETTINGS } });
   });
 
   describe('Dialog semantics', () => {
@@ -56,8 +61,9 @@ describe('IgnoreIssueModal', () => {
     it('labels the dialog via aria-labelledby pointing at the title', () => {
       renderModal();
 
-      // Accessible name is resolved from the referenced <h2> title.
-      expect(screen.getByRole('dialog', { name: 'Mark as Known Issue' })).toBeInTheDocument();
+      // Accessible name is resolved from the referenced <h2> title. Site-owner is
+      // the default persona, so the plain title is shown.
+      expect(screen.getByRole('dialog', { name: 'Hide this issue' })).toBeInTheDocument();
     });
 
     it('gives the close control an accessible name', () => {
@@ -108,7 +114,8 @@ describe('IgnoreIssueModal', () => {
     it('marks the chosen reason as checked', () => {
       renderModal();
 
-      const falsePositive = screen.getByRole('radio', { name: 'False positive' });
+      // Site-owner default: reasons use the plain-language wording.
+      const falsePositive = screen.getByRole('radio', { name: 'Not actually a problem' });
       expect(falsePositive).toHaveAttribute('aria-checked', 'false');
 
       fireEvent.click(falsePositive);
@@ -119,11 +126,32 @@ describe('IgnoreIssueModal', () => {
     it('disables the submit button until a reason is chosen', () => {
       renderModal();
 
-      expect(screen.getByRole('button', { name: /mark as known/i })).toBeDisabled();
+      expect(screen.getByRole('button', { name: 'Hide' })).toBeDisabled();
 
-      fireEvent.click(screen.getByRole('radio', { name: 'False positive' }));
+      fireEvent.click(screen.getByRole('radio', { name: 'Not actually a problem' }));
 
-      expect(screen.getByRole('button', { name: /mark as known/i })).toBeEnabled();
+      expect(screen.getByRole('button', { name: 'Hide' })).toBeEnabled();
+    });
+  });
+
+  describe('Persona-aware copy (ux-public-15)', () => {
+    it('uses plain-language title, reasons and submit label in Site-owner mode', () => {
+      // Site-owner is the default persona.
+      renderModal();
+
+      expect(screen.getByRole('dialog', { name: 'Hide this issue' })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: "It's from another company's code" })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Hide' })).toBeInTheDocument();
+    });
+
+    it('keeps the developer vocabulary in developer mode', () => {
+      useScanStore.setState({ settings: { ...DEFAULT_SETTINGS, persona: 'developer' } });
+      renderModal();
+
+      expect(screen.getByRole('dialog', { name: 'Mark as Known Issue' })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: 'False positive' })).toBeInTheDocument();
+      expect(screen.getByRole('radio', { name: "Third-party code (can't modify)" })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /mark as known/i })).toBeInTheDocument();
     });
   });
 });

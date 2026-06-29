@@ -99,7 +99,9 @@ function getGradeInfo(score: number): {
   } else if (score >= 25) {
     return { grade: 'D', color: '#FF9100', label: 'Poor' };
   } else {
-    return { grade: 'F', color: '#FF3D00', label: 'Critical' };
+    // 'Failing' rather than 'Critical' so the grade label does not collide with
+    // the "Critical" severity count shown alongside the gauge.
+    return { grade: 'F', color: '#FF3D00', label: 'Failing' };
   }
 }
 

@@ -8,6 +8,7 @@ import { X, Ban, Check } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
 import { ignoreIssue, type IgnoreReason, IGNORE_REASON_LABELS } from '@/shared/storage';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
 import type { Issue } from '@/shared/types';
 
 interface IgnoreIssueModalProps {
@@ -24,6 +25,17 @@ const REASON_OPTIONS: IgnoreReason[] = [
   'will-fix-later',
   'other',
 ];
+
+// Plain-language reason wording for the Site-owner audience (ux-public-15). Kept
+// local to the component so the developer-facing IGNORE_REASON_LABELS in
+// shared/storage stays the canonical, persisted vocabulary.
+const SITE_OWNER_REASON_LABELS: Record<IgnoreReason, string> = {
+  'false-positive': 'Not actually a problem',
+  'third-party': "It's from another company's code",
+  'design-decision': "It's intentional",
+  'will-fix-later': "I'll fix it later",
+  other: 'Other reason',
+};
 
 // Elements that can receive keyboard focus inside the dialog.
 const FOCUSABLE_SELECTOR = [
@@ -44,6 +56,13 @@ export default function IgnoreIssueModal({
   const [selectedReason, setSelectedReason] = useState<IgnoreReason | null>(null);
   const [customNote, setCustomNote] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Site-owner mode swaps the developer jargon ("Mark as Known Issue") for plain
+  // wording. The stored reason value is unchanged — only the displayed copy.
+  const isSiteOwner = useIsSiteOwner();
+  const reasonLabels = isSiteOwner ? SITE_OWNER_REASON_LABELS : IGNORE_REASON_LABELS;
+  const dialogTitle = isSiteOwner ? 'Hide this issue' : 'Mark as Known Issue';
+  const submitLabel = isSiteOwner ? 'Hide' : 'Mark as Known';
 
   const dialogRef = useRef<HTMLDivElement>(null);
   const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -163,7 +182,7 @@ export default function IgnoreIssueModal({
           <div className="flex items-center gap-2">
             <Ban className="h-4 w-4 text-muted-foreground" />
             <h2 id={titleId} className="font-semibold text-foreground">
-              Mark as Known Issue
+              {dialogTitle}
             </h2>
           </div>
           <button
@@ -217,7 +236,7 @@ export default function IgnoreIssueModal({
                 >
                   {selectedReason === reason && <Check className="h-2.5 w-2.5 text-white" />}
                 </div>
-                <span className="text-sm">{IGNORE_REASON_LABELS[reason]}</span>
+                <span className="text-sm">{reasonLabels[reason]}</span>
               </button>
             ))}
           </div>
@@ -256,7 +275,7 @@ export default function IgnoreIssueModal({
             ) : (
               <>
                 <Ban className="h-3.5 w-3.5" />
-                Mark as Known
+                {submitLabel}
               </>
             )}
           </Button>

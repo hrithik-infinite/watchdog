@@ -9,6 +9,8 @@ import {
   SelectValue,
 } from '@/sidepanel/components/ui/select';
 import { cn } from '@/sidepanel/lib/utils';
+import { useScanStore } from '@/sidepanel/store';
+import { useIsSiteOwner, SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
 import type { Category, Severity } from '@/shared/types';
 
 interface FilterBarProps {
@@ -52,6 +54,11 @@ export default function FilterBar({
   onSearchChange,
   onHideIgnoredChange,
 }: FilterBarProps) {
+  const isSiteOwner = useIsSiteOwner();
+  // Read the current scan so the Category filter only offers categories that
+  // actually occur in the results (ux-public-14).
+  const scanResult = useScanStore((s) => s.scanResult);
+
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
   const categories: Category[] = [
     'images',
@@ -63,6 +70,14 @@ export default function FilterBar({
     'aria',
     'technical',
   ];
+
+  // Categories present in the current results. With no scan we fall back to the
+  // full list so the control still renders sensibly (e.g. before a scan runs).
+  const presentCategories = scanResult
+    ? categories.filter((category) => (scanResult.summary.byCategory[category] ?? 0) > 0)
+    : categories;
+  // Nothing to filter when 0 or 1 category is present — hide the whole control.
+  const showCategoryFilter = presentCategories.length > 1;
 
   const hasActiveFilters =
     severityFilter !== 'all' || categoryFilter !== 'all' || searchQuery.trim() !== '';
@@ -100,29 +115,41 @@ export default function FilterBar({
               <SelectItem value="all">All Severities</SelectItem>
               {severities.map((severity) => (
                 <SelectItem key={severity} value={severity}>
-                  {SEVERITY_LABELS[severity]}
+                  <span className="flex flex-col items-start">
+                    <span>{SEVERITY_LABELS[severity]}</span>
+                    {/* Plain-language subtitle for the Site-owner audience. */}
+                    {isSiteOwner && (
+                      <span className="text-[10px] leading-tight text-muted-foreground">
+                        {SEVERITY_PLAIN[severity]}
+                      </span>
+                    )}
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        <div className="flex-1">
-          <label className="block text-caption text-muted-foreground mb-1">Category</label>
-          <Select value={categoryFilter} onValueChange={onCategoryChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {CATEGORY_LABELS[category]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        {/* Category filter is hidden when there is nothing meaningful to filter
+            by (0 or 1 category present in the results). */}
+        {showCategoryFilter && (
+          <div className="flex-1">
+            <label className="block text-caption text-muted-foreground mb-1">Category</label>
+            <Select value={categoryFilter} onValueChange={onCategoryChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {presentCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {CATEGORY_LABELS[category]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Clear Filters Button */}
         {hasActiveFilters && (
