@@ -138,12 +138,14 @@ WatchDog requests four Chrome permissions: `activeTab`, `storage`, `sidePanel`, 
 - **Functionality:** Shows scan results and controls
 
 ### scripting
-- **Purpose:** Inject the scanner and overlay scripts into pages
-- **Scope:** Also injects into already-open tabs when the extension is installed or updated, so existing tabs work without a manual reload
+- **Purpose:** Inject the scanner and overlay code into the page **on demand** — only when you scan a page or toggle a page overlay (vision simulator / focus order)
+- **Scope:** Injection happens into the active tab you act on, under the `activeTab` grant; nothing is injected in the background or ahead of time
 
-### Why Chrome warns "Read and change all your data on all websites"
+### No "Read and change all your data on all websites" warning
 
-In addition to the permissions above, WatchDog registers a **static content script that matches `<all_urls>` and runs at `document_idle`**. This means its scanning/overlay code loads on every page you open, not only when you click the icon. Together with the `scripting` permission, this broad host access is why Chrome displays the **"Read and change all your data on all websites"** warning at install time. The scripts read the page to run audits and draw highlight overlays; they do not collect or transmit your data. There is no truly background access to tab _contents_ beyond running these on-page scripts.
+WatchDog has **no static content script and no broad host permissions**. It does not load any code on the pages you browse. The scanner runs only when you explicitly act on a tab (scan it, or turn on a vision/focus overlay), at which point it is injected into that one tab via `activeTab` + `scripting` and reads the page to run audits and draw highlights. Because there is no `<all_urls>` access, Chrome does **not** show the "Read and change all your data on all websites" warning, and WatchDog genuinely cannot see any tab you have not acted on.
+
+> If you open the panel on one tab and then switch to another, scanning the new tab may ask you to click the WatchDog toolbar icon first — that click is what grants access to that specific tab.
 
 ---
 

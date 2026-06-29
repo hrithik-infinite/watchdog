@@ -3,49 +3,11 @@ import { getSettings, saveSettings } from './storage';
 import type { Message } from '@/shared/messaging';
 import type { ScanResult } from '@/shared/types';
 
-// Inject content scripts into existing tabs on install/update
-chrome.runtime.onInstalled.addListener(async (details) => {
-  if (details.reason === 'install' || details.reason === 'update') {
-    // Get content script files from the manifest (handles build-time transformations)
-    const manifest = chrome.runtime.getManifest();
-    const contentScriptConfig = manifest.content_scripts?.[0];
-    if (!contentScriptConfig) return;
-
-    const jsFiles = contentScriptConfig.js || [];
-    const cssFiles = contentScriptConfig.css || [];
-
-    const tabs = await chrome.tabs.query({});
-    for (const tab of tabs) {
-      // Skip chrome://, edge://, about:, and extension pages
-      if (
-        tab.id &&
-        tab.url &&
-        !tab.url.startsWith('chrome://') &&
-        !tab.url.startsWith('chrome-extension://') &&
-        !tab.url.startsWith('edge://') &&
-        !tab.url.startsWith('about:') &&
-        !tab.url.startsWith('moz-extension://')
-      ) {
-        try {
-          if (jsFiles.length > 0) {
-            await chrome.scripting.executeScript({
-              target: { tabId: tab.id },
-              files: jsFiles,
-            });
-          }
-          if (cssFiles.length > 0) {
-            await chrome.scripting.insertCSS({
-              target: { tabId: tab.id },
-              files: cssFiles,
-            });
-          }
-        } catch {
-          // Tab may not allow script injection (e.g., Chrome Web Store)
-        }
-      }
-    }
-  }
-});
+// No install-time content-script injection. Without a declarative `<all_urls>`
+// content script (dropped in secpriv-6) the extension holds no broad host
+// access, so a background-initiated injection into open tabs would fail anyway.
+// The scanner is injected on demand into the active tab when the user scans or
+// toggles a page overlay (see shared/inject.ts), covered by `activeTab`.
 
 // Enable side panel on extension click
 chrome.sidePanel

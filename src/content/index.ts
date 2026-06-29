@@ -1,3 +1,7 @@
+// Bundled into the on-demand IIFE content build (vite.content.config.ts) so the
+// highlight styles ship inside the injected script's CSS instead of a
+// declarative content_scripts.css.
+import './styles.css';
 import { scanPage } from './scanner';
 import { highlightElement, clearHighlights } from './overlay';
 import { applyVisionFilter, removeVisionFilter } from './vision-filters';

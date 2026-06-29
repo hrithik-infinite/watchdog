@@ -196,9 +196,9 @@ WatchDog requests the following four permissions:
 - **activeTab** - Access the current tab to scan for accessibility issues
 - **storage** - Save your settings, preferences, and the list of issues you choose to ignore
 - **sidePanel** - Display the results panel alongside web pages
-- **scripting** - Inject the scanner and overlay scripts into pages (also used to inject into already-open tabs when the extension is installed or updated, so you don't have to reload them)
+- **scripting** - Inject the scanner and overlay code into the active tab **on demand** — only when you scan a page or toggle a vision/focus overlay
 
-**Content script on all sites:** WatchDog also registers a static content script that matches `<all_urls>` and runs at `document_idle`, so it loads on every page you open rather than only when you click the icon. Combined with the `scripting` permission, this is why Chrome shows the warning **"Read and change all your data on all websites"** when you install the extension. The scripts read the page DOM to perform audits and draw highlight overlays; they do not transmit page content anywhere.
+**No "all sites" warning:** WatchDog has **no static content script and no broad host permissions**, so it loads nothing on the pages you browse and Chrome does **not** show the "Read and change all your data on all websites" warning. The scanner is injected into a single tab only when you act on it (scan, or turn on a page overlay), under the `activeTab` grant, to read the DOM and draw highlights — page content is never transmitted anywhere. If you switch tabs with the panel open, scanning the new tab may ask you to click the WatchDog toolbar icon first to grant access to that tab.
 
 **Privacy Note:** WatchDog processes everything locally in your browser and sends nothing to third-party servers. Some audits make _same-origin_ requests to the page you are scanning (the Security audit issues a `HEAD` request to read response headers; the PWA audit fetches the page's own web app manifest). See [PRIVACY.md](PRIVACY.md) for details.
 

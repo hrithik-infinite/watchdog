@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { useScanStore, type AuditType } from '../store';
 import { getCurrentTab } from '@/shared/messaging';
+import { ensureContentScript } from '@/shared/inject';
 import type { ScanResult, Issue, ScanSummary, Severity, Category } from '@/shared/types';
 import logger from '@/shared/logger';
 
@@ -27,39 +28,6 @@ function rejectOnAbort(signal: AbortSignal): Promise<never> {
     }
     signal.addEventListener('abort', () => reject(new Error('Scan cancelled')), { once: true });
   });
-}
-
-async function ensureContentScriptLoaded(tabId: number): Promise<void> {
-  try {
-    await chrome.tabs.sendMessage(tabId, { type: 'PING' });
-    logger.info('Content script loaded', { tabId });
-    return;
-  } catch {
-    // Not injected yet — common for tabs that were already open when the
-    // extension was installed/updated (the declarative content script only runs
-    // on page load). We hold the `scripting` permission, so inject on demand and
-    // retry instead of telling the user to refresh.
-    logger.info('Content script not present; injecting on demand', { tabId });
-  }
-
-  try {
-    const contentScript = chrome.runtime.getManifest().content_scripts?.[0];
-    const jsFiles = contentScript?.js ?? [];
-    const cssFiles = contentScript?.css ?? [];
-
-    if (jsFiles.length > 0) {
-      await chrome.scripting.executeScript({ target: { tabId }, files: jsFiles });
-    }
-    if (cssFiles.length > 0) {
-      await chrome.scripting.insertCSS({ target: { tabId }, files: cssFiles });
-    }
-
-    // Confirm the freshly-injected script is responsive before scanning.
-    await chrome.tabs.sendMessage(tabId, { type: 'PING' });
-    logger.info('Content script injected on demand', { tabId });
-  } catch {
-    throw new Error('Content script not loaded. Please refresh the page and try again.');
-  }
 }
 
 // Generate combined summary from issues
@@ -183,7 +151,7 @@ export function useScanner() {
         }
 
         // Ensure content script is loaded (inject on-demand if needed)
-        await ensureContentScriptLoaded(tab.id);
+        await ensureContentScript(tab.id);
 
         const result = await scanSingle(auditType, tab.id, controller.signal);
         logger.info('Scan completed', {
@@ -252,7 +220,7 @@ export function useScanner() {
         }
 
         // Ensure content script is loaded (inject on-demand if needed)
-        await ensureContentScriptLoaded(tab.id);
+        await ensureContentScript(tab.id);
 
         const allIssues: Issue[] = [];
         const allIncomplete: Issue[] = [];

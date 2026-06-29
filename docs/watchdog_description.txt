@@ -17,13 +17,16 @@ Make the web better, one page at a time.
 
 ---
 
-HOST PERMISSION JUSTIFICATION:
+PERMISSION JUSTIFICATION:
 
-WatchDog requires broad host access to audit any website you visit. This permission allows the extension to:
+WatchDog requests no broad host access. It uses "activeTab" + "scripting" to inject its
+auditor into a single tab only when you act on it — when you scan the page or turn on a
+vision/focus overlay. This lets the extension:
 
-1. Analyze the DOM structure and content for accessibility issues across all sites
-2. Run axe-core accessibility scanner to detect WCAG compliance problems
-3. Visually highlight accessibility issues directly on the page
+1. Read the DOM and styles of the tab you are auditing to detect issues
+2. Run the axe-core accessibility scanner and the performance/SEO/security/best-practices/PWA checks
+3. Visually highlight problems directly on that page
 
-Without this access, WatchDog couldn't perform instant audits or highlight problems—defeating its core purpose. 
-The extension processes all data locally and never sends your page content elsewhere. Your privacy is protected while you get instant accessibility insights on any website.
+Because there is no static content script and no all-sites host permission, Chrome does not show
+the "read and change all your data on all websites" warning, and WatchDog cannot access tabs you
+have not acted on. Everything is processed locally; page content is never sent anywhere.

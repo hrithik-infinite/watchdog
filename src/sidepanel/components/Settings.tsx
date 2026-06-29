@@ -12,6 +12,7 @@ import {
 } from '@/sidepanel/components/ui/select';
 import type { Settings as SettingsType, WCAGLevel, VisionMode, Persona } from '@/shared/types';
 import { getCurrentTab } from '@/shared/messaging';
+import { ensureContentScript } from '@/shared/inject';
 
 interface SettingsProps {
   settings: SettingsType;
@@ -65,10 +66,12 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   const handleVisionModeChange = async (mode: VisionMode) => {
     onUpdate({ visionMode: mode });
 
-    // Apply filter to the current tab
+    // Apply filter to the current tab. The scanner is no longer always-on, so
+    // inject it on demand first (vision filters can be toggled without scanning).
     try {
       const tab = await getCurrentTab();
       if (tab?.id) {
+        await ensureContentScript(tab.id);
         await chrome.tabs.sendMessage(tab.id, {
           type: 'APPLY_VISION_FILTER',
           payload: { mode },
@@ -82,10 +85,12 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   const handleFocusOrderToggle = async (checked: boolean) => {
     onUpdate({ showFocusOrder: checked });
 
-    // Toggle focus order visualization on the current tab
+    // Toggle focus order visualization on the current tab (inject on demand —
+    // the scanner is no longer a declarative content script).
     try {
       const tab = await getCurrentTab();
       if (tab?.id) {
+        await ensureContentScript(tab.id);
         await chrome.tabs.sendMessage(tab.id, {
           type: 'TOGGLE_FOCUS_ORDER',
           payload: { show: checked },

@@ -41,14 +41,13 @@ export default defineManifest({
     type: 'module',
   },
 
-  content_scripts: [
-    {
-      matches: ['<all_urls>'],
-      js: ['src/content/index.ts'],
-      css: ['src/content/styles.css'],
-      run_at: 'document_idle',
-    },
-  ],
+  // No declarative content script. The scanner is injected on demand into the
+  // active tab via chrome.scripting.executeScript (the self-contained IIFE bundle
+  // built by vite.content.config.ts), covered by the `activeTab` permission. This
+  // is deliberate: a static `<all_urls>` content script is the only thing that
+  // would trigger Chrome's "read and change all your data on all websites"
+  // install warning, so dropping it keeps the install prompt clean and makes the
+  // activeTab-only privacy claims true (secpriv-6).
 
   icons: {
     '16': 'icons/icon-16.png',
