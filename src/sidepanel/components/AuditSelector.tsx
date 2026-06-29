@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from '@/sidepanel/components/ui/tooltip';
 import { MVP_RULES } from '@/shared/constants';
+import { useIsSiteOwner, AUDIT_ONE_LINERS } from '@/sidepanel/lib/persona';
 
 export type AuditType =
   | 'accessibility'
@@ -112,9 +113,14 @@ export default function AuditSelector({
   onStartMultipleScan,
   isScanning,
 }: AuditSelectorProps) {
-  // Multi-select state - default to accessibility selected
-  const [selectedAudits, setSelectedAudits] = useState<Set<AuditType>>(
-    () => new Set(['accessibility'])
+  const isSiteOwner = useIsSiteOwner();
+
+  // Multi-select default (ux-public-9): site owners want a broad health check, so
+  // seed all six audits; developers start focused on accessibility. First paint is
+  // held until settings load, so the persona is correct at mount and this initializer
+  // (which only runs once) reads the right default.
+  const [selectedAudits, setSelectedAudits] = useState<Set<AuditType>>(() =>
+    isSiteOwner ? new Set(auditTypes.map((a) => a.id)) : new Set(['accessibility'])
   );
   const [hoveredAudit, setHoveredAudit] = useState<AuditType | null>(null);
 
@@ -224,6 +230,12 @@ export default function AuditSelector({
             const Icon = audit.icon;
             const isSelected = selectedAudits.has(audit.id);
             const isHovered = hoveredAudit === audit.id;
+            // Site owners lead with the plain benefit one-liner (ux-public-8); the
+            // jargon `description` stays available in the info tooltip below.
+            const displayDescription =
+              isSiteOwner && AUDIT_ONE_LINERS[audit.id]
+                ? AUDIT_ONE_LINERS[audit.id]
+                : audit.description;
 
             return (
               <div key={audit.id} className="relative">
@@ -232,7 +244,7 @@ export default function AuditSelector({
                   onMouseEnter={() => setHoveredAudit(audit.id)}
                   onMouseLeave={() => setHoveredAudit(null)}
                   disabled={isScanning}
-                  aria-label={`${audit.label} audit - ${audit.description}`}
+                  aria-label={`${audit.label} audit - ${displayDescription}`}
                   role="checkbox"
                   aria-checked={isSelected}
                   tabIndex={0}
@@ -299,7 +311,7 @@ export default function AuditSelector({
 
                   {/* Description */}
                   <p className="text-xs leading-relaxed text-muted-foreground mb-2">
-                    {audit.description}
+                    {displayDescription}
                   </p>
 
                   {/* Rule Count */}
@@ -329,6 +341,16 @@ export default function AuditSelector({
                     </TooltipTrigger>
                     <TooltipContent side="top" className="max-w-xs p-3">
                       <div className="space-y-2">
+                        {/* Technical details — the jargon description the card face
+                            drops in site-owner mode stays reachable here. */}
+                        {isSiteOwner && (
+                          <div>
+                            <p className="text-xs font-semibold text-foreground mb-1">
+                              Technical details:
+                            </p>
+                            <p className="text-xs text-muted-foreground">{audit.description}</p>
+                          </div>
+                        )}
                         <div>
                           <p className="text-xs font-semibold text-foreground mb-1">✓ Checks:</p>
                           <p className="text-xs text-muted-foreground">{audit.checks.join(', ')}</p>
