@@ -8,7 +8,7 @@ the **fixes**.
 
 **Legend:** ✅ done · 🚧 in progress · ⬜ pending  ·  Eff: S `<1d` / M `~days` / L `1–2wk` / XL `>2wk`
 
-**Status summary:** Phase 0 (trust + core-loop), **nearly all of Phase 1** (CWS launch gate), and **Phase 2 — Site-owner repositioning** (roadmap §8; = this tracker's "Phase 4 — New features" below) have landed on `fix/scanner-accuracy` / **PR #3** — **1117 tests green**, tsc + eslint + build clean, CI workflow added. Phase 2 this round (7 commits): persona spine + Settings toggle (`ux-public-17`), first-run onboarding (`ux-public-1`), Top-fixes card (`ux-public-11`), "why this matters" per issue (`ux-public-3`), plain issue cards + element descriptor + Hide (`ux-public-13,15`), shareable-report-led exports (`ux-public-6`), plain audit one-liners + broad default scan (`ux-public-8,9`), score explainer + plain severity + derived category filter (`ux-public-5,7,14`), audit-aware empty state (`ux-public-16`). Still pending: owner-dependent store assets (`cws-1`, `cws-2` package.json copy), the on-demand-injection decision (`secpriv-6`), background tests (`testing-1`), a coverage threshold gate; tracker "Phase 2/3" (history/trends layer, remaining P1–P3 bug cleanup).
+**Status summary:** Phase 0, **Phase 1** (CWS launch gate), and **Phase 2 — Site-owner repositioning** have landed on `fix/scanner-accuracy` / **PR #3** — **1144 tests green**, tsc + eslint + build clean, CI + coverage-threshold gate active. The Phase-1/2 tail is now also done: `cws-2` listing copy (all six audits), `cws-1` store-asset capture spec (actual PNG capture is an owner task), `secpriv-6` (dropped `<all_urls>` for on-demand activeTab injection — **needs a Chrome smoke-test before merge**, see its commit), `testing-1` background tests, and the coverage threshold gate. **Remaining:** the actual store-screenshot capture (`cws-1`, owner) and **Phase 3 — Differentiators** (promote vision-sim/focus-order, WAVE overlay, contrast eyedropper, report screenshots) + remaining P1–P3 bug cleanup + the unused history/trends layer.
 
 ---
 
@@ -43,10 +43,10 @@ the **fixes**.
 | ✓ | ID | Fix | file:line | Sev | Eff |
 |---|----|-----|-----------|-----|-----|
 | ✅ | testing-3 | CI workflow (typecheck/lint/test/build, Node 22) on PR + master | `.github/workflows/ci.yml` | med | S |
-| ✅ | testing-5 | Broadened coverage `include` to all `src`, `all:true` (honest ~77%) *(threshold gate still pending)* | `vitest.config.ts` | med | S |
+| ✅ | testing-5 | Coverage `include` = all `src`, `all:true`, **+ threshold gate** (stmts 78 / branch 67 / funcs 73 / lines 78, under the 79/69/75/79 baseline) | `vitest.config.ts` | med | S |
 | ✅ | correctness-8 / secpriv-2 | Escape page-derived `selector`/`message`/`url` in `exportHTML` *(done with the export cluster)* | `export.ts` | med | S |
 | ✅ | cws-6 / correctness-26 | All 3 Settings toggles wired: WCAG-level filter, Auto-highlight-on-hover, Show-Incomplete (+ "Needs manual review" section) | `store/index.ts`, `IssueCard.tsx`, `IncompleteSection.tsx` | high(trust) | S–M |
-| ⬜ | testing-1 | Background/service-worker unit tests (routing, badge, install, settings) | `background/*` | med | S |
+| ✅ | testing-1 | Background/service-worker unit tests — handleMessage routing, badge mapping, settings get/save (23 tests) | `background/__tests__/*` | med | S |
 | ✅ | testing-2 | Export-module tests (escaping + CSV neutralization) *(done with the export cluster)* | `lib/__tests__/export.test.ts` | high | S |
 
 ---
@@ -74,8 +74,8 @@ the **fixes**.
 |---|----|-----|-----------|-----|-----|
 | ✅ | ux-public-2 | Issues labelled by audit standard, not always "WCAG" (`standard` field tagged in scanPage; IssueCard/IssueDetail relabel) | `types.ts`, `scanner.ts`, `IssueCard.tsx`, `IssueDetail.tsx` | med | S |
 | ✅ | deadcode-13 / cws-3 | Removed false "With screenshot" option; audit-aware report titles | `export.ts`, `ExportButton.tsx` | low | S |
-| ⬜ | cws-1 | Capture store screenshots + promo tiles *(needs owner)* | `store-assets/` | high | S |
-| ⬜ | cws-2 | Broaden listing/manifest copy to all six audits — README updated; **`package.json` description pending** *(stop-and-ask)* | `package.json:4` | high | S |
+| 🚧 | cws-1 | Capture spec + `store-assets/` scaffolding done; **actual screenshot capture remains an owner task** | `store-assets/README.md` | high | S |
+| ✅ | cws-2 | Listing + manifest description broadened to all six audits | `package.json:4`, `docs/watchdog_description.txt` | high | S |
 | ✅ | secpriv-1 / cws-21 | Privacy/README: reworded to same-origin reads (no third-party data) | `PRIVACY.md`, `README.md` | med | S |
 | ✅ | secpriv-4 / cws-22 | Corrected storage mechanism/retention; dropped theme claim | `PRIVACY.md` | med | S |
 | ✅ | secpriv-5 | Documented `<all_urls>` content script + install warning | `PRIVACY.md`, `README.md` | med | S |
@@ -86,7 +86,7 @@ the **fixes**.
 | ✅ | secpriv-8 | Explicit `content_security_policy.extension_pages` | `manifest.config.ts` | low | S |
 | ✅ | secpriv-9 | Removed redundant `styles.css` `web_accessible_resources` (verified safe) | `manifest.config.ts` | low | S |
 | ✅ | secpriv-10 | SVG vision filters via `createElementNS` + `sRGB` color space | `vision-filters.ts` | low | S |
-| ⬜ | secpriv-6 | **Decision:** drop `<all_urls>` for on-demand injection (removes install warning) — **deferred** | `manifest.config.ts` | med | M |
+| ✅ | secpriv-6 | Dropped `<all_urls>`; scanner is an IIFE injected on demand via activeTab (no broad-host install warning; also closes secpriv-9 WAR). **Needs a Chrome smoke-test before merge** (runtime injection not CI-verifiable) | `manifest.config.ts`, `vite.content.config.ts`, `shared/inject.ts`, `background/index.ts` | med | M |
 
 ---
 
