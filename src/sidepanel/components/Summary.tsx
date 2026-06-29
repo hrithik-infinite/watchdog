@@ -43,6 +43,7 @@ export default function Summary({ summary, onFilterBySeverity, activeSeverity }:
             <Button
               key={severity}
               variant="ghost"
+              aria-pressed={isActive}
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
               className={cn(
                 'flex-1 flex flex-col items-center h-auto px-2 py-2 rounded-lg transition-all',

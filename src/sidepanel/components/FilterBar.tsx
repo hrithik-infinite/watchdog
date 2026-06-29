@@ -80,6 +80,7 @@ export default function FilterBar({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
+          aria-label="Search issues"
           placeholder="Search issues..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -143,6 +144,7 @@ export default function FilterBar({
         <div className="flex items-center justify-between py-1">
           <button
             onClick={() => onHideIgnoredChange(!hideIgnored)}
+            aria-pressed={hideIgnored}
             className={cn(
               'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors',
               hideIgnored
