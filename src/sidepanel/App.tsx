@@ -151,10 +151,33 @@ export default function App() {
     }
   }, [scanResult, isScanning]);
 
+  // Screen-reader announcement for the scan lifecycle, derived during render
+  // (no effect needed — deriving avoids cascading renders). Intentionally
+  // excludes the cycling per-message progress text; only the start of a scan
+  // and its completion are announced.
+  let announcement = '';
+  if (isScanning) {
+    announcement = currentAuditType ? `Scanning ${currentAuditType}` : 'Scanning';
+  } else if (scanResult) {
+    const count = scanResult.issues.length;
+    announcement = `Scan complete, ${count} ${count === 1 ? 'issue' : 'issues'} found`;
+  }
+
+  // Visually-hidden live region. Rendered as the first child of every routed
+  // view (all share the same root element) so the same DOM node persists across
+  // transitions — including when ScanProgress unmounts on completion — which is
+  // what lets assistive tech announce the result.
+  const liveRegion = (
+    <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {announcement}
+    </div>
+  );
+
   // Settings view
   if (showSettings) {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
+        {liveRegion}
         <Settings
           settings={settings}
           onUpdate={updateSettings}
@@ -168,6 +191,7 @@ export default function App() {
   if (view === 'detail' && selectedIssue) {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
+        {liveRegion}
         <Header scanResult={scanResult} />
         <IssueDetail
           issue={selectedIssue}
@@ -197,6 +221,7 @@ export default function App() {
   if (isScanning) {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
+        {liveRegion}
         <Header scanResult={scanResult} />
         <ScanProgress
           currentAuditType={currentAuditType}
@@ -212,6 +237,7 @@ export default function App() {
   if (!error && !scanResult) {
     return (
       <div className="h-screen flex flex-col bg-bg-dark">
+        {liveRegion}
         <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
         <AuditSelector
           onStartScan={handleStartScan}
@@ -225,6 +251,7 @@ export default function App() {
   // List view with results
   return (
     <div className="h-screen flex flex-col bg-bg-dark">
+      {liveRegion}
       <Header
         showBackButton
         onBackClick={handleBackToHome}

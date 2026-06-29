@@ -127,7 +127,14 @@ export default function ScanProgress({
             </span>
             <span>{Math.round(progress)}%</span>
           </div>
-          <div className="h-2 bg-muted/30 rounded-full overflow-hidden">
+          <div
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progress)}
+            aria-label={`Scan progress: audit ${currentAuditIndex + 1} of ${totalAudits}`}
+            className="h-2 bg-muted/30 rounded-full overflow-hidden"
+          >
             <div
               className="h-full bg-gradient-to-r from-primary to-primary/70 rounded-full transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
