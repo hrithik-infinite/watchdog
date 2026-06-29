@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { ClipboardCopy, Check, ChevronDown, FileText, Code, Github } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/sidepanel/components/ui/dropdown-menu';
@@ -14,6 +16,7 @@ import {
   issuesToGitHubMarkdown,
   copyToClipboard,
 } from '@/sidepanel/lib/export';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
 import type { Issue, ScanResult } from '@/shared/types';
 import type { AuditType } from '@/sidepanel/store';
 
@@ -33,6 +36,7 @@ export default function CopyDropdown({
   className,
 }: CopyDropdownProps) {
   const [copied, setCopied] = useState<CopyFormat | null>(null);
+  const isSiteOwner = useIsSiteOwner();
 
   const handleCopy = async (format: CopyFormat) => {
     let text: string;
@@ -59,6 +63,14 @@ export default function CopyDropdown({
   const issueCount = issues.length;
   const buttonLabel = copied ? 'Copied!' : `Copy All (${issueCount})`;
 
+  const renderCopy = (format: CopyFormat, Icon: LucideIcon, label: string) => (
+    <DropdownMenuItem onClick={() => handleCopy(format)} className="cursor-pointer">
+      <Icon className="h-4 w-4 mr-2" />
+      <span>{label}</span>
+      {copied === format && <Check className="h-3 w-3 ml-auto text-green-500" />}
+    </DropdownMenuItem>
+  );
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -73,22 +85,24 @@ export default function CopyDropdown({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={() => handleCopy('markdown')} className="cursor-pointer">
-          <Code className="h-4 w-4 mr-2" />
-          <span>Copy as Markdown</span>
-          {copied === 'markdown' && <Check className="h-3 w-3 ml-auto text-green-500" />}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleCopy('plain')} className="cursor-pointer">
-          <FileText className="h-4 w-4 mr-2" />
-          <span>Copy as Plain Text</span>
-          {copied === 'plain' && <Check className="h-3 w-3 ml-auto text-green-500" />}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => handleCopy('github')} className="cursor-pointer">
-          <Github className="h-4 w-4 mr-2" />
-          <span>Copy for GitHub</span>
-          {copied === 'github' && <Check className="h-3 w-3 ml-auto text-green-500" />}
-        </DropdownMenuItem>
+        {isSiteOwner ? (
+          <>
+            {/* Site-owner: lead with the plain-text summary and tuck the
+                developer formats under an "Advanced" section. */}
+            {renderCopy('plain', FileText, 'Copy summary')}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+            {renderCopy('markdown', Code, 'Copy as Markdown')}
+            {renderCopy('github', Github, 'Copy for GitHub')}
+          </>
+        ) : (
+          <>
+            {renderCopy('markdown', Code, 'Copy as Markdown')}
+            {renderCopy('plain', FileText, 'Copy as Plain Text')}
+            <DropdownMenuSeparator />
+            {renderCopy('github', Github, 'Copy for GitHub')}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
