@@ -1,4 +1,4 @@
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, RotateCcw } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import { Switch } from '@/sidepanel/components/ui/switch';
 import { Card, CardContent } from '@/sidepanel/components/ui/card';
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/sidepanel/components/ui/select';
-import type { Settings as SettingsType, WCAGLevel, VisionMode } from '@/shared/types';
+import type { Settings as SettingsType, WCAGLevel, VisionMode, Persona } from '@/shared/types';
 import { getCurrentTab } from '@/shared/messaging';
 
 interface SettingsProps {
@@ -19,8 +19,22 @@ interface SettingsProps {
   onClose: () => void;
 }
 
+const personaOptions: { value: Persona; label: string; description: string }[] = [
+  {
+    value: 'site-owner',
+    label: 'Site owner',
+    description: 'Plain language and fixes — the recommended view for non-developers.',
+  },
+  {
+    value: 'developer',
+    label: 'Developer',
+    description: 'Full technical detail, code fixes, and developer exports.',
+  },
+];
+
 export default function Settings({ settings, onUpdate, onClose }: SettingsProps) {
   const wcagLevels: WCAGLevel[] = ['A', 'AA', 'AAA'];
+  const activePersona = personaOptions.find((p) => p.value === settings.persona);
 
   const colorBlindModes: { value: VisionMode; label: string; description: string }[] = [
     { value: 'none', label: 'None', description: 'Normal color vision' },
@@ -98,6 +112,30 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Experience (persona) — the spine of the Site-owner repositioning. */}
+        <div>
+          <Label className="text-h3 text-foreground mb-2 block">Experience</Label>
+          <p className="text-sm text-muted-foreground mb-3">
+            Choose how WatchDog presents results.
+          </p>
+          <div className="flex gap-2 mt-3" role="group" aria-label="Experience mode">
+            {personaOptions.map((option) => (
+              <Button
+                key={option.value}
+                variant={settings.persona === option.value ? 'default' : 'secondary'}
+                aria-pressed={settings.persona === option.value}
+                onClick={() => onUpdate({ persona: option.value })}
+                className="flex-1"
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+          {activePersona && (
+            <p className="text-xs text-muted-foreground mt-2">{activePersona.description}</p>
+          )}
+        </div>
+
         {/* WCAG Level */}
         <div>
           <Label className="text-h3 text-foreground mb-2 block">WCAG Conformance Level</Label>
@@ -219,7 +257,19 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-4 border-t border-border">
+      <div className="px-4 py-4 border-t border-border space-y-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => {
+            onUpdate({ hasSeenOnboarding: false });
+            onClose();
+          }}
+          className="w-full gap-2 text-muted-foreground hover:text-foreground"
+        >
+          <RotateCcw className="h-4 w-4" />
+          Replay welcome tour
+        </Button>
         <p className="text-caption text-muted-foreground text-center">WatchDog v1.0.1</p>
       </div>
     </div>

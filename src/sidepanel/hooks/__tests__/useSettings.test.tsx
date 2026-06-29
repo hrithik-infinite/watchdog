@@ -13,6 +13,8 @@ vi.stubGlobal('chrome', {
 });
 
 const mockSettings: Settings = {
+  persona: 'site-owner',
+  hasSeenOnboarding: true,
   wcagLevel: 'AA',
   showIncomplete: false,
   autoHighlight: true,
@@ -70,6 +72,8 @@ describe('useSettings Hook', () => {
 
     it('should update store with loaded settings', async () => {
       const customSettings: Settings = {
+        persona: 'developer',
+        hasSeenOnboarding: true,
         wcagLevel: 'AAA',
         showIncomplete: true,
         autoHighlight: false,
@@ -358,6 +362,8 @@ describe('useSettings Hook', () => {
 
     it('should handle successful response from GET_SETTINGS', async () => {
       const testSettings: Settings = {
+        persona: 'developer',
+        hasSeenOnboarding: true,
         wcagLevel: 'A',
         showIncomplete: true,
         autoHighlight: false,

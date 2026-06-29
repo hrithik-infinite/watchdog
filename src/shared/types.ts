@@ -56,6 +56,11 @@ export interface Issue {
   // Optional for backward compatibility; set centrally in scanPage(). Absent is
   // treated as 'wcag' (the original accessibility-only behaviour).
   standard?: IssueStandard;
+  // Optional plain-language consequence of the issue, in human/business terms
+  // ("Visitors using a screen reader can't tell what this button does"). Set
+  // centrally in scanPage() from a ruleId→copy map; rendered above the technical
+  // description for the Site-owner audience. Absent → nothing extra is shown.
+  whyItMatters?: string;
   element: ElementInfo;
   fix: FixSuggestion;
 }
@@ -88,8 +93,21 @@ export type VisionMode =
   | 'blur-medium'
   | 'blur-high';
 
+// Audience persona. Drives whether the UI presents plain language or full
+// technical detail (issue cards, audit labels, exports, ignore flow). New
+// installs default to 'site-owner' (see DEFAULT_SETTINGS); the first-run tour
+// and Settings both let a user switch. 'developer' preserves the original
+// developer-facing presentation.
+export type Persona = 'developer' | 'site-owner';
+
 // Settings configuration
 export interface Settings {
+  // Audience persona — the spine of the Site-owner repositioning.
+  persona: Persona;
+  // First-run tour gate. False until the user completes (or skips) onboarding;
+  // absent in records saved before this field existed, so it defaults to false
+  // and existing users see the tour once.
+  hasSeenOnboarding: boolean;
   wcagLevel: WCAGLevel;
   showIncomplete: boolean;
   autoHighlight: boolean;
