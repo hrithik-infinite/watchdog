@@ -7,9 +7,13 @@ interface EmptyStateProps {
   type: 'initial' | 'no-issues' | 'error';
   error?: string;
   onScan?: () => void;
+  // Human-friendly name of the audit that just ran (e.g. "Performance"), used to
+  // make the success message accurate instead of always claiming accessibility.
+  // Omitted → generic "No problems found" copy.
+  auditLabel?: string;
 }
 
-export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
+export default function EmptyState({ type, error, onScan, auditLabel }: EmptyStateProps) {
   if (type === 'error') {
     const errorDetails = getErrorDetails(error || '');
 
@@ -56,7 +60,9 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
         <CheckCircleIcon />
         <h2 className="text-h1 text-foreground mt-4 mb-2">No Issues Found!</h2>
         <p className="text-body text-muted-foreground max-w-xs mb-4">
-          This page passed all accessibility checks. Great job!
+          {auditLabel
+            ? `No ${auditLabel.toLowerCase()} problems found on this page. Nice work!`
+            : 'No problems found on this page. Nice work!'}
         </p>
         {onScan && (
           <Button variant="secondary" onClick={onScan} className="rounded-full gap-2">

@@ -11,6 +11,8 @@ import AuditSelector from './components/AuditSelector';
 import ScanProgress from './components/ScanProgress';
 import CopyDropdown from './components/CopyDropdown';
 import IncompleteSection from './components/IncompleteSection';
+import Onboarding from './components/Onboarding';
+import TopFixesCard from './components/TopFixesCard';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
@@ -18,7 +20,18 @@ import { useSettings } from './hooks/useSettings';
 import { useIgnoredIssues } from './hooks/useIgnoredIssues';
 import { useScanStore } from './store';
 import type { AuditType } from './store';
+import type { Persona } from '@/shared/types';
 import logger from '@/shared/logger';
+
+// Human-friendly audit names for the audit-aware success message.
+const AUDIT_LABELS: Partial<Record<AuditType, string>> = {
+  accessibility: 'Accessibility',
+  performance: 'Performance',
+  seo: 'SEO',
+  security: 'Security',
+  'best-practices': 'Best Practices',
+  pwa: 'PWA',
+};
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
@@ -70,7 +83,15 @@ export default function App() {
     totalFiltered,
   } = useIssues();
   const { highlightElement, clearHighlights } = useHighlight();
-  const { settings, updateSettings } = useSettings();
+  const { settings, updateSettings, loaded: settingsLoaded } = useSettings();
+
+  // Persist the persona chosen in the first-run tour and dismiss it.
+  const handleOnboardingComplete = useCallback(
+    (persona: Persona) => {
+      updateSettings({ persona, hasSeenOnboarding: true });
+    },
+    [updateSettings]
+  );
 
   const handleStartScan = useCallback(
     (auditType: AuditType) => {
@@ -173,6 +194,24 @@ export default function App() {
       {announcement}
     </div>
   );
+
+  // Hold the first paint until settings load from storage. This avoids a flash
+  // of the wrong persona's UI (onboarding for returning users, the site-owner
+  // default audit selection for developers) before their saved settings arrive.
+  if (!settingsLoaded) {
+    return <div className="h-screen flex flex-col bg-bg-dark" aria-busy="true" />;
+  }
+
+  // First-run tour — takes priority over every other view. Settings are loaded
+  // by this point, so `hasSeenOnboarding` reflects the user's real state.
+  if (!settings.hasSeenOnboarding) {
+    return (
+      <div className="h-screen flex flex-col bg-bg-dark">
+        {liveRegion}
+        <Onboarding onComplete={handleOnboardingComplete} />
+      </div>
+    );
+  }
 
   // Settings view
   if (showSettings) {
@@ -282,7 +321,13 @@ export default function App() {
       {scanResult && (
         <>
           {scanResult.issues.length === 0 ? (
-            <EmptyState type="no-issues" onScan={handleRescan} />
+            <EmptyState
+              type="no-issues"
+              onScan={handleRescan}
+              auditLabel={
+                selectedAuditTypes.length === 1 ? AUDIT_LABELS[selectedAuditTypes[0]] : undefined
+              }
+            />
           ) : (
             <>
               <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
@@ -297,6 +342,9 @@ export default function App() {
                   auditType={selectedAuditType}
                 />
               </div>
+
+              {/* Plain-language ranked starting point above the raw list. */}
+              <TopFixesCard issues={filteredIssues} onSelectIssue={handleSelectIssue} />
 
               <FilterBar
                 severityFilter={filters.severity}
