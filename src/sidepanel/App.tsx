@@ -13,6 +13,7 @@ import CopyDropdown from './components/CopyDropdown';
 import IncompleteSection from './components/IncompleteSection';
 import Onboarding from './components/Onboarding';
 import TopFixesCard from './components/TopFixesCard';
+import ImportReportButton from './components/ImportReportButton';
 import { useScanner } from './hooks/useScanner';
 import { useIssues } from './hooks/useIssues';
 import { useHighlight } from './hooks/useHighlight';
@@ -21,7 +22,7 @@ import { useIgnoredIssues } from './hooks/useIgnoredIssues';
 import { Highlighter } from 'lucide-react';
 import { useScanStore } from './store';
 import type { AuditType } from './store';
-import type { Persona } from '@/shared/types';
+import type { Persona, ScanResult } from '@/shared/types';
 import logger from '@/shared/logger';
 
 // Human-friendly audit names for the audit-aware success message.
@@ -57,6 +58,8 @@ export default function App() {
   const setIgnoredHashes = useScanStore((state) => state.setIgnoredHashes);
   const hideIgnored = useScanStore((state) => state.hideIgnored);
   const setHideIgnored = useScanStore((state) => state.setHideIgnored);
+  const setScanResult = useScanStore((state) => state.setScanResult);
+  const setError = useScanStore((state) => state.setError);
 
   // Ignored issues
   const {
@@ -94,6 +97,18 @@ export default function App() {
       updateSettings({ persona, hasSeenOnboarding: true });
     },
     [updateSettings]
+  );
+
+  // Open a previously-exported report (feat-compet-8). The report may be for a
+  // different page than the active tab, so clear the audit selection to disable
+  // page-targeted highlighting/overlays for the imported view.
+  const handleImportReport = useCallback(
+    (result: ScanResult) => {
+      setSelectedAuditTypes([]);
+      setError(null);
+      setScanResult(result);
+    },
+    [setSelectedAuditTypes, setError, setScanResult]
   );
 
   const handleStartScan = useCallback(
@@ -301,6 +316,9 @@ export default function App() {
       <div className="h-screen flex flex-col bg-bg-dark">
         {liveRegion}
         <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
+        <div className="flex justify-end px-4 pt-2">
+          <ImportReportButton onImport={handleImportReport} />
+        </div>
         <AuditSelector
           onStartScan={handleStartScan}
           onStartMultipleScan={handleStartMultipleScan}
