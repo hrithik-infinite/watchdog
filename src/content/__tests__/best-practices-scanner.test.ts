@@ -360,50 +360,23 @@ describe('Best Practices Scanner', () => {
     });
   });
 
-  describe('Console errors check', () => {
-    it('should detect excessive error handlers', async () => {
-      const pageWithErrorHandlers = new JSDOM(
-        '<!DOCTYPE html><html><head></head><body>' +
-          '<img onerror="alert(1)">' +
-          '<img onerror="alert(2)">' +
-          '<img onerror="alert(3)">' +
-          '<img onerror="alert(4)">' +
-          '<img onerror="alert(5)">' +
-          '<img onerror="alert(6)">' +
-          '</body></html>'
-      );
-      vi.stubGlobal('document', pageWithErrorHandlers.window.document);
-      vi.stubGlobal('window', pageWithErrorHandlers.window);
-
-      const result = await scanBestPractices();
-
-      const errorIssue = result.issues.find((i) => i.ruleId?.includes('error'));
-      expect(errorIssue).toBeDefined();
-    });
-
-    it('should accept pages with few error handlers', async () => {
-      const pageWithFewHandlers = new JSDOM(
-        '<!DOCTYPE html><html><head></head><body>' +
-          '<img onerror="alert(1)">' +
-          '<img onerror="alert(2)">' +
-          '</body></html>'
-      );
-      vi.stubGlobal('document', pageWithFewHandlers.window.document);
-      vi.stubGlobal('window', pageWithFewHandlers.window);
-
-      const result = await scanBestPractices();
-
-      const errorIssue = result.issues.find((i) => i.ruleId?.includes('excessive-error'));
-      expect(errorIssue).toBeUndefined();
-    });
-  });
-
   describe('Vulnerable libraries detection', () => {
     it('should not report vulns without libraries', async () => {
       const result = await scanBestPractices();
 
       const vulnIssues = result.issues.filter((i) => i.ruleId?.includes('vuln-'));
       expect(vulnIssues.length).toBe(0);
+    });
+
+    it('surfaces the global-only scope when no global libraries are present', async () => {
+      // The default empty page exposes no global libraries. The scan must state
+      // its scope rather than silently imply the page is free of vulnerable
+      // dependencies (bundled libraries are invisible to global detection).
+      const result = await scanBestPractices();
+
+      const scope = result.issues.find((i) => i.ruleId === 'library-scan-scope');
+      expect(scope).toBeDefined();
+      expect(scope?.severity).toBe('minor');
     });
 
     it('should have vulnerable library check', async () => {

@@ -214,6 +214,28 @@ function checkVulnerableLibraries(): BestPracticeCheck[] {
   const checks: BestPracticeCheck[] = [];
   const libraries = detectLibraries();
 
+  if (libraries.length === 0) {
+    // Detection only sees libraries exposed as window globals. Modern sites bundle
+    // their dependencies (webpack/Vite/Rollup) and expose no globals, so finding
+    // nothing here is NOT a clean bill of health. Make the scope explicit instead
+    // of silently reporting no vulnerabilities.
+    checks.push({
+      id: 'library-scan-scope',
+      name: 'Library Vulnerability Scan',
+      severity: 'minor',
+      passed: false,
+      message: 'Only globally-exposed libraries were scanned for known vulnerabilities',
+      description:
+        'WatchDog detects libraries exposed as window globals (e.g. window.jQuery, window._). None were found, so dependencies bundled by a build tool were not analyzed — a clean result here does not mean the page is free of vulnerable libraries.',
+      element: null,
+      fix: {
+        description: 'Audit bundled dependencies with your package manager.',
+        code: 'npm audit\n# or\nyarn audit\n# or\npnpm audit',
+      },
+    });
+    return checks;
+  }
+
   for (const lib of libraries) {
     const vulns = KNOWN_VULNERABILITIES.filter(
       (v) =>
@@ -578,39 +600,6 @@ function checkDeprecatedElements(): BestPracticeCheck[] {
   return checks;
 }
 
-function checkConsoleErrors(): BestPracticeCheck {
-  // We can't directly access console errors, but we can check for common error indicators
-  const errorElements = document.querySelectorAll('[onerror]');
-
-  if (errorElements.length > 5) {
-    return {
-      id: 'excessive-error-handlers',
-      name: 'Error Handlers',
-      severity: 'moderate',
-      passed: false,
-      message: `Found ${errorElements.length} inline error handlers`,
-      description:
-        'Excessive inline error handlers may indicate error-prone code. Use centralized error handling.',
-      element: errorElements[0] as HTMLElement,
-      fix: {
-        description: 'Use centralized error handling instead of inline onerror attributes.',
-        code: '// Use a global error handler\nwindow.addEventListener("error", (event) => {\n  console.error("Error:", event.error);\n});',
-      },
-    };
-  }
-
-  return {
-    id: 'error-handlers-ok',
-    name: 'Error Handlers',
-    severity: 'minor',
-    passed: true,
-    message: 'Error handling is reasonable',
-    description: '',
-    element: null,
-    fix: { description: '', code: '' },
-  };
-}
-
 function checkBrokenImages(): BestPracticeCheck[] {
   const checks: BestPracticeCheck[] = [];
   const images = document.querySelectorAll('img');
@@ -955,7 +944,6 @@ export async function scanBestPractices(): Promise<ScanResult> {
     checkCharset(),
     checkLangAttribute(),
     ...checkDeprecatedElements(),
-    checkConsoleErrors(),
     ...checkBrokenImages(),
     checkDuplicateIds(),
     ...checkEmptyLinks(),
