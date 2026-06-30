@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import { AlertCircle, Download, FileJson, FileSpreadsheet, FileText, Loader2, X } from 'lucide-react';
+import {
+  AlertCircle,
+  Download,
+  FileJson,
+  FileSpreadsheet,
+  FileText,
+  Loader2,
+  X,
+} from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
 import {

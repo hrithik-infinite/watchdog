@@ -1110,7 +1110,7 @@ describe('Fixes - Fix suggestion generation', () => {
       const fix = generateFix('scrollable-region-focusable', element);
 
       expect(fix.code).toBe(
-        '<div data-expr="a>b" tabindex="0" role="region" aria-label="Scrollable content">x</div>',
+        '<div data-expr="a>b" tabindex="0" role="region" aria-label="Scrollable content">x</div>'
       );
       expect(fix.code).toContain('data-expr="a>b"');
     });
@@ -1124,7 +1124,7 @@ describe('Fixes - Fix suggestion generation', () => {
       const fix = generateFix('object-alt', element);
 
       expect(fix.code).toBe(
-        '<object data="x?=</object>">Alternative content describing the object</object>',
+        '<object data="x?=</object>">Alternative content describing the object</object>'
       );
       expect(fix.code).toContain('data="x?=</object>"');
     });

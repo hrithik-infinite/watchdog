@@ -1423,9 +1423,9 @@ describe('Storage - Chrome storage API wrapper', () => {
       // second set() clobbered the first and one ignored issue was silently lost
       // (store ended with length 1 instead of 2).
       let store: IgnoredIssue[] = [];
-      (chrome.storage.local.get as any) = vi.fn().mockImplementation(
-        async () => ({ watchdog_ignored_issues: store })
-      );
+      (chrome.storage.local.get as any) = vi
+        .fn()
+        .mockImplementation(async () => ({ watchdog_ignored_issues: store }));
       (chrome.storage.local.set as any) = vi.fn().mockImplementation(async (obj: any) => {
         store = obj.watchdog_ignored_issues;
       });
@@ -1453,9 +1453,9 @@ describe('Storage - Chrome storage API wrapper', () => {
           domain: 'example.com',
         },
       ];
-      (chrome.storage.local.get as any) = vi.fn().mockImplementation(
-        async () => ({ watchdog_ignored_issues: store })
-      );
+      (chrome.storage.local.get as any) = vi
+        .fn()
+        .mockImplementation(async () => ({ watchdog_ignored_issues: store }));
       (chrome.storage.local.set as any) = vi.fn().mockImplementation(async (obj: any) => {
         store = obj.watchdog_ignored_issues;
       });

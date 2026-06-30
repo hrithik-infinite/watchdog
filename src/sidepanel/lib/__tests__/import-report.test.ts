@@ -44,7 +44,9 @@ describe('parseReport', () => {
   });
 
   it('rejects JSON that is not a WatchDog report', () => {
-    expect(() => parseReport(JSON.stringify({ hello: 'world' }))).toThrow(/isn't a WatchDog report/i);
+    expect(() => parseReport(JSON.stringify({ hello: 'world' }))).toThrow(
+      /isn't a WatchDog report/i
+    );
     expect(() => parseReport(JSON.stringify({ url: 'x', issues: 'nope', summary: {} }))).toThrow(
       /isn't a WatchDog report/i
     );

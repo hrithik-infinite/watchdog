@@ -109,8 +109,7 @@ const FIX_TEMPLATES: Record<RuleId, (element: ElementInfo) => FixSuggestion> = {
     description: 'Add descriptive text content to the link',
     code: el.html.includes('aria-label')
       ? el.html
-      : (addTextBeforeClosingTag(el.html, 'a', '[Link text]') ??
-        '<a href="...">[Link text]</a>'),
+      : (addTextBeforeClosingTag(el.html, 'a', '[Link text]') ?? '<a href="...">[Link text]</a>'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/link-name',
   }),
 
@@ -219,8 +218,10 @@ ${el.html}
   'scrollable-region-focusable': (el) => ({
     description: 'Make scrollable regions keyboard accessible with tabindex',
     code:
-      addAttributeToOpeningTag(el.html, 'tabindex="0" role="region" aria-label="Scrollable content"') ??
-      '<div tabindex="0" role="region" aria-label="Scrollable content">...</div>',
+      addAttributeToOpeningTag(
+        el.html,
+        'tabindex="0" role="region" aria-label="Scrollable content"'
+      ) ?? '<div tabindex="0" role="region" aria-label="Scrollable content">...</div>',
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/scrollable-region-focusable',
   }),
 

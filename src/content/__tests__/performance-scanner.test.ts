@@ -2785,7 +2785,12 @@ describe('Performance Scanner', () => {
 
     it('falls back to decodedBodySize when transferSize and encodedBodySize are 0', async () => {
       const resources = [
-        { transferSize: 0, encodedBodySize: 0, decodedBodySize: 1_500_000, initiatorType: 'script' },
+        {
+          transferSize: 0,
+          encodedBodySize: 0,
+          decodedBodySize: 1_500_000,
+          initiatorType: 'script',
+        },
       ];
       mockGetEntriesByType.mockImplementation((type: string) =>
         type === 'resource' ? resources : []

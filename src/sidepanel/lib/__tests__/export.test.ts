@@ -231,7 +231,10 @@ describe('exportHTML report content (report-content)', () => {
   it('labels a non-accessibility issue with its standard, not a placeholder WCAG id', async () => {
     // Regression: every non-a11y scanner reuses the wcag field with placeholder
     // values, so the report used to mislabel e.g. a Performance finding "WCAG".
-    const issue = makeIssue({ standard: 'performance', message: 'Largest Contentful Paint is slow' });
+    const issue = makeIssue({
+      standard: 'performance',
+      message: 'Largest Contentful Paint is slow',
+    });
     exportHTML(makeResult([issue]), 'performance');
     const html = await lastDownloadedText();
 
@@ -284,7 +287,9 @@ describe('exportPDF resilience to non-WinAnsi text (err-10)', () => {
       },
     });
 
-    await expect(exportPDF(makeResult([issue], 'https://例え.example/路径'))).resolves.toBeUndefined();
+    await expect(
+      exportPDF(makeResult([issue], 'https://例え.example/路径'))
+    ).resolves.toBeUndefined();
 
     const blob = capturedBlobs.at(-1);
     expect(blob?.type).toBe('application/pdf');
