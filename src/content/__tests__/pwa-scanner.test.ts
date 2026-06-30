@@ -1017,6 +1017,83 @@ describe('PWA Scanner', () => {
       expect(sizeIssue?.severity).toBe('serious');
     });
 
+    // Regression: the old detection used `size.includes('192')`, so icon sizes
+    // like "1192x1192" or "1920x1080" (which only contain "192"/"512" as a
+    // substring) were wrongly graded as satisfying the 192/512 requirement.
+    it('should not treat substring-only sizes (1192/1920) as valid 192/512 icons', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          icons: [
+            { src: '/icon-1192.png', sizes: '1192x1192' },
+            { src: '/banner.png', sizes: '1920x1080' },
+          ],
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const sizeIssue = result.issues.find((i) => i.ruleId === 'manifest-icons-sizes');
+      expect(sizeIssue).toBeDefined();
+      expect(sizeIssue?.severity).toBe('serious');
+    });
+
+    // Regression: a single icon may declare multiple space-separated size
+    // tokens (e.g. "192x192 512x512"); each token must be matched exactly.
+    it('should accept a single icon listing multiple space-separated sizes', async () => {
+      const withManifestDOM = new JSDOM(
+        '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'
+      );
+      vi.stubGlobal('document', withManifestDOM.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: withManifestDOM.window.document,
+        matchMedia: vi.fn(),
+        navigator: {
+          serviceWorker: {
+            getRegistration: vi.fn().mockResolvedValue(null),
+          },
+        },
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: vi.fn().mockResolvedValue({
+          name: 'My PWA',
+          short_name: 'PWA',
+          start_url: '/',
+          display: 'standalone',
+          theme_color: '#000000',
+          background_color: '#ffffff',
+          icons: [{ src: '/icon.png', sizes: '192x192 512x512' }],
+        }),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanPWA();
+
+      const sizeIssue = result.issues.find((i) => i.ruleId === 'manifest-icons-sizes');
+      expect(sizeIssue).toBeUndefined();
+    });
+
     it('should accept valid icon sizes', async () => {
       const withManifestDOM = new JSDOM(
         '<!DOCTYPE html><html><head><link rel="manifest" href="/manifest.json"></head><body></body></html>'

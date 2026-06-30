@@ -96,6 +96,15 @@ function checkManifestLink(): PWACheck {
   };
 }
 
+// A manifest `sizes` value can list several space-separated WxH tokens
+// (e.g. "192x192 512x512"), so compare each token exactly. The previous
+// `size.includes('192')` substring check let unrelated values such as
+// "1192x1192" or "1920x1080" falsely satisfy the 192/512 requirement.
+function iconSizeTokenMatches(token: string, target: number): boolean {
+  const [width, height] = token.toLowerCase().split('x');
+  return Number(width) === target && Number(height) === target;
+}
+
 function checkManifestContent(manifest: ManifestData | null): PWACheck[] {
   const checks: PWACheck[] = [];
 
@@ -217,9 +226,12 @@ function checkManifestContent(manifest: ManifestData | null): PWACheck[] {
     });
   } else {
     // Check for required icon sizes
-    const iconSizes = manifest.icons.map((icon) => icon.sizes).filter(Boolean);
-    const has192 = iconSizes.some((size) => size?.includes('192'));
-    const has512 = iconSizes.some((size) => size?.includes('512'));
+    const iconSizeTokens = manifest.icons
+      .map((icon) => icon.sizes)
+      .filter((sizes): sizes is string => Boolean(sizes))
+      .flatMap((sizes) => sizes.trim().split(/\s+/));
+    const has192 = iconSizeTokens.some((token) => iconSizeTokenMatches(token, 192));
+    const has512 = iconSizeTokens.some((token) => iconSizeTokenMatches(token, 512));
 
     if (!has192 || !has512) {
       checks.push({
