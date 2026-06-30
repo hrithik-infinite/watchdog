@@ -310,13 +310,97 @@ function checkPasswordPastePrevention(): BestPracticeCheck[] {
   return checks;
 }
 
+// Replaces JS line/block comments and string/template-literal CONTENT with
+// blanks while preserving identifiers and call syntax, so a substring scan for
+// an API call doesn't match a commented-out or quoted mention. A single-pass
+// tokenizer is used (not independent regex passes) because comments can contain
+// quotes and strings can contain `//` (e.g. "https://..."), so stripping one
+// kind before the other corrupts the source and yields false negatives.
+function stripCommentsAndStrings(code: string): string {
+  let result = '';
+  let i = 0;
+  const n = code.length;
+  type State = 'code' | 'line' | 'block' | 'single' | 'double' | 'template';
+  let state: State = 'code';
+
+  while (i < n) {
+    const c = code[i];
+    const next = code[i + 1];
+
+    switch (state) {
+      case 'code':
+        if (c === '/' && next === '/') {
+          state = 'line';
+          i += 2;
+        } else if (c === '/' && next === '*') {
+          state = 'block';
+          i += 2;
+        } else if (c === "'") {
+          state = 'single';
+          i += 1;
+        } else if (c === '"') {
+          state = 'double';
+          i += 1;
+        } else if (c === '`') {
+          state = 'template';
+          i += 1;
+        } else {
+          result += c;
+          i += 1;
+        }
+        break;
+      case 'line':
+        if (c === '\n') {
+          state = 'code';
+          result += c;
+        }
+        i += 1;
+        break;
+      case 'block':
+        if (c === '*' && next === '/') {
+          state = 'code';
+          i += 2;
+        } else {
+          i += 1;
+        }
+        break;
+      case 'single':
+        if (c === '\\') i += 2;
+        else {
+          if (c === "'") state = 'code';
+          i += 1;
+        }
+        break;
+      case 'double':
+        if (c === '\\') i += 2;
+        else {
+          if (c === '"') state = 'code';
+          i += 1;
+        }
+        break;
+      case 'template':
+        if (c === '\\') i += 2;
+        else {
+          if (c === '`') state = 'code';
+          i += 1;
+        }
+        break;
+    }
+  }
+
+  return result;
+}
+
 function checkNotificationOnLoad(): BestPracticeCheck[] {
   const checks: BestPracticeCheck[] = [];
   const scripts = document.querySelectorAll('script');
   let requestsNotification = false;
 
   scripts.forEach((script) => {
-    const content = script.textContent || '';
+    // Strip comments and string/template literals first: the old raw-substring
+    // scan flagged commented-out code and quoted mentions of the API (common in
+    // third-party bundles) as genuine on-load permission requests.
+    const content = stripCommentsAndStrings(script.textContent || '');
     // Check for notification permission request that's not in an event handler
     if (
       content.includes('Notification.requestPermission') &&
@@ -687,13 +771,17 @@ function checkEmptyLinks(): BestPracticeCheck[] {
     const href = link.getAttribute('href') || '';
     const text = link.textContent?.trim() || '';
 
-    if (href === '#' || href === '') {
-      emptyLinks++;
-    } else if (href.startsWith('javascript:')) {
+    if (href.startsWith('javascript:')) {
       jsLinks++;
     }
 
-    if (!text && !link.querySelector('img')) {
+    // A link is empty/invalid if it points nowhere (#/empty href) OR has no
+    // accessible content. Count each such link at most once: the previous code
+    // had two independent `emptyLinks++` branches, so a link that was BOTH
+    // href="#" AND had empty content was double-counted.
+    const hasEmptyHref = href === '#' || href === '';
+    const hasEmptyContent = !text && !link.querySelector('img');
+    if (hasEmptyHref || hasEmptyContent) {
       emptyLinks++;
     }
   });
@@ -805,7 +893,10 @@ function checkGeolocationUsage(): BestPracticeCheck {
   let hasGeolocationRequest = false;
 
   scripts.forEach((script) => {
-    const content = script.textContent || '';
+    // Strip comments and string/template literals so a commented-out or quoted
+    // mention of the geolocation API (e.g. inside a third-party bundle's strings)
+    // isn't mistaken for a genuine on-load request.
+    const content = stripCommentsAndStrings(script.textContent || '');
     if (
       content.includes('navigator.geolocation.getCurrentPosition') &&
       !content.includes('addEventListener')

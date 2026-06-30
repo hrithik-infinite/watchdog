@@ -358,6 +358,57 @@ describe('Best Practices Scanner', () => {
       // Should detect at least one geolocation issue
       expect(Array.isArray(result.issues)).toBe(true);
     });
+
+    it('should not flag a commented-out geolocation request (correctness-16)', async () => {
+      // Regression: the old raw-substring scan matched the API name inside a
+      // block comment, producing a false positive.
+      const pageWithCommentedGeo = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          '/* navigator.geolocation.getCurrentPosition(success, error); disabled */' +
+          ' const x = 1;' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithCommentedGeo.window.document);
+      vi.stubGlobal('window', pageWithCommentedGeo.window);
+
+      const result = await scanBestPractices();
+
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeUndefined();
+    });
+
+    it('should not flag a string-literal mention of the geolocation API (correctness-16)', async () => {
+      const pageWithStringGeo = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          'const doc = "navigator.geolocation.getCurrentPosition is intrusive on load";' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithStringGeo.window.document);
+      vi.stubGlobal('window', pageWithStringGeo.window);
+
+      const result = await scanBestPractices();
+
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeUndefined();
+    });
+
+    it('still flags a genuine on-load request when a string contains a // URL (correctness-16)', async () => {
+      // Guards the tokenizer choice: a naive "strip line comments then strings"
+      // pass would treat the // in "https://..." as a comment and swallow the
+      // real call on the same line, hiding a genuine issue (false negative).
+      const pageWithUrlAndGeo = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          'fetch("https://api.example.com/v1"); navigator.geolocation.getCurrentPosition(s, e);' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithUrlAndGeo.window.document);
+      vi.stubGlobal('window', pageWithUrlAndGeo.window);
+
+      const result = await scanBestPractices();
+
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeDefined();
+    });
   });
 
   describe('Vulnerable libraries detection', () => {
@@ -455,6 +506,41 @@ describe('Best Practices Scanner', () => {
     });
 
     it('should accept page without notification request', async () => {
+      const result = await scanBestPractices();
+
+      const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
+      expect(notifIssue).toBeUndefined();
+    });
+
+    it('should not flag a commented-out notification request (correctness-16)', async () => {
+      // Regression: the old raw-substring scan matched the API name even inside a
+      // comment, producing a false positive.
+      const pageWithCommentedNotif = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>\n' +
+          '// Notification.requestPermission(); — disabled, too intrusive on load\n' +
+          'console.log("ready");\n' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithCommentedNotif.window.document);
+      vi.stubGlobal('window', pageWithCommentedNotif.window);
+
+      const result = await scanBestPractices();
+
+      const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
+      expect(notifIssue).toBeUndefined();
+    });
+
+    it('should not flag a string-literal mention of the notification API (correctness-16)', async () => {
+      // Regression: a quoted mention (common in third-party bundles/docs strings)
+      // is not a genuine API call and must not be flagged.
+      const pageWithStringNotif = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          'const help = "Call Notification.requestPermission() after a user gesture";' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithStringNotif.window.document);
+      vi.stubGlobal('window', pageWithStringNotif.window);
+
       const result = await scanBestPractices();
 
       const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
@@ -588,6 +674,23 @@ describe('Best Practices Scanner', () => {
 
       // Should not count as empty if there's an image
       expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('counts a link that is both href="#" and empty content only once (correctness-15)', async () => {
+      // Regression: a single <a href="#"></a> is BOTH an empty/invalid href and
+      // empty content. The old code had two independent emptyLinks++ branches, so
+      // it reported "2 link(s)" for one element. It must count exactly once.
+      const pageWithSingleEmptyLink = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><a href="#"></a></body></html>'
+      );
+      vi.stubGlobal('document', pageWithSingleEmptyLink.window.document);
+      vi.stubGlobal('window', pageWithSingleEmptyLink.window);
+
+      const result = await scanBestPractices();
+
+      const emptyLinkIssue = result.issues.find((i) => i.ruleId === 'empty-links');
+      expect(emptyLinkIssue).toBeDefined();
+      expect(emptyLinkIssue?.message).toContain('1 link(s)');
     });
   });
 
