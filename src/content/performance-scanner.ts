@@ -200,29 +200,13 @@ async function measureINP(): Promise<INPResult> {
       return;
     }
 
-    // Get buffered event timing entries
-    try {
-      const entries = performance.getEntriesByType('event') as PerformanceEventTiming[];
-
-      for (const entry of entries) {
-        if (entry.interactionId && entry.interactionId > 0) {
-          const duration = entry.duration;
-          const existing = interactions.get(entry.interactionId);
-
-          if (!existing || duration > existing.duration) {
-            interactions.set(entry.interactionId, {
-              duration,
-              type: entry.name,
-              target: entry.target ? getSelector(entry.target) : 'unknown',
-            });
-          }
-        }
-      }
-    } catch {
-      // event timing not supported
-    }
-
-    // Also observe for new interactions
+    // Collect interactions with a single buffered observer. `buffered: true`
+    // replays every Event Timing entry already recorded before this call PLUS
+    // any new interaction during the window — each exactly once. (A prior version
+    // also pre-read performance.getEntriesByType('event'); that double-read the
+    // buffer AND is deprecated — Chrome logs "Deprecated API for given entry
+    // type" because the observer-only CWV entry types must come through
+    // PerformanceObserver, never getEntriesByType. See measureCLS.)
     let observer: PerformanceObserver | null = null;
 
     try {
@@ -347,6 +331,61 @@ async function measureTBT(): Promise<TBTResult> {
   });
 }
 
+// Measure Largest Contentful Paint (LCP) with a buffered observer. LCP is an
+// observer-only Core Web Vital: performance.getEntriesByType('largest-contentful-
+// paint') is deprecated (Chrome logs "Deprecated API for given entry type") and
+// only reads whatever happens to be buffered at call time. The buffered observer
+// replays every LCP candidate already recorded PLUS any new candidate during the
+// settle window; candidates are monotonic, so the last one delivered is final.
+async function measureLCP(): Promise<PerformanceMetric | null> {
+  return new Promise((resolve) => {
+    if (!('PerformanceObserver' in window)) {
+      resolve(null);
+      return;
+    }
+
+    let lcpValue = 0;
+    let observer: PerformanceObserver | null = null;
+
+    try {
+      observer = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        // Each candidate supersedes the previous one; the last entry wins.
+        const last = entries[entries.length - 1];
+        if (last) {
+          lcpValue = last.startTime;
+        }
+      });
+
+      observer.observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch {
+      // LCP timing not supported
+    }
+
+    setTimeout(() => {
+      if (observer) {
+        observer.disconnect();
+      }
+
+      // Guard against a missing/NaN startTime (e.g. an entry with no timing):
+      // `!(x > 0)` rejects undefined, NaN, 0 and negatives, so we never emit a
+      // metric whose value would later break .toFixed() in metricsToIssues.
+      if (!(lcpValue > 0)) {
+        resolve(null);
+        return;
+      }
+
+      resolve({
+        name: 'LCP (Largest Contentful Paint)',
+        value: lcpValue,
+        rating: getRating(lcpValue, THRESHOLDS.LCP),
+        threshold: THRESHOLDS.LCP,
+        unit: 'ms',
+      });
+    }, OBSERVER_SETTLE_MS);
+  });
+}
+
 // Core Web Vitals thresholds (from Google)
 const THRESHOLDS = {
   LCP: { good: 2500, poor: 4000 }, // Largest Contentful Paint (ms)
@@ -455,18 +494,9 @@ function getNavigationMetrics(): PerformanceMetric[] {
     });
   }
 
-  // Largest Contentful Paint
-  const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
-  if (lcpEntries.length > 0) {
-    const lcp = lcpEntries[lcpEntries.length - 1].startTime;
-    metrics.push({
-      name: 'LCP (Largest Contentful Paint)',
-      value: lcp,
-      rating: getRating(lcp, THRESHOLDS.LCP),
-      threshold: THRESHOLDS.LCP,
-      unit: 'ms',
-    });
-  }
+  // LCP is measured separately via a buffered observer (measureLCP) and merged
+  // into this list by scanPerformance — getEntriesByType('largest-contentful-
+  // paint') is deprecated and only reads what is buffered at call time.
 
   // DOM Content Loaded
   const domContentLoaded = domContentLoadedEventEnd - domContentLoadedEventStart;
@@ -1046,19 +1076,31 @@ export async function scanPerformance(): Promise<ScanResult> {
   const clsPromise = measureCLS();
   const inpPromise = measureINP();
   const tbtPromise = measureTBT();
+  const lcpPromise = measureLCP();
 
-  // Give the CLS/INP/TBT observers exactly their settle window to capture late
-  // entries, then read navigation/resource metrics. The previous fixed 1000ms
-  // wait left ~500ms of dead time after the observers had already settled.
+  // Give the CLS/INP/TBT/LCP observers exactly their settle window to capture
+  // late entries, then read navigation/resource metrics. The previous fixed
+  // 1000ms wait left ~500ms of dead time after the observers had already settled.
   await new Promise((resolve) => setTimeout(resolve, OBSERVER_SETTLE_MS));
 
-  // Collect all metrics
+  // Collect synchronous navigation/resource metrics
   const navigationMetrics = getNavigationMetrics();
   const resourceMetrics = getResourceMetrics();
-  const allMetrics = [...navigationMetrics, ...resourceMetrics];
 
   // Wait for Core Web Vitals measurements to complete
-  const [clsResult, inpResult, tbtResult] = await Promise.all([clsPromise, inpPromise, tbtPromise]);
+  const [clsResult, inpResult, tbtResult, lcpMetric] = await Promise.all([
+    clsPromise,
+    inpPromise,
+    tbtPromise,
+    lcpPromise,
+  ]);
+
+  // LCP rejoins the timing metrics list (it used to be read inline in
+  // getNavigationMetrics via the now-deprecated getEntriesByType).
+  const allMetrics = [...navigationMetrics, ...resourceMetrics];
+  if (lcpMetric) {
+    allMetrics.push(lcpMetric);
+  }
 
   // Convert metrics to issues
   const metricIssues = metricsToIssues(allMetrics);
