@@ -483,6 +483,55 @@ describe('Security Scanner', () => {
       expect(linkIssue).toBeDefined();
       expect(linkIssue?.severity).toBe('moderate');
     });
+
+    // Regression: the old `||` heuristic flagged links that already had one of
+    // noopener/noreferrer as "unsafe". A link with only noopener is already
+    // protected against reverse tabnabbing and must not be flagged.
+    it('should accept external links with only rel="noopener"', async () => {
+      const pageWithNoopenerLink = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><a href="https://external.com" target="_blank" rel="noopener">Link</a></body></html>'
+      );
+      vi.stubGlobal('document', pageWithNoopenerLink.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: pageWithNoopenerLink.window.document,
+        matchMedia: vi.fn(),
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        headers: new Map(),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanSecurity();
+
+      const linkIssue = result.issues.find((i) => i.ruleId === 'external-links-unsafe');
+      expect(linkIssue).toBeUndefined();
+    });
+
+    // Regression: noreferrer implies noopener in modern browsers, so a link with
+    // only rel="noreferrer" is safe and must not be flagged by the old `||` bug.
+    it('should accept external links with only rel="noreferrer"', async () => {
+      const pageWithNoreferrerLink = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><a href="https://external.com" target="_blank" rel="noreferrer">Link</a></body></html>'
+      );
+      vi.stubGlobal('document', pageWithNoreferrerLink.window.document);
+      vi.stubGlobal('window', {
+        location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+        document: pageWithNoreferrerLink.window.document,
+        matchMedia: vi.fn(),
+      });
+
+      const mockFetch = vi.fn().mockResolvedValue({
+        headers: new Map(),
+      });
+      vi.stubGlobal('fetch', mockFetch);
+
+      const result = await scanSecurity();
+
+      const linkIssue = result.issues.find((i) => i.ruleId === 'external-links-unsafe');
+      expect(linkIssue).toBeUndefined();
+    });
   });
 
   describe('Cookie checks', () => {

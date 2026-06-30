@@ -395,7 +395,11 @@ function checkExternalLinks(): SecurityCheck {
 
   externalLinks.forEach((link) => {
     const rel = link.getAttribute('rel') || '';
-    if (!rel.includes('noopener') || !rel.includes('noreferrer')) {
+    // A target="_blank" link is safe from reverse tabnabbing if it has either
+    // noopener or noreferrer (noreferrer implies noopener in modern browsers).
+    // The old `||` flagged links that already had one of them; only flag links
+    // that are missing BOTH.
+    if (!rel.includes('noopener') && !rel.includes('noreferrer')) {
       unsafeLinks++;
     }
   });
