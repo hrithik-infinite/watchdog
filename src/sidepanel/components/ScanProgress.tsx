@@ -17,10 +17,6 @@ const auditIcons: Record<AuditType, React.ComponentType<{ className?: string }>>
   security: Shield,
   'best-practices': CheckCircle2,
   pwa: Smartphone,
-  mobile: Smartphone,
-  links: Search,
-  i18n: Search,
-  privacy: Shield,
 };
 
 const auditLabels: Record<AuditType, string> = {
@@ -30,10 +26,6 @@ const auditLabels: Record<AuditType, string> = {
   security: 'Security',
   'best-practices': 'Best Practices',
   pwa: 'PWA',
-  mobile: 'Mobile',
-  links: 'Links',
-  i18n: 'i18n',
-  privacy: 'Privacy',
 };
 
 const scanningMessages = [

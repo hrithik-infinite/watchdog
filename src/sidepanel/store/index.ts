@@ -13,11 +13,7 @@ export type AuditType =
   | 'seo'
   | 'security'
   | 'best-practices'
-  | 'pwa'
-  | 'mobile'
-  | 'links'
-  | 'i18n'
-  | 'privacy';
+  | 'pwa';
 
 interface ScanState {
   // Scan state

@@ -886,21 +886,17 @@ describe('Scanner - scanPage', () => {
       expect(result).toEqual(mockResult);
     });
 
-    it('should throw error for mobile audit type', async () => {
-      await expect(scanPage('mobile')).rejects.toThrow('mobile audit is not yet implemented');
-    });
-
-    it('should throw error for links audit type', async () => {
-      await expect(scanPage('links')).rejects.toThrow('links audit is not yet implemented');
-    });
-
-    it('should throw error for i18n audit type', async () => {
-      await expect(scanPage('i18n')).rejects.toThrow('i18n audit is not yet implemented');
-    });
-
-    it('should throw error for privacy audit type', async () => {
-      await expect(scanPage('privacy')).rejects.toThrow('privacy audit is not yet implemented');
-    });
+    // The mobile/links/i18n/privacy stub audit types were removed (deadcode-1);
+    // any unrecognized audit type now rejects with the generic "Unknown" error
+    // from the switch default.
+    it.each(['mobile', 'links', 'i18n', 'privacy'])(
+      'rejects the removed %s audit type as unknown',
+      async (auditType) => {
+        await expect(scanPage(auditType as never)).rejects.toThrow(
+          `Unknown audit type: ${auditType}`
+        );
+      }
+    );
 
     it('should throw error for unknown audit type', async () => {
       // Type assertion needed since 'unknown' is not in AuditType

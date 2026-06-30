@@ -6,11 +6,7 @@ export type AuditType =
   | 'seo'
   | 'security'
   | 'best-practices'
-  | 'pwa'
-  | 'mobile'
-  | 'links'
-  | 'i18n'
-  | 'privacy';
+  | 'pwa';
 
 // Message types for communication between extension parts
 export type MessageType =

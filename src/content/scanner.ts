@@ -203,11 +203,6 @@ export async function scanPage(auditType: AuditType): Promise<ScanResult> {
       case 'pwa':
         result = await scanPWA();
         break;
-      case 'mobile':
-      case 'links':
-      case 'i18n':
-      case 'privacy':
-        throw new Error(`${auditType} audit is not yet implemented`);
       default:
         throw new Error(`Unknown audit type: ${auditType}`);
     }

@@ -17,10 +17,6 @@ const AUDIT_TYPE_LABELS: Record<AuditType, string> = {
   security: 'Security',
   'best-practices': 'Best Practices',
   pwa: 'PWA',
-  mobile: 'Mobile',
-  links: 'Links',
-  i18n: 'i18n',
-  privacy: 'Privacy',
 };
 
 /**
