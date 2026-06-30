@@ -20,6 +20,7 @@ const AUDIT_STANDARD: Partial<Record<AuditType, IssueStandard>> = {
   pwa: 'pwa',
 };
 
+import axe from 'axe-core';
 import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/shared/constants';
 import { generateFix } from '@/shared/fixes';
 import logger from '@/shared/logger';
@@ -29,18 +30,6 @@ import { scanPerformance } from './performance-scanner';
 import { scanPWA } from './pwa-scanner';
 import { scanSecurity } from './security-scanner';
 import { scanSEO } from './seo-scanner';
-
-// Lazy load axe-core only when needed
-// biome-ignore lint/suspicious/noExplicitAny: axe-core is lazily imported; its default export has no usable static type for this singleton
-let axeInstance: any = null;
-
-async function getAxe() {
-  if (!axeInstance) {
-    const module = await import('axe-core');
-    axeInstance = module.default;
-  }
-  return axeInstance;
-}
 
 let idCounter = 0;
 
@@ -142,10 +131,6 @@ function generateSummary(issues: Issue[]): ScanSummary {
 async function scanAccessibility(): Promise<ScanResult> {
   logger.info('Starting accessibility scan');
   const startTime = performance.now();
-
-  // Lazy load axe-core
-  logger.debug('Loading axe-core');
-  const axe = await getAxe();
 
   // Configure axe to only run our 15 rules
   logger.debug('Running axe scan', { ruleCount: MVP_RULES.length });

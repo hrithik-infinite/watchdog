@@ -7,8 +7,9 @@ import { resolve } from 'path';
 // instead of declaring an `<all_urls>` content script — which is the only thing
 // that triggers Chrome's "read and change all your data on all websites" install
 // warning (secpriv-6). `emptyOutDir: false` preserves the main build's output;
-// `inlineDynamicImports` + `cssCodeSplit: false` produce exactly two files:
-// content-script.js and content-script.css.
+// `cssCodeSplit: false` plus the single IIFE entry produce exactly two files:
+// content-script.js and content-script.css. axe-core is imported statically in
+// the scanner, so there are no dynamic imports (and thus no Vite preload helper).
 export default defineConfig({
   resolve: {
     alias: {
@@ -18,13 +19,15 @@ export default defineConfig({
   build: {
     emptyOutDir: false,
     cssCodeSplit: false,
+    // The content script is a single self-contained IIFE that bundles axe-core
+    // (~685KB) — inherent to on-demand injection, so don't warn about its size.
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       input: resolve(__dirname, 'src/content/index.ts'),
       output: {
         format: 'iife',
         entryFileNames: 'content-script.js',
         assetFileNames: 'content-script.[ext]',
-        inlineDynamicImports: true,
       },
     },
   },

@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Issue } from '@/shared/types';
 
-// Mock axe-core before importing scanner
-const mockAxeRun = vi.fn();
+// Mock axe-core before importing scanner. scanner.ts imports axe-core
+// statically, so the mock factory runs at module load (before plain top-level
+// consts are initialized) — define the spy via vi.hoisted so it's available.
+const { mockAxeRun } = vi.hoisted(() => ({ mockAxeRun: vi.fn() }));
 
 vi.mock('axe-core', () => ({
   default: {
