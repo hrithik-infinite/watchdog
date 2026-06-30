@@ -95,6 +95,16 @@ function generateCombinedSummary(issues: Issue[]): ScanSummary {
   };
 }
 
+// Set the toolbar badge on the scanned tab to a total. Fire-and-forget so a
+// badge failure never affects the scan result. Used so a multi-scan badge shows
+// the combined total, not the last audit's count (correctness-5), on the tab that
+// was actually scanned (correctness-4).
+function setBadgeForTab(tabId: number, count: number): void {
+  chrome.runtime
+    .sendMessage({ type: 'SET_BADGE', payload: { tabId, count } })
+    .catch((error) => logger.error('Failed to set badge', { error }));
+}
+
 export function useScanner() {
   // Use selectors for state values
   const isScanning = useScanStore((state) => state.isScanning);
@@ -106,6 +116,7 @@ export function useScanner() {
   const setScanning = useScanStore((state) => state.setScanning);
   const setScanResult = useScanStore((state) => state.setScanResult);
   const setError = useScanStore((state) => state.setError);
+  const setScannedTabId = useScanStore((state) => state.setScannedTabId);
 
   // Multi-scan progress state
   const [currentAuditIndex, setCurrentAuditIndex] = useState<number>(0);
@@ -190,6 +201,10 @@ export function useScanner() {
           throw new Error(unscannable);
         }
 
+        // Record the scanned tab so highlight/vision/focus target it even after
+        // the user switches tabs with the panel open (correctness-4).
+        setScannedTabId(tab.id);
+
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScript(tab.id);
 
@@ -200,6 +215,7 @@ export function useScanner() {
           duration: `${result.duration}ms`,
         });
         setScanResult(result);
+        setBadgeForTab(tab.id, result.summary.total);
       } catch (err) {
         if (controller.signal.aborted) {
           // User cancelled: leave any prior results in place and surface no error.
@@ -218,7 +234,7 @@ export function useScanner() {
         logger.groupEnd();
       }
     },
-    [selectedAuditType, setScanning, setScanResult, setError, scanSingle]
+    [selectedAuditType, setScanning, setScanResult, setError, setScannedTabId, scanSingle]
   );
 
   // Multi-scan: runs multiple audit types sequentially and combines results
@@ -265,6 +281,9 @@ export function useScanner() {
         if (unscannable) {
           throw new Error(unscannable);
         }
+
+        // Record the scanned tab so page-directed actions target it (correctness-4).
+        setScannedTabId(tab.id);
 
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScript(tab.id);
@@ -335,6 +354,9 @@ export function useScanner() {
           // At least one audit produced results: keep them and, if some failed,
           // attach a non-blocking message so the partial results stay visible.
           setScanResult(combinedResult);
+          // Badge shows the COMBINED total on the scanned tab, overriding the
+          // per-audit SCAN_RESULT updates the content script sent (correctness-5).
+          setBadgeForTab(tab.id, combinedResult.summary.total);
           if (errors.length > 0) {
             setError(`Some audits failed: ${errors.join('; ')}`);
           }
@@ -359,13 +381,14 @@ export function useScanner() {
         logger.groupEnd();
       }
     },
-    [setScanning, setScanResult, setError, scanSingle, scan]
+    [setScanning, setScanResult, setError, setScannedTabId, scanSingle, scan]
   );
 
   const clearResults = useCallback(() => {
     setScanResult(null);
     setError(null);
-  }, [setScanResult, setError]);
+    setScannedTabId(null);
+  }, [setScanResult, setError, setScannedTabId]);
 
   // Abort the in-flight scan (if any). The scan/scanMultiple handlers detect the
   // aborted signal and reset state without recording an error.

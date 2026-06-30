@@ -60,6 +60,7 @@ export default function App() {
   const setHideIgnored = useScanStore((state) => state.setHideIgnored);
   const setScanResult = useScanStore((state) => state.setScanResult);
   const setError = useScanStore((state) => state.setError);
+  const setScannedTabId = useScanStore((state) => state.setScannedTabId);
 
   // Ignored issues
   const {
@@ -105,10 +106,11 @@ export default function App() {
   const handleImportReport = useCallback(
     (result: ScanResult) => {
       setSelectedAuditTypes([]);
+      setScannedTabId(null);
       setError(null);
       setScanResult(result);
     },
-    [setSelectedAuditTypes, setError, setScanResult]
+    [setSelectedAuditTypes, setScannedTabId, setError, setScanResult]
   );
 
   const handleStartScan = useCallback(

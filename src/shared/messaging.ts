@@ -20,7 +20,8 @@ export type MessageType =
   | 'TOGGLE_FOCUS_ORDER'
   | 'GET_SETTINGS'
   | 'UPDATE_SETTINGS'
-  | 'OPEN_SIDEPANEL';
+  | 'OPEN_SIDEPANEL'
+  | 'SET_BADGE';
 
 // Message payloads
 export interface PingMessage {
@@ -85,6 +86,17 @@ export interface OpenSidePanelMessage {
   type: 'OPEN_SIDEPANEL';
 }
 
+// Set the toolbar badge for a specific tab to a total. Sent by the side panel
+// after a scan completes so the badge reflects the combined multi-scan total on
+// the scanned tab, not the last audit's count (correctness-5).
+export interface SetBadgeMessage {
+  type: 'SET_BADGE';
+  payload: {
+    tabId: number;
+    count: number;
+  };
+}
+
 // Union type for all messages
 export type Message =
   | PingMessage
@@ -97,7 +109,8 @@ export type Message =
   | ToggleFocusOrderMessage
   | GetSettingsMessage
   | UpdateSettingsMessage
-  | OpenSidePanelMessage;
+  | OpenSidePanelMessage
+  | SetBadgeMessage;
 
 // Response types
 export interface ScanResponse {

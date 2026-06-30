@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useHighlight } from '../useHighlight';
+import { useScanStore } from '@/sidepanel/store';
 
 // Mock dependencies
 vi.mock('@/shared/messaging', () => ({
@@ -18,6 +19,24 @@ const { getCurrentTab } = await import('@/shared/messaging');
 describe('useHighlight Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: no scanned tab → fall back to the active tab.
+    useScanStore.setState({ scannedTabId: null });
+  });
+
+  describe('targets the scanned tab (correctness-4)', () => {
+    it('messages the scanned tab, not the active tab, when one was scanned', async () => {
+      useScanStore.setState({ scannedTabId: 999 });
+      (getCurrentTab as any).mockResolvedValue({ id: 123, url: 'https://example.com' });
+
+      const { result } = renderHook(() => useHighlight());
+      await act(async () => {
+        await result.current.highlightElement('.x', 'critical');
+      });
+
+      // 999 (scanned), not 123 (active) — and getCurrentTab isn't even consulted.
+      expect(chrome.tabs.sendMessage).toHaveBeenCalledWith(999, expect.anything());
+      expect(getCurrentTab).not.toHaveBeenCalled();
+    });
   });
 
   describe('Hook initialization', () => {

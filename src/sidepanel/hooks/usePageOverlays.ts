@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { useScanStore } from '../store';
-import { getCurrentTab } from '@/shared/messaging';
+import { getTargetTabId } from '@/sidepanel/lib/target-tab';
 import { ensureContentScript } from '@/shared/inject';
 import type { Settings, VisionMode } from '@/shared/types';
 import logger from '@/shared/logger';
@@ -31,10 +31,10 @@ export function usePageOverlays() {
     async (mode: VisionMode) => {
       persist({ visionMode: mode });
       try {
-        const tab = await getCurrentTab();
-        if (tab?.id) {
-          await ensureContentScript(tab.id);
-          await chrome.tabs.sendMessage(tab.id, { type: 'APPLY_VISION_FILTER', payload: { mode } });
+        const tabId = await getTargetTabId();
+        if (tabId != null) {
+          await ensureContentScript(tabId);
+          await chrome.tabs.sendMessage(tabId, { type: 'APPLY_VISION_FILTER', payload: { mode } });
         }
       } catch (error) {
         logger.error('Failed to apply vision filter', { error });
@@ -47,10 +47,10 @@ export function usePageOverlays() {
     async (show: boolean) => {
       persist({ showFocusOrder: show });
       try {
-        const tab = await getCurrentTab();
-        if (tab?.id) {
-          await ensureContentScript(tab.id);
-          await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_FOCUS_ORDER', payload: { show } });
+        const tabId = await getTargetTabId();
+        if (tabId != null) {
+          await ensureContentScript(tabId);
+          await chrome.tabs.sendMessage(tabId, { type: 'TOGGLE_FOCUS_ORDER', payload: { show } });
         }
       } catch (error) {
         logger.error('Failed to toggle focus order', { error });

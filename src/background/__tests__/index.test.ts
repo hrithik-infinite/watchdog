@@ -117,6 +117,15 @@ describe('background/index', () => {
       expect(res).toEqual({ success: true });
     });
 
+    it('sets the badge to an explicit tab + count on SET_BADGE (correctness-5)', async () => {
+      const res = await handleMessage(
+        { type: 'SET_BADGE', payload: { tabId: 4, count: 12 } } as never,
+        {} as never
+      );
+      expect(updateBadge).toHaveBeenCalledWith(4, 12);
+      expect(res).toEqual({ success: true });
+    });
+
     it('rejects an unknown message type', async () => {
       const res = await handleMessage({ type: 'NOPE' } as never, {} as never);
       expect(res).toEqual({ success: false, error: 'Unknown message type' });

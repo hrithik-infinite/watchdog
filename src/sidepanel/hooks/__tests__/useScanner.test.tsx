@@ -18,6 +18,8 @@ vi.stubGlobal('chrome', {
     getManifest: vi.fn().mockReturnValue({
       content_scripts: [{ js: ['content.js'], css: ['content.css'] }],
     }),
+    // The scan now fires a SET_BADGE message to the background on completion.
+    sendMessage: vi.fn().mockResolvedValue(undefined),
   },
 });
 

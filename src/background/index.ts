@@ -43,6 +43,15 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
       return { success: true };
     }
 
+    case 'SET_BADGE': {
+      // Explicit tab + total from the side panel — used so a multi-scan badge
+      // shows the combined total on the scanned tab, not the last audit's count
+      // (correctness-5).
+      const { tabId, count } = message.payload as { tabId: number; count: number };
+      await updateBadge(tabId, count);
+      return { success: true };
+    }
+
     case 'GET_SETTINGS': {
       const settings = await getSettings();
       return { success: true, settings };
