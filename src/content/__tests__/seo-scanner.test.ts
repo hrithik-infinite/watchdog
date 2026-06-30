@@ -10,6 +10,17 @@ vi.stubGlobal('performance', {
 
 import { scanSEO } from '../seo-scanner';
 
+// Swap in a document/window backed by the given HTML for boundary-value assertions.
+function loadDocument(html: string): void {
+  const page = new JSDOM(html);
+  vi.stubGlobal('document', page.window.document);
+  vi.stubGlobal('window', {
+    location: { href: 'https://example.com', protocol: 'https:', hostname: 'example.com' },
+    document: page.window.document,
+    matchMedia: vi.fn(),
+  });
+}
+
 describe('SEO Scanner', () => {
   let dom: JSDOM;
 
@@ -252,6 +263,50 @@ describe('SEO Scanner', () => {
       const titleLengthIssue = result.issues.find((i) => i.ruleId === 'title-length');
       expect(titleLengthIssue).toBeDefined();
     });
+
+    // Boundary regression: the message/description/fix claim a "50-60" range, but the
+    // threshold previously used `< 30`, so 30-49 char titles passed despite the copy.
+    // The recommended range [50, 60] must be inclusive on both ends.
+    it('should accept a title at the lower boundary (50 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><title>${'A'.repeat(50)}</title></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      expect(result.issues.find((i) => i.ruleId === 'title-length')).toBeUndefined();
+    });
+
+    it('should flag a title just below the lower boundary (49 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><title>${'A'.repeat(49)}</title></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      // Was a false negative when the threshold was `< 30`.
+      expect(result.issues.find((i) => i.ruleId === 'title-length')).toBeDefined();
+    });
+
+    it('should accept a title at the upper boundary (60 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><title>${'A'.repeat(60)}</title></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      expect(result.issues.find((i) => i.ruleId === 'title-length')).toBeUndefined();
+    });
+
+    it('should flag a title just above the upper boundary (61 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><title>${'A'.repeat(61)}</title></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      expect(result.issues.find((i) => i.ruleId === 'title-length')).toBeDefined();
+    });
   });
 
   describe('Meta description checks', () => {
@@ -296,6 +351,50 @@ describe('SEO Scanner', () => {
 
       const metaLengthIssue = result.issues.find((i) => i.ruleId === 'meta-description-length');
       expect(metaLengthIssue).toBeDefined();
+    });
+
+    // Boundary regression: the message/description/fix claim a "150-160" range, but the
+    // threshold previously used `< 120`, so 120-149 char descriptions passed despite the copy.
+    // The recommended range [150, 160] must be inclusive on both ends.
+    it('should accept a meta description at the lower boundary (150 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><meta name="description" content="${'A'.repeat(150)}"></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      expect(result.issues.find((i) => i.ruleId === 'meta-description-length')).toBeUndefined();
+    });
+
+    it('should flag a meta description just below the lower boundary (149 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><meta name="description" content="${'A'.repeat(149)}"></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      // Was a false negative when the threshold was `< 120`.
+      expect(result.issues.find((i) => i.ruleId === 'meta-description-length')).toBeDefined();
+    });
+
+    it('should accept a meta description at the upper boundary (160 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><meta name="description" content="${'A'.repeat(160)}"></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      expect(result.issues.find((i) => i.ruleId === 'meta-description-length')).toBeUndefined();
+    });
+
+    it('should flag a meta description just above the upper boundary (161 chars)', async () => {
+      loadDocument(
+        `<!DOCTYPE html><html><head><meta name="description" content="${'A'.repeat(161)}"></head><body></body></html>`
+      );
+
+      const result = await scanSEO();
+
+      expect(result.issues.find((i) => i.ruleId === 'meta-description-length')).toBeDefined();
     });
   });
 
