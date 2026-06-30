@@ -85,7 +85,7 @@ npm run all
 
 1. **Open the Extension**
    - Click the WatchDog icon in your Chrome toolbar
-   - Or use keyboard shortcut (if configured)
+   - Or set a keyboard shortcut at `chrome://extensions/shortcuts` (WatchDog registers an "Activate the extension" command)
 
 2. **Select Audit Type**
    - Choose from Accessibility, Performance, SEO, Security, Best Practices, or PWA
