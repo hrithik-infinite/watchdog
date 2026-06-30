@@ -21,9 +21,13 @@
     "noFallthroughCasesInSwitch": true,
 
     /* Paths */
-    "baseUrl": ".",
+    // TS 6.0 errors on the deprecated baseUrl; `paths` resolve relative to this
+    // tsconfig's location without it. TS 6.0 also no longer auto-includes @types
+    // ambient globals, so chrome/node are listed explicitly (react/vite types
+    // come in via imports and triple-slash refs).
+    "types": ["chrome", "node"],
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["./src/*"]
     }
   },
   "include": ["src"],
