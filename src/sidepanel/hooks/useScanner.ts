@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { ensureContentScript } from '@/shared/inject';
 import logger from '@/shared/logger';
 import { getCurrentTab, type ScanResponse } from '@/shared/messaging';
+import { ensureHostAccess } from '@/shared/permissions';
 import type { Category, Issue, ScanResult, ScanSummary, Severity } from '@/shared/types';
 import { type AuditType, useScanStore } from '../store';
 
@@ -205,6 +206,11 @@ export function useScanner() {
         // the user switches tabs with the panel open (correctness-4).
         setScannedTabId(tab.id);
 
+        // Acquire host access before injecting. A side-panel-opened action never
+        // grants activeTab, so without this prompt executeScript fails (E009).
+        // Runs within the Start Scan click's transient-activation window.
+        await ensureHostAccess();
+
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScript(tab.id);
 
@@ -284,6 +290,11 @@ export function useScanner() {
 
         // Record the scanned tab so page-directed actions target it (correctness-4).
         setScannedTabId(tab.id);
+
+        // Acquire host access before injecting (see scan() above) — the
+        // side-panel action grants no activeTab, so this prompt is what lets
+        // executeScript run. Within the Start Scan click's activation window.
+        await ensureHostAccess();
 
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScript(tab.id);

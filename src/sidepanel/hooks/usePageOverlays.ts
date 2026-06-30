@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { ensureContentScript } from '@/shared/inject';
 import logger from '@/shared/logger';
+import { ensureHostAccess } from '@/shared/permissions';
 import type { Settings, VisionMode } from '@/shared/types';
 import { getTargetTabId } from '@/sidepanel/lib/target-tab';
 import { useScanStore } from '../store';
@@ -33,6 +34,7 @@ export function usePageOverlays() {
       try {
         const tabId = await getTargetTabId();
         if (tabId != null) {
+          await ensureHostAccess();
           await ensureContentScript(tabId);
           await chrome.tabs.sendMessage(tabId, { type: 'APPLY_VISION_FILTER', payload: { mode } });
         }
@@ -49,6 +51,7 @@ export function usePageOverlays() {
       try {
         const tabId = await getTargetTabId();
         if (tabId != null) {
+          await ensureHostAccess();
           await ensureContentScript(tabId);
           await chrome.tabs.sendMessage(tabId, { type: 'TOGGLE_FOCUS_ORDER', payload: { show } });
         }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ensureContentScript, PERMISSION_NEEDED_MESSAGE } from '../inject';
+import { ensureContentScript, INJECTION_FAILED_MESSAGE } from '../inject';
 
 const sendMessage = vi.fn();
 const executeScript = vi.fn();
@@ -44,17 +44,17 @@ describe('ensureContentScript (on-demand injection, secpriv-6)', () => {
     expect(sendMessage).toHaveBeenCalledTimes(2);
   });
 
-  it('throws the permission-needed message when injection is not allowed (no activeTab grant)', async () => {
+  it('throws the injection-failed message when executeScript is rejected', async () => {
     sendMessage.mockRejectedValueOnce(new Error('no receiver'));
     executeScript.mockRejectedValueOnce(new Error('Cannot access contents of the page'));
 
-    await expect(ensureContentScript(2)).rejects.toThrow(PERMISSION_NEEDED_MESSAGE);
+    await expect(ensureContentScript(2)).rejects.toThrow(INJECTION_FAILED_MESSAGE);
   });
 
-  it('throws the permission-needed message when the post-injection PING never answers', async () => {
+  it('throws the injection-failed message when the post-injection PING never answers', async () => {
     // PING fails, injection "succeeds", but the confirm PING still fails.
     sendMessage.mockRejectedValue(new Error('no receiver'));
 
-    await expect(ensureContentScript(3)).rejects.toThrow(PERMISSION_NEEDED_MESSAGE);
+    await expect(ensureContentScript(3)).rejects.toThrow(INJECTION_FAILED_MESSAGE);
   });
 });

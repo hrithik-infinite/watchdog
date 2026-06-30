@@ -389,14 +389,18 @@ describe('Errors - Custom error classes and error details', () => {
         { input: 'TIMEOUT', code: 'E004' },
         { input: 'NETWORK', code: 'E008' },
         { input: 'Refresh the page', code: 'E003' },
-        // E009 must win over the generic E003 content-script match for the
-        // activeTab/permission case (secpriv-6 on-demand injection).
+        // Host-permission denial (ensureHostAccess) → E009 via "needs permission".
         {
           input:
-            'WatchDog needs permission for this tab. Click the WatchDog icon in your toolbar, then try again.',
+            'WatchDog needs permission to read this page. Choose "Allow" when Chrome asks, then scan again.',
           code: 'E009',
         },
-        { input: 'click the watchdog icon in your toolbar', code: 'E009' },
+        // Post-grant injection failure (inject.ts) → E003 via "refresh the page".
+        {
+          input:
+            'WatchDog could not load the scanner on this page. Refresh the page and scan again.',
+          code: 'E003',
+        },
       ];
 
       patterns.forEach(({ input, code }) => {

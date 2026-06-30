@@ -21,6 +21,12 @@ vi.stubGlobal('chrome', {
     // The scan now fires a SET_BADGE message to the background on completion.
     sendMessage: vi.fn().mockResolvedValue(undefined),
   },
+  // ensureHostAccess() gates injection; default to access already granted so
+  // scans proceed without a prompt.
+  permissions: {
+    contains: vi.fn().mockResolvedValue(true),
+    request: vi.fn().mockResolvedValue(true),
+  },
 });
 
 // Mock the messaging module

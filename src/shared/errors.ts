@@ -65,8 +65,8 @@ export const ERROR_CODES: Record<string, ErrorDetails> = {
   E009: {
     code: 'E009',
     title: 'Permission Needed',
-    message: 'WatchDog needs your permission to scan this tab.',
-    suggestion: 'Click the WatchDog icon in your browser toolbar, then scan again.',
+    message: 'WatchDog needs your permission to read this page.',
+    suggestion: 'Choose "Allow" when Chrome asks for access, then scan again.',
   },
 };
 
@@ -84,7 +84,7 @@ export function getErrorDetails(error: Error | string): ErrorDetails {
   if (lowerMessage.includes('internal pages') || lowerMessage.includes('restricted')) {
     return ERROR_CODES.E002;
   }
-  if (lowerMessage.includes('needs permission') || lowerMessage.includes('toolbar')) {
+  if (lowerMessage.includes('needs permission')) {
     return ERROR_CODES.E009;
   }
   if (lowerMessage.includes('refresh the page') || lowerMessage.includes('content script')) {

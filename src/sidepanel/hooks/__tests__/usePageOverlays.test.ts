@@ -12,6 +12,11 @@ const runtimeSendMessage = vi.fn().mockResolvedValue(undefined);
 vi.stubGlobal('chrome', {
   tabs: { sendMessage: tabsSendMessage },
   runtime: { sendMessage: runtimeSendMessage },
+  // ensureHostAccess() gates injection; default to access already granted.
+  permissions: {
+    contains: vi.fn().mockResolvedValue(true),
+    request: vi.fn().mockResolvedValue(true),
+  },
 });
 
 const { getCurrentTab } = await import('@/shared/messaging');
