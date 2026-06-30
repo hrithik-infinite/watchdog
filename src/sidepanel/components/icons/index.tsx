@@ -2,24 +2,17 @@ import type { SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement>;
 
-// WatchDog Logo - Main branding icon
+// WatchDog brand mark — "icon 2b" from the Claude Design logo notebook: a solid
+// front-facing hound silhouette with cut-out eyes and nose (one evenodd path so
+// the eyes/nose are true holes). Rendered in the brand accent for the header
+// lockup; the same path drives the install icons (scripts/generate-icons.js).
+const HOUND_2B =
+  'M6.5 8.8 L4.5 3.1 L10.2 6.1 L13.8 6.1 L19.5 3.1 L17.5 8.8 C18.7 11 18.6 13.9 16.9 16.1 C15.5 17.9 13.9 19.2 12 19.2 C10.1 19.2 8.5 17.9 7.1 16.1 C5.4 13.9 5.3 11 6.5 8.8 Z M8.45 12.4 a1.15 1.15 0 1 0 2.3 0 a1.15 1.15 0 1 0 -2.3 0 Z M13.25 12.4 a1.15 1.15 0 1 0 2.3 0 a1.15 1.15 0 1 0 -2.3 0 Z M10.65 15.2 a1.35 1.35 0 1 0 2.7 0 a1.35 1.35 0 1 0 -2.7 0 Z';
+
 export function WatchDogLogo(props: IconProps) {
   return (
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none" aria-hidden="true" {...props}>
-      <circle cx="16" cy="16" r="14" fill="#007AFF" fillOpacity="0.2" />
-      <ellipse cx="16" cy="16" rx="12" ry="8" fill="#66B2FF" />
-      <circle cx="16" cy="16" r="5" fill="#007AFF" />
-      <circle cx="16" cy="16" r="2" fill="#1C1C1E" />
-      <circle cx="22" cy="20" r="4" stroke="#66B2FF" strokeWidth="2" fill="none" />
-      <line
-        x1="25"
-        y1="23"
-        x2="28"
-        y2="26"
-        stroke="#66B2FF"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="#3D9BFF" aria-hidden="true" {...props}>
+      <path fillRule="evenodd" clipRule="evenodd" d={HOUND_2B} />
     </svg>
   );
 }
