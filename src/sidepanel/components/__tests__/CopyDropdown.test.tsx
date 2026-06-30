@@ -48,7 +48,7 @@ const scanResult: ScanResult = {
 async function openMenu() {
   const user = userEvent.setup();
   render(<CopyDropdown issues={[mockIssue]} scanResult={scanResult} auditType="accessibility" />);
-  await user.click(screen.getByRole('button', { name: /copy all/i }));
+  await user.click(screen.getByRole('button', { name: /copy/i }));
 }
 
 beforeEach(() => {

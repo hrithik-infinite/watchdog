@@ -100,7 +100,7 @@ export default function Summary({
               </Tooltip>
             </TooltipProvider>
           </div>
-          <p className="text-xs text-muted-foreground tabular-nums">{subline}</p>
+          <p className="text-xs text-muted-foreground tabular-nums truncate">{subline}</p>
         </div>
       </div>
 

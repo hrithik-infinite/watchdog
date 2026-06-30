@@ -61,7 +61,10 @@ export default function CopyDropdown({
   };
 
   const issueCount = issues.length;
-  const buttonLabel = copied ? 'Copied!' : `Copy All (${issueCount})`;
+  // Keep the trigger compact ("Copy", not "Copy All (208)") — the issue count is
+  // already shown right beside it in the score gauge and severity chips, and the
+  // long label was crushing the verdict column on narrow panels.
+  const buttonLabel = copied ? 'Copied!' : 'Copy';
 
   const renderCopy = (
     format: CopyFormat,
