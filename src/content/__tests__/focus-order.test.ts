@@ -470,4 +470,271 @@ describe('Focus Order Visualization', () => {
       }).not.toThrow();
     });
   });
+
+  // Regression coverage for correctness-24 (visibility + NaN tabindex + DOM sync),
+  // correctness-23 (original outline restore) and perf-rel-2 (scroll throttling).
+  describe('Visibility filtering (correctness-24)', () => {
+    // Buggy behavior: hidden elements still matched the focusable selectors and
+    // got a badge, so the visualization showed tab stops the user can't reach.
+    it('should exclude display:none elements', () => {
+      document.body.innerHTML = `
+        <button id="visible">Visible</button>
+        <button id="gone" style="display:none">Hidden</button>
+      `;
+
+      showFocusOrder();
+
+      const badges = document.querySelectorAll('.watchdog-focus-badge');
+      expect(badges.length).toBe(1);
+      expect((document.getElementById('visible') as HTMLElement).style.outline).toBeTruthy();
+      expect((document.getElementById('gone') as HTMLElement).style.outline).toBe('');
+    });
+
+    it('should exclude visibility:hidden elements', () => {
+      document.body.innerHTML = `
+        <button id="visible">Visible</button>
+        <button id="invisible" style="visibility:hidden">Hidden</button>
+      `;
+
+      showFocusOrder();
+
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(1);
+    });
+
+    it('should exclude elements with the hidden attribute', () => {
+      document.body.innerHTML = `
+        <button id="visible">Visible</button>
+        <button id="hidden-attr" hidden>Hidden</button>
+      `;
+
+      showFocusOrder();
+
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(1);
+    });
+
+    it('should exclude elements inside an aria-hidden subtree', () => {
+      document.body.innerHTML = `
+        <button id="visible">Visible</button>
+        <div aria-hidden="true">
+          <button id="ariaHidden">Hidden</button>
+        </div>
+      `;
+
+      showFocusOrder();
+
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(1);
+    });
+
+    it('should exclude zero-size elements that render no client rects', () => {
+      document.body.innerHTML = `
+        <button id="a">A</button>
+        <button id="b">B</button>
+      `;
+      const b = document.getElementById('b') as HTMLElement;
+      // Simulate a collapsed/un-rendered box: getClientRects() returns no rects.
+      vi.spyOn(b, 'getClientRects').mockReturnValue({ length: 0 } as unknown as DOMRectList);
+
+      showFocusOrder();
+
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(1);
+    });
+  });
+
+  describe('Tabindex parsing (correctness-24)', () => {
+    const rectAt = (left: number, top: number): DOMRect =>
+      ({
+        left,
+        top,
+        width: 10,
+        height: 10,
+        right: left + 10,
+        bottom: top + 10,
+        x: left,
+        y: top,
+        toJSON: () => ({}),
+      }) as DOMRect;
+
+    // Buggy behavior: parseInt of a non-numeric tabindex yielded NaN, which fed
+    // into the sort comparator. A non-numeric tabindex must be treated as the
+    // implicit 0 the browser uses, leaving positive tabindex elements ahead and
+    // the rest in DOM order.
+    it('should treat a non-numeric tabindex as 0 without corrupting order', () => {
+      document.body.innerHTML = `
+        <button id="normal">Normal</button>
+        <button id="weird" tabindex="abc">Weird</button>
+        <button id="prio" tabindex="1">Priority</button>
+      `;
+      // Distinct rects let us read back which element each (sorted) badge sits on.
+      vi.spyOn(document.getElementById('normal')!, 'getBoundingClientRect').mockReturnValue(
+        rectAt(200, 0)
+      );
+      vi.spyOn(document.getElementById('weird')!, 'getBoundingClientRect').mockReturnValue(
+        rectAt(300, 0)
+      );
+      vi.spyOn(document.getElementById('prio')!, 'getBoundingClientRect').mockReturnValue(
+        rectAt(100, 0)
+      );
+
+      showFocusOrder();
+
+      const badges = document.querySelectorAll('.watchdog-focus-badge');
+      expect(badges.length).toBe(3);
+      // Badges are appended in tab order: positive tabindex (prio) first, then
+      // the two tabindex-0 elements (normal, weird) in DOM order.
+      // positionBadge offsets left by -8px.
+      expect((badges[0] as HTMLElement).style.left).toBe('92px'); // prio (100)
+      expect((badges[1] as HTMLElement).style.left).toBe('192px'); // normal (200)
+      expect((badges[2] as HTMLElement).style.left).toBe('292px'); // weird (300)
+    });
+  });
+
+  describe('Outline restoration (correctness-23)', () => {
+    // Buggy behavior: hideFocusOrder set outline='' unconditionally, wiping any
+    // outline the page itself had set inline.
+    it('should restore the original inline outline instead of clearing it', () => {
+      document.body.innerHTML =
+        '<button id="btn" style="outline: 3px dashed red; outline-offset: 5px;">x</button>';
+      const btn = document.getElementById('btn') as HTMLElement;
+      const originalOutline = btn.style.outline;
+      const originalOffset = btn.style.outlineOffset;
+      expect(originalOutline).toBeTruthy();
+
+      showFocusOrder();
+      // While shown, the highlight overrides the page outline.
+      expect(btn.style.outline).not.toBe(originalOutline);
+      expect(btn.style.outlineOffset).toBe('2px');
+
+      hideFocusOrder();
+      // Original inline outline is restored, not blanked.
+      expect(btn.style.outline).toBe(originalOutline);
+      expect(btn.style.outlineOffset).toBe(originalOffset);
+    });
+
+    it('should restore an empty outline for elements that had none', () => {
+      document.body.innerHTML = '<button id="btn">x</button>';
+      const btn = document.getElementById('btn') as HTMLElement;
+
+      showFocusOrder();
+      expect(btn.style.outline).toBeTruthy();
+
+      hideFocusOrder();
+      expect(btn.style.outline).toBe('');
+      expect(btn.style.outlineOffset).toBe('');
+    });
+  });
+
+  describe('Scroll throttling (perf-rel-2)', () => {
+    // Buggy behavior: every scroll event repositioned all badges synchronously,
+    // thrashing layout. Repositioning is now coalesced into one animation frame.
+    it('should schedule only one animation frame for a burst of scroll events', () => {
+      document.body.innerHTML = '<button>B</button>';
+      showFocusOrder();
+
+      const rafSpy = vi.spyOn(window, 'requestAnimationFrame');
+      for (let i = 0; i < 5; i++) {
+        window.dispatchEvent(new Event('scroll', { bubbles: true }));
+      }
+
+      expect(rafSpy).toHaveBeenCalledTimes(1);
+      rafSpy.mockRestore();
+    });
+
+    it('should reposition badges when the scheduled frame runs', () => {
+      document.body.innerHTML = '<button id="b">B</button>';
+      const btn = document.getElementById('b') as HTMLElement;
+      const rectSpy = vi.spyOn(btn, 'getBoundingClientRect').mockReturnValue({
+        left: 100,
+        top: 50,
+        width: 10,
+        height: 10,
+        right: 110,
+        bottom: 60,
+        x: 100,
+        y: 50,
+        toJSON: () => ({}),
+      } as DOMRect);
+
+      let frameCb: FrameRequestCallback | null = null;
+      const rafSpy = vi
+        .spyOn(window, 'requestAnimationFrame')
+        .mockImplementation((cb: FrameRequestCallback) => {
+          frameCb = cb;
+          return 1;
+        });
+
+      showFocusOrder();
+      const badge = document.querySelector('.watchdog-focus-badge') as HTMLElement;
+      expect(badge.style.left).toBe('92px');
+
+      // Element moves; a scroll schedules a frame that has not run yet.
+      rectSpy.mockReturnValue({
+        left: 200,
+        top: 50,
+        width: 10,
+        height: 10,
+        right: 210,
+        bottom: 60,
+        x: 200,
+        y: 50,
+        toJSON: () => ({}),
+      } as DOMRect);
+      window.dispatchEvent(new Event('scroll', { bubbles: true }));
+      expect(badge.style.left).toBe('92px'); // not repositioned synchronously
+
+      // Running the frame applies the new position.
+      expect(typeof frameCb).toBe('function');
+      frameCb!(0);
+      expect(badge.style.left).toBe('192px');
+
+      rafSpy.mockRestore();
+    });
+  });
+
+  describe('DOM mutation sync (correctness-24)', () => {
+    // Buggy behavior: badges were rendered once and never updated, so elements
+    // added or removed while the overlay was shown went un-badged or stale.
+    it('should add a badge when a focusable element is inserted while shown', async () => {
+      document.body.innerHTML = '<button>A</button>';
+      showFocusOrder();
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(1);
+
+      const btn = document.createElement('button');
+      btn.textContent = 'B';
+      document.body.appendChild(btn);
+
+      // MutationObserver delivers asynchronously.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(2);
+    });
+
+    it('should remove a badge when a focusable element is removed while shown', async () => {
+      document.body.innerHTML = `
+        <button id="a">A</button>
+        <button id="b">B</button>
+      `;
+      showFocusOrder();
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(2);
+
+      document.getElementById('b')?.remove();
+
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(1);
+    });
+
+    it('should stop observing the DOM after hide', async () => {
+      document.body.innerHTML = '<button>A</button>';
+      showFocusOrder();
+      hideFocusOrder();
+
+      // Mutations after hide must not recreate the container/badges.
+      const btn = document.createElement('button');
+      document.body.appendChild(btn);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(document.getElementById('watchdog-focus-order-container')).toBeFalsy();
+      expect(document.querySelectorAll('.watchdog-focus-badge').length).toBe(0);
+    });
+  });
 });
