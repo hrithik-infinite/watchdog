@@ -133,12 +133,17 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div className="space-y-1 pr-4">
-              <Label className="text-h3 text-foreground block">Show Incomplete Issues</Label>
+              <Label id="setting-show-incomplete" className="text-h3 text-foreground block">
+                Show Incomplete Issues
+              </Label>
               <p className="text-sm text-muted-foreground">
                 Include issues that need manual review.
               </p>
             </div>
+            {/* aria-labelledby (not htmlFor): a <label for> gives no accessible
+                name to a role="switch" button — only ARIA naming does. */}
             <Switch
+              aria-labelledby="setting-show-incomplete"
               checked={settings.showIncomplete}
               onCheckedChange={(checked) => onUpdate({ showIncomplete: checked })}
             />
@@ -149,12 +154,15 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div className="space-y-1 pr-4">
-              <Label className="text-h3 text-foreground block">Auto-highlight on Hover</Label>
+              <Label id="setting-auto-highlight" className="text-h3 text-foreground block">
+                Auto-highlight on Hover
+              </Label>
               <p className="text-sm text-muted-foreground">
                 Highlight elements when hovering over issues.
               </p>
             </div>
             <Switch
+              aria-labelledby="setting-auto-highlight"
               checked={settings.autoHighlight}
               onCheckedChange={(checked) => onUpdate({ autoHighlight: checked })}
             />
@@ -163,12 +171,14 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
 
         {/* Color Vision Deficiency Simulator */}
         <div>
-          <Label className="text-h3 text-foreground mb-2 block">Color Vision Deficiency</Label>
+          <Label id="setting-colorblind" className="text-h3 text-foreground mb-2 block">
+            Color Vision Deficiency
+          </Label>
           <p className="text-sm text-muted-foreground mb-3">
             Simulate colorblindness to test if your colors are distinguishable.
           </p>
           <Select value={colorBlindValue} onValueChange={handleVisionModeChange}>
-            <SelectTrigger className="h-auto min-h-[40px]">
+            <SelectTrigger aria-labelledby="setting-colorblind" className="h-auto min-h-[40px]">
               <SelectValue placeholder="Select colorblind mode">
                 {colorBlindModes.find((m) => m.value === colorBlindValue)?.label || 'None'}
               </SelectValue>
@@ -190,12 +200,14 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
 
         {/* Low Vision (Blur) Simulator */}
         <div>
-          <Label className="text-h3 text-foreground mb-2 block">Low Vision (Blur)</Label>
+          <Label id="setting-blur" className="text-h3 text-foreground mb-2 block">
+            Low Vision (Blur)
+          </Label>
           <p className="text-sm text-muted-foreground mb-3">
             Simulate visual impairment to test readability and layout clarity.
           </p>
           <Select value={blurValue} onValueChange={handleVisionModeChange}>
-            <SelectTrigger className="h-auto min-h-[40px]">
+            <SelectTrigger aria-labelledby="setting-blur" className="h-auto min-h-[40px]">
               <SelectValue placeholder="Select blur level">
                 {blurModes.find((m) => m.value === blurValue)?.label || 'None'}
               </SelectValue>
@@ -219,12 +231,18 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
         <Card>
           <CardContent className="flex items-center justify-between p-4">
             <div className="space-y-1 pr-4">
-              <Label className="text-h3 text-foreground block">Focus Order Visualization</Label>
+              <Label id="setting-focus-order" className="text-h3 text-foreground block">
+                Focus Order Visualization
+              </Label>
               <p className="text-sm text-muted-foreground">
                 Show numbered badges on all focusable elements to visualize keyboard tab order.
               </p>
             </div>
-            <Switch checked={settings.showFocusOrder} onCheckedChange={handleFocusOrderToggle} />
+            <Switch
+              aria-labelledby="setting-focus-order"
+              checked={settings.showFocusOrder}
+              onCheckedChange={handleFocusOrderToggle}
+            />
           </CardContent>
         </Card>
       </div>
