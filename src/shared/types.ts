@@ -63,6 +63,18 @@ export interface Issue {
   whyItMatters?: string;
   element: ElementInfo;
   fix: FixSuggestion;
+  // ── Developer-facing axe metadata (optional) ──
+  // Populated for accessibility scans from the underlying axe violation. Absent
+  // for the synthetic non-a11y scanners and older/imported reports, so display
+  // code must treat each as optional.
+  // Raw axe impact word (critical|serious|moderate|minor) before severity mapping.
+  impact?: string;
+  // axe rule tags, e.g. ['cat.color','wcag2aa','wcag143'].
+  tags?: string[];
+  // How many elements this rule flagged on the page (violation.nodes.length).
+  ruleNodeCount?: number;
+  // Measured color contrast for color-contrast issues, straight from axe.
+  contrast?: { fg: string; bg: string; ratio: number; required: number };
 }
 
 // Summary of scan results

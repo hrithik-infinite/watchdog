@@ -114,6 +114,14 @@ export default function IssueDetail({
             <p className="text-foreground font-medium mb-1">{STANDARD_LABELS[issue.standard!]}</p>
           )}
           <p className="text-sm text-muted-foreground">{issue.description}</p>
+          {/* Developer axe provenance: the raw impact + rule tags, for triage
+              and search. */}
+          {!isSiteOwner && issue.impact && (
+            <p className="text-mono text-xs text-muted-foreground mt-2 break-words">
+              axe-core · impact: {issue.impact}
+              {issue.tags && issue.tags.length > 0 ? ` · ${issue.tags.join(', ')}` : ''}
+            </p>
+          )}
         </div>
 
         {/* Current Element */}
@@ -173,6 +181,14 @@ export default function IssueDetail({
             </>
           ) : (
             <CodeBlock code={issue.element.html} />
+          )}
+          {/* Measured contrast for developers: the exact fg/bg axe sampled and
+              the failing ratio — enough to verify without leaving the panel. */}
+          {!isSiteOwner && issue.contrast && (
+            <p className="text-mono text-xs text-muted-foreground mt-2">
+              fg {issue.contrast.fg} · bg {issue.contrast.bg} · ratio{' '}
+              {issue.contrast.ratio.toFixed(1)}:1
+            </p>
           )}
         </div>
 

@@ -93,6 +93,23 @@ describe('CodeBlock', () => {
     expect(screen.getByText(/line one/)).toHaveTextContent('line one indented two');
   });
 
+  it('renders a -/+ diff with both the removed and added lines', () => {
+    render(<CodeBlock code={'- color: #8a8a8a;\n+ color: #c8cdd4;'} />);
+
+    expect(screen.getByText('- color: #8a8a8a;')).toBeInTheDocument();
+    expect(screen.getByText('+ color: #c8cdd4;')).toBeInTheDocument();
+  });
+
+  it('copies only the proposed (+) line from a diff, without the marker', () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    mockClipboard(writeText);
+
+    render(<CodeBlock code={'- color: #8a8a8a;\n+ color: #c8cdd4;'} showCopy />);
+    fireEvent.click(screen.getByRole('button', { name: /copy fix/i }));
+
+    expect(writeText).toHaveBeenCalledWith('color: #c8cdd4;');
+  });
+
   it('has no accessibility violations without the copy button', async () => {
     const { container } = render(<CodeBlock code="const a = 1;" />);
 

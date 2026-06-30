@@ -288,6 +288,41 @@ describe('IssueDetail', () => {
     expect(screen.getByRole('button', { name: /^hide$/i })).toBeInTheDocument();
   });
 
+  // --- Developer axe metadata ----------------------------------------------
+
+  it('shows axe provenance (impact + tags) in developer mode', () => {
+    useScanStore.setState({ settings: { ...DEFAULT_SETTINGS, persona: 'developer' } });
+    renderDetail({ issue: { ...mockIssue, impact: 'serious', tags: ['wcag2aa', 'wcag143'] } });
+
+    expect(screen.getByText(/impact: serious/i)).toBeInTheDocument();
+    expect(screen.getByText(/wcag143/)).toBeInTheDocument();
+  });
+
+  it('shows the measured contrast for a contrast issue in developer mode', () => {
+    useScanStore.setState({ settings: { ...DEFAULT_SETTINGS, persona: 'developer' } });
+    renderDetail({
+      issue: {
+        ...mockIssue,
+        contrast: { fg: '#8a8a8a', bg: '#16161a', ratio: 2.8, required: 4.5 },
+      },
+    });
+
+    expect(screen.getByText(/ratio 2\.8:1/)).toBeInTheDocument();
+  });
+
+  it('hides the developer axe metadata in site-owner mode', () => {
+    renderDetail({
+      issue: {
+        ...mockIssue,
+        impact: 'serious',
+        contrast: { fg: '#8a8a8a', bg: '#16161a', ratio: 2.8, required: 4.5 },
+      },
+    });
+
+    expect(screen.queryByText(/impact: serious/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/ratio 2\.8:1/)).not.toBeInTheDocument();
+  });
+
   // --- Ignore modal --------------------------------------------------------
 
   it('opens the ignore modal when the ignore action is clicked', async () => {

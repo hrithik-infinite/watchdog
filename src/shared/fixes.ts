@@ -86,6 +86,100 @@ function replaceAttributeValue(html: string, attrName: string, newValue: string)
   return html.replace(re, `$1${attrName}="${newValue}"`);
 }
 
+// ---------------------------------------------------------------------------
+// Color-contrast helpers
+//
+// When axe gives us the measured foreground/background colors, we can emit a
+// concrete, copy-pasteable fix: the offending color and a suggested replacement
+// that actually clears the required ratio — rendered as a diff. The math is the
+// WCAG relative-luminance formula; suggestAccessibleColor walks the foreground
+// toward black or white (whichever raises contrast) until it passes.
+// ---------------------------------------------------------------------------
+
+type RGB = { r: number; g: number; b: number };
+
+function parseColor(input: string): RGB | null {
+  const s = input.trim().toLowerCase();
+  const hex = s.match(/^#([0-9a-f]{3}|[0-9a-f]{6})$/);
+  if (hex) {
+    let h = hex[1];
+    if (h.length === 3) {
+      h = h
+        .split('')
+        .map((c) => c + c)
+        .join('');
+    }
+    return {
+      r: Number.parseInt(h.slice(0, 2), 16),
+      g: Number.parseInt(h.slice(2, 4), 16),
+      b: Number.parseInt(h.slice(4, 6), 16),
+    };
+  }
+  const rgb = s.match(/^rgba?\(([^)]+)\)$/);
+  if (rgb) {
+    const parts = rgb[1].split(',').map((p) => Number.parseFloat(p.trim()));
+    if (parts.length >= 3 && parts.slice(0, 3).every((n) => Number.isFinite(n))) {
+      return { r: parts[0], g: parts[1], b: parts[2] };
+    }
+  }
+  return null;
+}
+
+function toHex({ r, g, b }: RGB): string {
+  const channel = (n: number) =>
+    Math.max(0, Math.min(255, Math.round(n)))
+      .toString(16)
+      .padStart(2, '0');
+  return `#${channel(r)}${channel(g)}${channel(b)}`;
+}
+
+function relativeLuminance({ r, g, b }: RGB): number {
+  const channel = (v: number) => {
+    const c = v / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b);
+}
+
+function ratio(a: RGB, b: RGB): number {
+  const la = relativeLuminance(a);
+  const lb = relativeLuminance(b);
+  const hi = Math.max(la, lb);
+  const lo = Math.min(la, lb);
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+function lerp(a: RGB, b: RGB, t: number): RGB {
+  return { r: a.r + (b.r - a.r) * t, g: a.g + (b.g - a.g) * t, b: a.b + (b.b - a.b) * t };
+}
+
+/** Contrast ratio between two CSS colors, or null if either can't be parsed. */
+export function contrastRatioBetween(a: string, b: string): number | null {
+  const ra = parseColor(a);
+  const rb = parseColor(b);
+  return ra && rb ? ratio(ra, rb) : null;
+}
+
+/**
+ * Suggest a foreground color that meets `required` contrast against `bg`,
+ * starting from `fg` and moving toward black or white (whichever raises
+ * contrast). Returns a hex string, or null if the inputs can't be parsed.
+ */
+export function suggestAccessibleColor(fg: string, bg: string, required = 4.5): string | null {
+  const fgRgb = parseColor(fg);
+  const bgRgb = parseColor(bg);
+  if (!fgRgb || !bgRgb) return null;
+  if (ratio(fgRgb, bgRgb) >= required) return toHex(fgRgb);
+  // Push toward white on a dark background, toward black on a light one.
+  const target: RGB =
+    relativeLuminance(bgRgb) < 0.5 ? { r: 255, g: 255, b: 255 } : { r: 0, g: 0, b: 0 };
+  for (let t = 0.05; t <= 1; t += 0.05) {
+    const candidate = lerp(fgRgb, target, t);
+    if (ratio(candidate, bgRgb) >= required) return toHex(candidate);
+  }
+  return toHex(target);
+}
+
 // Fix suggestion templates for each rule
 const FIX_TEMPLATES: Record<RuleId, (element: ElementInfo) => FixSuggestion> = {
   'image-alt': (el) => ({
@@ -432,7 +526,27 @@ ${replaceAttributeValue(el.html, 'autocomplete', 'email')}`,
 };
 
 // Generate fix suggestion for a rule
-export function generateFix(ruleId: string, element: ElementInfo): FixSuggestion {
+export function generateFix(
+  ruleId: string,
+  element: ElementInfo,
+  contrast?: { fg: string; bg: string; ratio: number; required: number }
+): FixSuggestion {
+  // When axe measured the actual colors, emit a concrete diff: the offending
+  // color out, a computed passing color in.
+  if (ruleId === 'color-contrast' && contrast) {
+    const suggested = suggestAccessibleColor(contrast.fg, contrast.bg, contrast.required);
+    if (suggested && suggested.toLowerCase() !== contrast.fg.toLowerCase()) {
+      const newRatio = contrastRatioBetween(suggested, contrast.bg);
+      return {
+        description: newRatio
+          ? `Raise the text contrast to at least ${contrast.required}:1. ${suggested} on ${contrast.bg} computes to ${newRatio.toFixed(1)}:1.`
+          : `Raise the text contrast to at least ${contrast.required}:1.`,
+        code: `- color: ${contrast.fg};\n+ color: ${suggested};`,
+        learnMoreUrl: 'https://webaim.org/resources/contrastchecker/',
+      };
+    }
+  }
+
   const template = FIX_TEMPLATES[ruleId as RuleId];
   if (template) {
     return template(element);

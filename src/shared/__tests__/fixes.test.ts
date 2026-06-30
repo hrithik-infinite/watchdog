@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { generateFix } from '../fixes';
+import { contrastRatioBetween, generateFix, suggestAccessibleColor } from '../fixes';
 import type { ElementInfo } from '../types';
 
 describe('Fixes - Fix suggestion generation', () => {
@@ -1212,6 +1212,80 @@ describe('Fixes - Fix suggestion generation', () => {
 
       const objectFix = generateFix('object-alt', element);
       expect(objectFix.code).toContain('Alternative content');
+    });
+  });
+});
+
+describe('Color-contrast math + computed diff fix', () => {
+  describe('contrastRatioBetween', () => {
+    it('computes the known black-on-white maximum (21:1)', () => {
+      expect(contrastRatioBetween('#000000', '#ffffff')).toBeCloseTo(21, 0);
+    });
+
+    it('returns 1:1 for identical colors', () => {
+      expect(contrastRatioBetween('#777777', '#777777')).toBeCloseTo(1, 5);
+    });
+
+    it('parses rgb() syntax as well as hex', () => {
+      expect(contrastRatioBetween('rgb(0, 0, 0)', 'rgb(255,255,255)')).toBeCloseTo(21, 0);
+    });
+
+    it('expands 3-digit hex', () => {
+      expect(contrastRatioBetween('#000', '#fff')).toBeCloseTo(21, 0);
+    });
+
+    it('returns null when a color cannot be parsed', () => {
+      expect(contrastRatioBetween('not-a-color', '#fff')).toBeNull();
+    });
+  });
+
+  describe('suggestAccessibleColor', () => {
+    it('returns a color that meets the required ratio against a dark background', () => {
+      const bg = '#16161a';
+      const suggested = suggestAccessibleColor('#8a8a8a', bg, 4.5);
+      expect(suggested).toMatch(/^#[0-9a-f]{6}$/);
+      expect(contrastRatioBetween(suggested as string, bg) as number).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('lightens the foreground toward white on a dark background', () => {
+      const suggested = suggestAccessibleColor('#555555', '#000000', 4.5) as string;
+      // every channel moves up toward white
+      expect(Number.parseInt(suggested.slice(1, 3), 16)).toBeGreaterThan(0x55);
+    });
+
+    it('darkens the foreground toward black on a light background', () => {
+      const suggested = suggestAccessibleColor('#aaaaaa', '#ffffff', 4.5) as string;
+      expect(Number.parseInt(suggested.slice(1, 3), 16)).toBeLessThan(0xaa);
+    });
+
+    it('keeps a color that already passes', () => {
+      expect(suggestAccessibleColor('#ffffff', '#000000', 4.5)).toBe('#ffffff');
+    });
+
+    it('returns null when either color is unparseable', () => {
+      expect(suggestAccessibleColor('garbage', '#000000', 4.5)).toBeNull();
+    });
+  });
+
+  describe('generateFix with measured contrast', () => {
+    const el: ElementInfo = { selector: 'p.muted', html: '<p class="muted">x</p>' };
+
+    it('emits a -/+ color diff and a ratio in the description', () => {
+      // #999999 on #ffffff is ~2.85:1 — genuinely below AA.
+      const fix = generateFix('color-contrast', el, {
+        fg: '#999999',
+        bg: '#ffffff',
+        ratio: 2.85,
+        required: 4.5,
+      });
+      expect(fix.code).toContain('- color: #999999;');
+      expect(fix.code).toMatch(/\+ color: #[0-9a-f]{6};/);
+      expect(fix.description).toContain('4.5:1');
+    });
+
+    it('falls back to the instructional template when no contrast data is supplied', () => {
+      const fix = generateFix('color-contrast', el);
+      expect(fix.code).toContain('Suggested fixes');
     });
   });
 });

@@ -68,6 +68,11 @@ function transformViolations(violations: any[]): Issue[] {
   const issues: Issue[] = [];
 
   for (const violation of violations) {
+    // Developer metadata shared by every node of this rule.
+    const ruleNodeCount = violation.nodes.length;
+    const tags = Array.isArray(violation.tags) ? (violation.tags as string[]) : undefined;
+    const impact = violation.impact ?? undefined;
+
     for (const node of violation.nodes) {
       const selector = Array.isArray(node.target[0])
         ? (node.target[0] as string[]).join(' ')
@@ -79,6 +84,22 @@ function transformViolations(violations: any[]): Issue[] {
         failureSummary: node.failureSummary,
       };
 
+      // Measured contrast (color-contrast rule) from the node's check data — the
+      // raw fg/bg colors and ratio axe computed, used by the developer detail
+      // view and the diff-style fix.
+      // biome-ignore lint/suspicious/noExplicitAny: axe check objects are untyped here
+      const contrastData = ((node.any ?? []) as any[])
+        .map((c) => c?.data)
+        .find((d) => d && typeof d.contrastRatio === 'number');
+      const contrast = contrastData
+        ? {
+            fg: String(contrastData.fgColor),
+            bg: String(contrastData.bgColor),
+            ratio: Number(contrastData.contrastRatio),
+            required: Number(contrastData.expectedContrastRatio ?? 4.5),
+          }
+        : undefined;
+
       issues.push({
         id: generateId(),
         ruleId: violation.id,
@@ -89,7 +110,11 @@ function transformViolations(violations: any[]): Issue[] {
         helpUrl: violation.helpUrl,
         wcag: extractWcag(violation.id),
         element,
-        fix: generateFix(violation.id, element),
+        fix: generateFix(violation.id, element, contrast),
+        impact,
+        tags,
+        ruleNodeCount,
+        contrast,
       });
     }
   }

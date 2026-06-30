@@ -110,8 +110,15 @@ export default function IssueCard({
             {SEVERITY_LABELS[issue.severity]}
           </Badge>
 
-          {/* Issue Title */}
-          <h3 className="text-h3 text-foreground mb-1.5 leading-snug">{issue.message}</h3>
+          {/* Issue title — plain message for site owners, the axe rule id
+              (monospace) for developers, who scan by rule. */}
+          {isSiteOwner ? (
+            <h3 className="text-h3 text-foreground mb-1.5 leading-snug">{issue.message}</h3>
+          ) : (
+            <h3 className="text-mono text-sm font-semibold text-foreground mb-1.5 leading-snug">
+              {issue.ruleId}
+            </h3>
+          )}
 
           {/* Plain-language consequence (ux-public-3), one-line under the title. */}
           {issue.whyItMatters && (
@@ -142,7 +149,19 @@ export default function IssueCard({
           {isSiteOwner ? (
             <p className="text-sm text-foreground mb-2">{describeElement(issue.element.html)}</p>
           ) : (
-            codePreview
+            <>
+              {codePreview}
+              {/* Developer rule footprint: how many elements this rule flagged
+                  and the offending DOM path. */}
+              {(issue.ruleNodeCount || issue.element.selector) && (
+                <p className="text-mono text-xs text-muted-foreground truncate mb-2">
+                  {issue.ruleNodeCount
+                    ? `${issue.ruleNodeCount} node${issue.ruleNodeCount === 1 ? '' : 's'} · `
+                    : ''}
+                  {issue.element.selector}
+                </p>
+              )}
+            </>
           )}
         </div>
 
