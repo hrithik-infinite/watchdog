@@ -1,6 +1,6 @@
 import { create } from 'zustand';
-import type { Issue, ScanResult, FilterState, Settings, WCAGLevel } from '@/shared/types';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
+import type { FilterState, Issue, ScanResult, Settings, WCAGLevel } from '@/shared/types';
 import { isWcagIssue } from '../lib/standards';
 
 // Higher number = stricter conformance level. Selecting a level shows that level
@@ -8,7 +8,12 @@ import { isWcagIssue } from '../lib/standards';
 const WCAG_LEVEL_RANK: Record<WCAGLevel, number> = { A: 1, AA: 2, AAA: 3 };
 
 export type AuditType =
-  'accessibility' | 'performance' | 'seo' | 'security' | 'best-practices' | 'pwa';
+  | 'accessibility'
+  | 'performance'
+  | 'seo'
+  | 'security'
+  | 'best-practices'
+  | 'pwa';
 
 interface ScanState {
   // Scan state

@@ -1,11 +1,11 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import ExportButton from '../ExportButton';
-import { exportHTML } from '@/sidepanel/lib/export';
-import { useScanStore } from '@/sidepanel/store';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { ScanResult } from '@/shared/types';
+import { exportHTML } from '@/sidepanel/lib/export';
+import { useScanStore } from '@/sidepanel/store';
+import ExportButton from '../ExportButton';
 
 // Stub the export module so a failure can be simulated without touching the real
 // pdf-lib/Blob machinery. Each export becomes a no-op the error test overrides.

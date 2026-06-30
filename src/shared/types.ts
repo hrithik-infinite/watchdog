@@ -6,7 +6,14 @@ export type WCAGLevel = 'A' | 'AA' | 'AAA';
 
 // Issue categories
 export type Category =
-  'images' | 'interactive' | 'forms' | 'color' | 'document' | 'structure' | 'aria' | 'technical';
+  | 'images'
+  | 'interactive'
+  | 'forms'
+  | 'color'
+  | 'document'
+  | 'structure'
+  | 'aria'
+  | 'technical';
 
 // Element information from the page
 export interface ElementInfo {

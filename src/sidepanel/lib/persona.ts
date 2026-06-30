@@ -7,8 +7,8 @@
  * the wording stays consistent across cards, filters and exports.
  */
 
-import { useScanStore } from '../store';
 import type { Persona, Severity } from '@/shared/types';
+import { useScanStore } from '../store';
 
 /** The current audience persona. */
 export function usePersona(): Persona {

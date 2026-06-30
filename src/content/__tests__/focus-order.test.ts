@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { showFocusOrder, hideFocusOrder, toggleFocusOrder } from '../focus-order';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { hideFocusOrder, showFocusOrder, toggleFocusOrder } from '../focus-order';
 
 describe('Focus Order Visualization', () => {
   beforeEach(() => {

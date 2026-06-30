@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { usePageOverlays } from '../usePageOverlays';
-import { useScanStore } from '@/sidepanel/store';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
+import { useScanStore } from '@/sidepanel/store';
+import { usePageOverlays } from '../usePageOverlays';
 
 vi.mock('@/shared/messaging', () => ({ getCurrentTab: vi.fn() }));
 vi.mock('@/shared/inject', () => ({ ensureContentScript: vi.fn().mockResolvedValue(undefined) }));

@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import IncompleteSection from '../IncompleteSection';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
 import type { Issue } from '@/shared/types';
+import IncompleteSection from '../IncompleteSection';
 
 const issue: Issue = {
   id: 'inc-1',

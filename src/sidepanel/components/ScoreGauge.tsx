@@ -69,7 +69,7 @@ export default function ScoreGauge({
       const progress = Math.min(elapsed / duration, 1);
 
       // Easing function (ease-out cubic)
-      const eased = 1 - Math.pow(1 - progress, 3);
+      const eased = 1 - (1 - progress) ** 3;
       const currentScore = Math.round(startScore + (endScore - startScore) * eased);
 
       setAnimatedScore(currentScore);

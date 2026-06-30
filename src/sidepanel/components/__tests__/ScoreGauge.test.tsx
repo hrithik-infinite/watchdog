@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import ScoreGauge from '../ScoreGauge';
+import { describe, expect, it } from 'vitest';
 import type { ScoreResult } from '@/shared/scoring';
+import ScoreGauge from '../ScoreGauge';
 
 const mockScoreResult: ScoreResult = {
   score: 82,

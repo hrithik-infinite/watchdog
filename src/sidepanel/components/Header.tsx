@@ -1,8 +1,8 @@
-import { Settings, ArrowLeft } from 'lucide-react';
-import { Button } from '@/sidepanel/components/ui/button';
-import { WatchDogLogo } from './icons';
-import ExportButton from './ExportButton';
+import { ArrowLeft, Settings } from 'lucide-react';
 import type { ScanResult } from '@/shared/types';
+import { Button } from '@/sidepanel/components/ui/button';
+import ExportButton from './ExportButton';
+import { WatchDogLogo } from './icons';
 
 interface HeaderProps {
   onSettingsClick?: () => void;

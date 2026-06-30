@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import ImportReportButton from '../ImportReportButton';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { ScanResult } from '@/shared/types';
+import ImportReportButton from '../ImportReportButton';
 
 const report: ScanResult = {
   url: 'https://example.com',

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mocked dependencies (hoisted so the vi.mock factories can reference them).
 const { updateBadge, clearBadge, getSettings, saveSettings } = vi.hoisted(() => ({

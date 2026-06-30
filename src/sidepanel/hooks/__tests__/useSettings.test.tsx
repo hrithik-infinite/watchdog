@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useSettings } from '../useSettings';
-import { useScanStore } from '@/sidepanel/store';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Settings } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
+import { useSettings } from '../useSettings';
 
 // Mock Chrome runtime
 vi.stubGlobal('chrome', {

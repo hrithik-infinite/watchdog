@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Issue } from '@/shared/types';
 
 // Mock axe-core before importing scanner
@@ -58,13 +58,13 @@ vi.stubGlobal('performance', {
   now: mockPerformanceNow,
 });
 
-import { scanPage } from '../scanner';
 import { WHY_IT_MATTERS } from '@/shared/why-it-matters';
-import { scanPerformance } from '../performance-scanner';
-import { scanSEO } from '../seo-scanner';
-import { scanSecurity } from '../security-scanner';
 import { scanBestPractices } from '../best-practices-scanner';
+import { scanPerformance } from '../performance-scanner';
 import { scanPWA } from '../pwa-scanner';
+import { scanPage } from '../scanner';
+import { scanSecurity } from '../security-scanner';
+import { scanSEO } from '../seo-scanner';
 
 describe('Scanner - scanPage', () => {
   beforeEach(() => {
@@ -889,14 +889,16 @@ describe('Scanner - scanPage', () => {
     // The mobile/links/i18n/privacy stub audit types were removed (deadcode-1);
     // any unrecognized audit type now rejects with the generic "Unknown" error
     // from the switch default.
-    it.each(['mobile', 'links', 'i18n', 'privacy'])(
-      'rejects the removed %s audit type as unknown',
-      async (auditType) => {
-        await expect(scanPage(auditType as never)).rejects.toThrow(
-          `Unknown audit type: ${auditType}`
-        );
-      }
-    );
+    it.each([
+      'mobile',
+      'links',
+      'i18n',
+      'privacy',
+    ])('rejects the removed %s audit type as unknown', async (auditType) => {
+      await expect(scanPage(auditType as never)).rejects.toThrow(
+        `Unknown audit type: ${auditType}`
+      );
+    });
 
     it('should throw error for unknown audit type', async () => {
       // Type assertion needed since 'unknown' is not in AuditType

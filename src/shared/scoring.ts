@@ -3,8 +3,8 @@
  * Similar to Lighthouse scoring methodology
  */
 
-import type { Issue, Severity, ScanSummary } from './types';
 import type { AuditType } from './messaging';
+import type { Issue, ScanSummary, Severity } from './types';
 
 // Weight multipliers for each severity level
 const SEVERITY_WEIGHTS: Record<Severity, number> = {

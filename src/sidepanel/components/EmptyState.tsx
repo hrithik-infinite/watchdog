@@ -1,7 +1,7 @@
-import { RefreshCw, Lightbulb, AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Lightbulb, RefreshCw } from 'lucide-react';
+import { getErrorDetails } from '@/shared/errors';
 import { Button } from '@/sidepanel/components/ui/button';
 import { CheckCircleIcon, ErrorCircleIcon } from './icons';
-import { getErrorDetails } from '@/shared/errors';
 
 interface EmptyStateProps {
   type: 'no-issues' | 'error';

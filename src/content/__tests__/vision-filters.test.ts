@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { applyVisionFilter, removeVisionFilter, getCurrentVisionFilter } from '../vision-filters';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { applyVisionFilter, getCurrentVisionFilter, removeVisionFilter } from '../vision-filters';
 
 describe('Vision Filters', () => {
   beforeEach(() => {

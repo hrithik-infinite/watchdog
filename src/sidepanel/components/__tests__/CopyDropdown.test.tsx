@@ -1,10 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import CopyDropdown from '../CopyDropdown';
-import { useScanStore } from '@/sidepanel/store';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Issue, ScanResult } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
+import CopyDropdown from '../CopyDropdown';
 
 const mockIssue: Issue = {
   id: 'issue-1',

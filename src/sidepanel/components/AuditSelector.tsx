@@ -1,18 +1,23 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone, Info, Check } from 'lucide-react';
+import { Check, CheckCircle2, Eye, Info, Search, Shield, Smartphone, Zap } from 'lucide-react';
+import { useCallback, useMemo, useState } from 'react';
+import { MVP_RULES } from '@/shared/constants';
 import { Button } from '@/sidepanel/components/ui/button';
-import { cn } from '@/sidepanel/lib/utils';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/sidepanel/components/ui/tooltip';
-import { MVP_RULES } from '@/shared/constants';
-import { useIsSiteOwner, AUDIT_ONE_LINERS } from '@/sidepanel/lib/persona';
+import { AUDIT_ONE_LINERS, useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { cn } from '@/sidepanel/lib/utils';
 
 export type AuditType =
-  'accessibility' | 'performance' | 'seo' | 'security' | 'best-practices' | 'pwa';
+  | 'accessibility'
+  | 'performance'
+  | 'seo'
+  | 'security'
+  | 'best-practices'
+  | 'pwa';
 
 interface AuditTypeConfig {
   id: AuditType;

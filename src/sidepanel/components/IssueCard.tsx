@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { Card, CardContent } from '@/sidepanel/components/ui/card';
+import type { Issue, Severity } from '@/shared/types';
 import { Badge } from '@/sidepanel/components/ui/badge';
 import { Button } from '@/sidepanel/components/ui/button';
-import type { Issue, Severity } from '@/shared/types';
-import { cn } from '@/sidepanel/lib/utils';
-import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
-import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { Card, CardContent } from '@/sidepanel/components/ui/card';
 import { describeElement } from '@/sidepanel/lib/element-descriptor';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { isWcagIssue, STANDARD_LABELS } from '@/sidepanel/lib/standards';
+import { cn } from '@/sidepanel/lib/utils';
 
 interface IssueCardProps {
   issue: Issue;

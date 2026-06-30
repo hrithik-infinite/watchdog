@@ -1,7 +1,7 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/sidepanel/components/ui/button';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 import logger from '@/shared/logger';
+import { Button } from '@/sidepanel/components/ui/button';
 
 interface Props {
   children: ReactNode;

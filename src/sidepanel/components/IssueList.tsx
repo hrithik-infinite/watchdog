@@ -1,6 +1,6 @@
 import { Search } from 'lucide-react';
-import IssueCard from './IssueCard';
 import type { Issue, Severity } from '@/shared/types';
+import IssueCard from './IssueCard';
 
 interface IssueListProps {
   issues: Issue[];

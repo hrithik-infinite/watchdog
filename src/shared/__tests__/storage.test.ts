@@ -1,27 +1,27 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  saveScanToHistory,
-  getAllScanHistory,
-  getScanHistoryForDomain,
-  getPreviousScan,
-  deleteScanFromHistory,
-  clearDomainHistory,
   clearAllHistory,
-  compareScanResults,
-  formatRelativeTime,
-  getAllIgnoredIssues,
-  getIgnoredIssuesForDomain,
-  isIssueIgnored,
-  ignoreIssue,
-  unignoreIssue,
-  clearIgnoredIssuesForDomain,
   clearAllIgnoredIssues,
+  clearDomainHistory,
+  clearIgnoredIssuesForDomain,
+  compareScanResults,
+  deleteScanFromHistory,
+  formatRelativeTime,
   generateIssueHash,
-  type ScanHistoryEntry,
+  getAllIgnoredIssues,
+  getAllScanHistory,
+  getIgnoredIssuesForDomain,
+  getPreviousScan,
+  getScanHistoryForDomain,
   type IgnoredIssue,
+  ignoreIssue,
+  isIssueIgnored,
   type ScanComparison,
+  type ScanHistoryEntry,
+  saveScanToHistory,
+  unignoreIssue,
 } from '../storage';
-import type { ScanResult, Issue, ScanSummary } from '../types';
+import type { Issue, ScanResult, ScanSummary } from '../types';
 
 // Mock Chrome API
 vi.stubGlobal('chrome', {

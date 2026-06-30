@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { useScanStore } from '../index';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
-import type { ScanResult, Issue } from '@/shared/types';
+import type { Issue, ScanResult } from '@/shared/types';
+import { useScanStore } from '../index';
 
 describe('Scan Store (Zustand)', () => {
   beforeEach(() => {

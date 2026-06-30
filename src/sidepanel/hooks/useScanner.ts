@@ -1,9 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
-import { useScanStore, type AuditType } from '../store';
-import { getCurrentTab } from '@/shared/messaging';
 import { ensureContentScript } from '@/shared/inject';
-import type { ScanResult, Issue, ScanSummary, Severity, Category } from '@/shared/types';
 import logger from '@/shared/logger';
+import { getCurrentTab } from '@/shared/messaging';
+import type { Category, Issue, ScanResult, ScanSummary, Severity } from '@/shared/types';
+import { type AuditType, useScanStore } from '../store';
 
 // A single audit must not hang the panel forever (e.g. axe.run on a huge DOM).
 // After this budget the scan is failed with a timeout (E004) so the UI recovers.

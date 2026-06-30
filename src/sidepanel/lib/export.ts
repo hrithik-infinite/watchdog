@@ -3,9 +3,9 @@
  * Supports JSON, CSV, HTML, PDF formats and clipboard copy
  */
 
-import type { ScanResult, Issue, Severity } from '@/shared/types';
+import type { Issue, ScanResult, Severity } from '@/shared/types';
+import { isWcagIssue, STANDARD_LABELS } from '@/sidepanel/lib/standards';
 import type { AuditType } from '@/sidepanel/store';
-import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
 
 /**
  * Format audit type for display

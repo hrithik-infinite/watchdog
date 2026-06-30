@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useHighlight } from '../useHighlight';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { useScanStore } from '@/sidepanel/store';
+import { useHighlight } from '../useHighlight';
 
 // Mock dependencies
 vi.mock('@/shared/messaging', () => ({

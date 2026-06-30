@@ -1,13 +1,13 @@
+import type { AuditType } from '@/shared/messaging';
 import type {
+  Category,
   Issue,
+  IssueStandard,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
-  IssueStandard,
 } from '@/shared/types';
-import type { AuditType } from '@/shared/messaging';
 
 // Maps each implemented audit to the standard its issues belong to, so scanPage
 // can tag results centrally (see below) without editing every scanner.
@@ -19,15 +19,16 @@ const AUDIT_STANDARD: Partial<Record<AuditType, IssueStandard>> = {
   'best-practices': 'best-practice',
   pwa: 'pwa',
 };
+
 import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/shared/constants';
-import { WHY_IT_MATTERS } from '@/shared/why-it-matters';
 import { generateFix } from '@/shared/fixes';
-import { scanPerformance } from './performance-scanner';
-import { scanSEO } from './seo-scanner';
-import { scanSecurity } from './security-scanner';
-import { scanBestPractices } from './best-practices-scanner';
-import { scanPWA } from './pwa-scanner';
 import logger from '@/shared/logger';
+import { WHY_IT_MATTERS } from '@/shared/why-it-matters';
+import { scanBestPractices } from './best-practices-scanner';
+import { scanPerformance } from './performance-scanner';
+import { scanPWA } from './pwa-scanner';
+import { scanSecurity } from './security-scanner';
+import { scanSEO } from './seo-scanner';
 
 // Lazy load axe-core only when needed
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

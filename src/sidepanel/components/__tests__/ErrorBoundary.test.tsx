@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import ErrorBoundary from '../ErrorBoundary';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import logger from '@/shared/logger';
+import ErrorBoundary from '../ErrorBoundary';
 
 // A child that throws on render until `shouldThrow` is flipped off. Module-level
 // mutable state lets the reset/try-again path re-render it without throwing.

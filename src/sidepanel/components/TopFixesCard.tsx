@@ -8,8 +8,8 @@
  * store already holds — clicking a row opens the first issue in that group.
  */
 
+import { ChevronRight, Wrench } from 'lucide-react';
 import { useMemo } from 'react';
-import { Wrench, ChevronRight } from 'lucide-react';
 import type { Issue, Severity } from '@/shared/types';
 import { cn } from '@/sidepanel/lib/utils';
 

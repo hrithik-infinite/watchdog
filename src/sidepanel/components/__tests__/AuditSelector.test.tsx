@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
-import AuditSelector from '../AuditSelector';
-import { MVP_RULES, DEFAULT_SETTINGS } from '@/shared/constants';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS, MVP_RULES } from '@/shared/constants';
 import { AUDIT_ONE_LINERS } from '@/sidepanel/lib/persona';
 import { useScanStore } from '@/sidepanel/store';
+import AuditSelector from '../AuditSelector';
 
 function renderSelector({ isScanning = false } = {}) {
   return render(

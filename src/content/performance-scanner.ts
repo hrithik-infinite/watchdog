@@ -1,9 +1,9 @@
 import type {
+  Category,
   Issue,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
 } from '@/shared/types';
 

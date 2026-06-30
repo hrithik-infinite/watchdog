@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { highlightElement, clearHighlights, highlightMultiple } from '../overlay';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearHighlights, highlightElement, highlightMultiple } from '../overlay';
 
 describe('Overlay - Element Highlighting', () => {
   let mockScrollInto: any;

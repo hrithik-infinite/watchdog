@@ -1,5 +1,6 @@
-import { useState, type ComponentType } from 'react';
-import { ClipboardCopy, Check, ChevronDown, FileText, Code } from 'lucide-react';
+import { Check, ChevronDown, ClipboardCopy, Code, FileText } from 'lucide-react';
+import { type ComponentType, useState } from 'react';
+import type { Issue, ScanResult } from '@/shared/types';
 import { GithubIcon } from '@/sidepanel/components/icons';
 import { Button } from '@/sidepanel/components/ui/button';
 import {
@@ -11,13 +12,12 @@ import {
   DropdownMenuTrigger,
 } from '@/sidepanel/components/ui/dropdown-menu';
 import {
+  copyToClipboard,
+  issuesToGitHubMarkdown,
   issuesToMarkdown,
   issuesToPlainText,
-  issuesToGitHubMarkdown,
-  copyToClipboard,
 } from '@/sidepanel/lib/export';
 import { useIsSiteOwner } from '@/sidepanel/lib/persona';
-import type { Issue, ScanResult } from '@/shared/types';
 import type { AuditType } from '@/sidepanel/store';
 
 interface CopyDropdownProps {

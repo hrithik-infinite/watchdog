@@ -1,5 +1,5 @@
-import type { Settings } from '@/shared/types';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
+import type { Settings } from '@/shared/types';
 
 const SETTINGS_KEY = 'watchdog_settings';
 

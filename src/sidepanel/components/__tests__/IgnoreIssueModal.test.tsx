@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import IgnoreIssueModal from '../IgnoreIssueModal';
-import { useScanStore } from '@/sidepanel/store';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Issue } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
+import IgnoreIssueModal from '../IgnoreIssueModal';
 
 // Keep the real reason labels, but stub the storage write so submitting does
 // not hit chrome.storage during tests.

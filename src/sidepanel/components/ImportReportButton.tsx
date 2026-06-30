@@ -5,11 +5,11 @@
  * over the screen.
  */
 
-import { useRef, useState } from 'react';
 import { Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
+import type { ScanResult } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
 import { parseReport } from '@/sidepanel/lib/import-report';
-import type { ScanResult } from '@/shared/types';
 
 interface ImportReportButtonProps {
   onImport: (result: ScanResult) => void;

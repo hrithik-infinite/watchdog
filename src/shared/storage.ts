@@ -3,9 +3,9 @@
  * Manages scan history persistence in Chrome storage
  */
 
-import type { ScanResult, Issue, ScanSummary } from './types';
 import type { AuditType } from '@/sidepanel/store';
 import logger from './logger';
+import type { Issue, ScanResult, ScanSummary } from './types';
 
 // Storage keys
 const SCAN_HISTORY_KEY = 'watchdog_scan_history';
@@ -333,7 +333,11 @@ function withIgnoredIssuesLock<T>(task: () => Promise<T>): Promise<T> {
  * Reason for ignoring an issue
  */
 export type IgnoreReason =
-  'third-party' | 'design-decision' | 'false-positive' | 'will-fix-later' | 'other';
+  | 'third-party'
+  | 'design-decision'
+  | 'false-positive'
+  | 'will-fix-later'
+  | 'other';
 
 export const IGNORE_REASON_LABELS: Record<IgnoreReason, string> = {
   'third-party': "Third-party code (can't modify)",

@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
-import { getTargetTabId } from '@/sidepanel/lib/target-tab';
-import type { Severity } from '@/shared/types';
 import logger from '@/shared/logger';
+import type { Severity } from '@/shared/types';
+import { getTargetTabId } from '@/sidepanel/lib/target-tab';
 
 export function useHighlight() {
   const highlightElement = useCallback(async (selector: string, severity: Severity) => {

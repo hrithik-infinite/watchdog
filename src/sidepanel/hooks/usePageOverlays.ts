@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
-import { useScanStore } from '../store';
-import { getTargetTabId } from '@/sidepanel/lib/target-tab';
 import { ensureContentScript } from '@/shared/inject';
-import type { Settings, VisionMode } from '@/shared/types';
 import logger from '@/shared/logger';
+import type { Settings, VisionMode } from '@/shared/types';
+import { getTargetTabId } from '@/sidepanel/lib/target-tab';
+import { useScanStore } from '../store';
 
 /**
  * Shared control for the on-page overlays — the vision simulator and the

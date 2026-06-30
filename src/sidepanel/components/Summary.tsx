@@ -1,4 +1,6 @@
 import { Info } from 'lucide-react';
+import { calculateScoreFromSummary } from '@/shared/scoring';
+import type { ScanSummary, Severity } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
 import {
   Tooltip,
@@ -6,11 +8,9 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/sidepanel/components/ui/tooltip';
-import type { ScanSummary, Severity } from '@/shared/types';
-import type { AuditType } from '@/sidepanel/store';
+import { SEVERITY_PLAIN, useIsSiteOwner } from '@/sidepanel/lib/persona';
 import { cn } from '@/sidepanel/lib/utils';
-import { calculateScoreFromSummary } from '@/shared/scoring';
-import { useIsSiteOwner, SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
+import type { AuditType } from '@/sidepanel/store';
 import ScoreGauge from './ScoreGauge';
 
 interface SummaryProps {

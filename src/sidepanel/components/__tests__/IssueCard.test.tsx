@@ -1,10 +1,10 @@
+import { createEvent, fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentProps } from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent, createEvent } from '@testing-library/react';
-import IssueCard from '../IssueCard';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Issue } from '@/shared/types';
 import { useScanStore } from '@/sidepanel/store';
-import { DEFAULT_SETTINGS } from '@/shared/constants';
+import IssueCard from '../IssueCard';
 
 const mockIssue: Issue = {
   id: 'issue-1',

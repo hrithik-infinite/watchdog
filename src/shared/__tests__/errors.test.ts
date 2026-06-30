@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { ERROR_CODES, ErrorDetails, getErrorDetails, formatError } from '../errors';
+import { describe, expect, it } from 'vitest';
+import { ERROR_CODES, type ErrorDetails, formatError, getErrorDetails } from '../errors';
 
 describe('Errors - Custom error classes and error details', () => {
   describe('ERROR_CODES constants', () => {

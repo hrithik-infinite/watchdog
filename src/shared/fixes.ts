@@ -1,5 +1,5 @@
-import type { ElementInfo, FixSuggestion } from './types';
 import type { RuleId } from './constants';
+import type { ElementInfo, FixSuggestion } from './types';
 
 // ---------------------------------------------------------------------------
 // Robust HTML edit helpers

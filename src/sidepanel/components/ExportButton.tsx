@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   AlertCircle,
   Download,
@@ -8,7 +8,8 @@ import {
   Loader2,
   X,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { useState } from 'react';
+import type { ScanResult } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
 import {
   DropdownMenu,
@@ -18,10 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/sidepanel/components/ui/dropdown-menu';
-import { exportJSON, exportCSV, exportHTML, exportPDF } from '@/sidepanel/lib/export';
-import { useScanStore } from '@/sidepanel/store';
+import { exportCSV, exportHTML, exportJSON, exportPDF } from '@/sidepanel/lib/export';
 import { useIsSiteOwner } from '@/sidepanel/lib/persona';
-import type { ScanResult } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
 
 type ExportFormat = 'json' | 'csv' | 'html' | 'pdf';
 

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock performance
 const mockPerformanceNow = vi.fn();

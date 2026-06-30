@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Use fake timers to speed up tests (performance scanner has 1s delay)
 vi.useFakeTimers();

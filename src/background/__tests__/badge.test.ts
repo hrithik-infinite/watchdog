@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { updateBadge, clearBadge } from '../badge';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { clearBadge, updateBadge } from '../badge';
 
 const setBadgeText = vi.fn().mockResolvedValue(undefined);
 const setBadgeBackgroundColor = vi.fn().mockResolvedValue(undefined);

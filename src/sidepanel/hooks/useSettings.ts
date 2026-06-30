@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useScanStore } from '../store';
-import type { Settings } from '@/shared/types';
 import logger from '@/shared/logger';
+import type { Settings } from '@/shared/types';
+import { useScanStore } from '../store';
 
 export function useSettings() {
   const { settings, updateSettings } = useScanStore();

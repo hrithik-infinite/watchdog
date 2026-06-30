@@ -1,6 +1,7 @@
-import { Search, X, Ban, Eye, EyeOff } from 'lucide-react';
-import { Input } from '@/sidepanel/components/ui/input';
+import { Ban, Eye, EyeOff, Search, X } from 'lucide-react';
+import type { Category, Severity } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
+import { Input } from '@/sidepanel/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -8,10 +9,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/sidepanel/components/ui/select';
+import { SEVERITY_PLAIN, useIsSiteOwner } from '@/sidepanel/lib/persona';
 import { cn } from '@/sidepanel/lib/utils';
 import { useScanStore } from '@/sidepanel/store';
-import { useIsSiteOwner, SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
-import type { Category, Severity } from '@/shared/types';
 
 interface FilterBarProps {
   severityFilter: Severity | 'all';

@@ -2,12 +2,12 @@
 // highlight styles ship inside the injected script's CSS instead of a
 // declarative content_scripts.css.
 import './styles.css';
-import { scanPage } from './scanner';
-import { highlightElement, highlightMultiple, clearHighlights } from './overlay';
-import { applyVisionFilter, removeVisionFilter } from './vision-filters';
-import { toggleFocusOrder, hideFocusOrder } from './focus-order';
-import type { Message, ScanResponse, AuditType } from '@/shared/messaging';
+import type { AuditType, Message, ScanResponse } from '@/shared/messaging';
 import type { Severity, VisionMode } from '@/shared/types';
+import { hideFocusOrder, toggleFocusOrder } from './focus-order';
+import { clearHighlights, highlightElement, highlightMultiple } from './overlay';
+import { scanPage } from './scanner';
+import { applyVisionFilter, removeVisionFilter } from './vision-filters';
 
 // Active vision-simulation mode, tracked so it can be re-applied after SPA
 // route changes that wipe the filter (correctness-22).
@@ -129,11 +129,11 @@ function installSpaHooks(): void {
   originalPushState = history.pushState.bind(history);
   originalReplaceState = history.replaceState.bind(history);
 
-  history.pushState = function (...args: Parameters<History['pushState']>): void {
+  history.pushState = (...args: Parameters<History['pushState']>): void => {
     originalPushState?.(...args);
     handleSpaNavigation();
   };
-  history.replaceState = function (...args: Parameters<History['replaceState']>): void {
+  history.replaceState = (...args: Parameters<History['replaceState']>): void => {
     originalReplaceState?.(...args);
     handleSpaNavigation();
   };

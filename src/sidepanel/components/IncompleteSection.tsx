@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { ChevronDown, ChevronRight, HelpCircle } from 'lucide-react';
-import { Badge } from '@/sidepanel/components/ui/badge';
+import { useState } from 'react';
 import type { Issue } from '@/shared/types';
-import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
+import { Badge } from '@/sidepanel/components/ui/badge';
+import { isWcagIssue, STANDARD_LABELS } from '@/sidepanel/lib/standards';
 
 interface IncompleteSectionProps {
   // Items the scanner could not decide automatically (axe "incomplete"): they

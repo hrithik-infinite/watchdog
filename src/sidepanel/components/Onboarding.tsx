@@ -8,11 +8,11 @@
  * audit it ships.
  */
 
-import { useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react';
-import { ShieldCheck, Store, Code2, ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, Code2, ShieldCheck, Store } from 'lucide-react';
+import { type KeyboardEvent as ReactKeyboardEvent, useRef, useState } from 'react';
+import type { Persona } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
 import { cn } from '@/sidepanel/lib/utils';
-import type { Persona } from '@/shared/types';
 
 interface OnboardingProps {
   /** Called with the chosen persona when the user finishes the tour. */

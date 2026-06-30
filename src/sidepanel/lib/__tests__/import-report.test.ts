@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { parseReport } from '../import-report';
+import { describe, expect, it } from 'vitest';
 import type { ScanResult } from '@/shared/types';
+import { parseReport } from '../import-report';
 
 const validReport: ScanResult = {
   url: 'https://example.com',

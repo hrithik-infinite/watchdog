@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Settings } from '@/shared/types';
 import { getSettings, saveSettings } from '../storage';
-import { DEFAULT_SETTINGS } from '@/shared/constants';
 
 const get = vi.fn();
 const set = vi.fn();

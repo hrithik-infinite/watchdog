@@ -1,5 +1,5 @@
-import { useScanStore } from '../store';
 import { getCurrentTab } from '@/shared/messaging';
+import { useScanStore } from '../store';
 
 /**
  * The tab that page-directed actions (highlight, vision filter, focus order)

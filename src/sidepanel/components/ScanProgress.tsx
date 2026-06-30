@@ -1,5 +1,5 @@
+import { CheckCircle2, Eye, Search, Shield, Smartphone, Zap } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { Eye, Zap, Search, Shield, CheckCircle2, Smartphone } from 'lucide-react';
 import { cn } from '@/sidepanel/lib/utils';
 import type { AuditType } from '../store';
 

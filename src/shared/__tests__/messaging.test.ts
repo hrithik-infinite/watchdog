@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  sendMessage,
-  sendTabMessage,
+  type ApplyVisionFilterMessage,
   getCurrentTab,
+  type HighlightElementMessage,
   type Message,
   type PingMessage,
   type ScanPageMessage,
-  type HighlightElementMessage,
-  type ApplyVisionFilterMessage,
+  sendMessage,
+  sendTabMessage,
   type ToggleFocusOrderMessage,
   type UpdateSettingsMessage,
 } from '../messaging';

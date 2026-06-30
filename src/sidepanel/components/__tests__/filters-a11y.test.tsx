@@ -1,12 +1,12 @@
-import type { ComponentProps } from 'react';
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import Summary from '../Summary';
-import FilterBar from '../FilterBar';
-import { useScanStore } from '@/sidepanel/store';
+import type { ComponentProps } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
-import { SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
 import type { Category, ScanResult, ScanSummary } from '@/shared/types';
+import { SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
+import { useScanStore } from '@/sidepanel/store';
+import FilterBar from '../FilterBar';
+import Summary from '../Summary';
 
 const summary: ScanSummary = {
   total: 10,

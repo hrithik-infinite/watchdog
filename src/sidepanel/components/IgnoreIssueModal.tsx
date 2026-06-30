@@ -3,19 +3,19 @@
  * Allows users to mark an issue as known/ignored with a reason
  */
 
+import { Ban, Check, X } from 'lucide-react';
 import {
+  type KeyboardEvent as ReactKeyboardEvent,
   useEffect,
   useId,
   useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react';
-import { X, Ban, Check } from 'lucide-react';
-import { Button } from '@/sidepanel/components/ui/button';
-import { cn } from '@/sidepanel/lib/utils';
-import { ignoreIssue, type IgnoreReason, IGNORE_REASON_LABELS } from '@/shared/storage';
-import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { IGNORE_REASON_LABELS, type IgnoreReason, ignoreIssue } from '@/shared/storage';
 import type { Issue } from '@/shared/types';
+import { Button } from '@/sidepanel/components/ui/button';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { cn } from '@/sidepanel/lib/utils';
 
 interface IgnoreIssueModalProps {
   issue: Issue;

@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { escapeHtml, exportHTML, exportCSV, exportPDF, toPdfSafeText } from '../export';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Issue, ScanResult, Severity } from '@/shared/types';
+import { escapeHtml, exportCSV, exportHTML, exportPDF, toPdfSafeText } from '../export';
 
 /**
  * exportHTML / exportCSV stream their output through downloadFile, which builds a

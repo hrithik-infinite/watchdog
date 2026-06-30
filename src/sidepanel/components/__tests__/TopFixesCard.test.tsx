@@ -1,7 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import TopFixesCard from '../TopFixesCard';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import type { Issue, Severity } from '@/shared/types';
+import TopFixesCard from '../TopFixesCard';
 
 let counter = 0;
 function makeIssue(ruleId: string, severity: Severity, message: string): Issue {

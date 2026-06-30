@@ -1,7 +1,7 @@
 // Mock Chrome APIs for standalone UI testing
 // This file is only used when running outside the extension context
 
-import type { ScanResult, Issue } from '@/shared/types';
+import type { Issue, ScanResult } from '@/shared/types';
 
 const mockIssues: Issue[] = [
   {
@@ -201,5 +201,3 @@ if (!isExtensionContext) {
     },
   };
 }
-
-export {};

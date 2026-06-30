@@ -1,6 +1,6 @@
 import { ChevronLeft, RotateCcw } from 'lucide-react';
+import type { Persona, Settings as SettingsType, VisionMode, WCAGLevel } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
-import { Switch } from '@/sidepanel/components/ui/switch';
 import { Card, CardContent } from '@/sidepanel/components/ui/card';
 import { Label } from '@/sidepanel/components/ui/label';
 import {
@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/sidepanel/components/ui/select';
-import type { Settings as SettingsType, WCAGLevel, VisionMode, Persona } from '@/shared/types';
+import { Switch } from '@/sidepanel/components/ui/switch';
 import { usePageOverlays } from '@/sidepanel/hooks/usePageOverlays';
 
 interface SettingsProps {

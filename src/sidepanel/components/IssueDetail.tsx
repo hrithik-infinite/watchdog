@@ -1,15 +1,15 @@
+import { Ban, ChevronLeft, ChevronRight, Code, Eye, Glasses, Info } from 'lucide-react';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Info, Eye, Ban, Code, Glasses } from 'lucide-react';
-import { Button } from '@/sidepanel/components/ui/button';
-import { Badge } from '@/sidepanel/components/ui/badge';
-import { Card, CardContent } from '@/sidepanel/components/ui/card';
-import CodeBlock from './CodeBlock';
-import IgnoreIssueModal from './IgnoreIssueModal';
 import type { Issue, Severity } from '@/shared/types';
-import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
-import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { Badge } from '@/sidepanel/components/ui/badge';
+import { Button } from '@/sidepanel/components/ui/button';
+import { Card, CardContent } from '@/sidepanel/components/ui/card';
 import { usePageOverlays } from '@/sidepanel/hooks/usePageOverlays';
 import { describeElement } from '@/sidepanel/lib/element-descriptor';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { isWcagIssue, STANDARD_LABELS } from '@/sidepanel/lib/standards';
+import CodeBlock from './CodeBlock';
+import IgnoreIssueModal from './IgnoreIssueModal';
 
 interface IssueDetailProps {
   issue: Issue;

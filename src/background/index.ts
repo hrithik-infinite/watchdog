@@ -1,7 +1,7 @@
-import { updateBadge, clearBadge } from './badge';
-import { getSettings, saveSettings } from './storage';
 import type { Message } from '@/shared/messaging';
 import type { ScanResult } from '@/shared/types';
+import { clearBadge, updateBadge } from './badge';
+import { getSettings, saveSettings } from './storage';
 
 // No install-time content-script injection. Without a declarative `<all_urls>`
 // content script (dropped in secpriv-6) the extension holds no broad host

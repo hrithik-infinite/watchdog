@@ -1,7 +1,12 @@
 import type { ScanResult, Settings, Severity, VisionMode } from './types';
 
 export type AuditType =
-  'accessibility' | 'performance' | 'seo' | 'security' | 'best-practices' | 'pwa';
+  | 'accessibility'
+  | 'performance'
+  | 'seo'
+  | 'security'
+  | 'best-practices'
+  | 'pwa';
 
 // Message types for communication between extension parts
 export type MessageType =
