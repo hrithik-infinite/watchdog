@@ -9,14 +9,23 @@ import { toggleFocusOrder, hideFocusOrder } from './focus-order';
 import type { Message, ScanResponse, AuditType } from '@/shared/messaging';
 import type { Severity, VisionMode } from '@/shared/types';
 
+// Active vision-simulation mode, tracked so it can be re-applied after SPA
+// route changes that wipe the filter (correctness-22).
+let currentVisionMode: VisionMode = 'none';
+
 // Listen for messages from the side panel and background
 chrome.runtime.onMessage.addListener(
   (message: Message, _sender, sendResponse: (response: unknown) => void) => {
     handleMessage(message)
       .then(sendResponse)
-      .catch((error) => {
+      .catch((error: unknown) => {
+        // error is unknown in a rejection handler; guard before reading .message
+        // so non-Error throwables don't crash the handler (correctness-30 / err-12).
         console.error('WatchDog content script error:', error);
-        sendResponse({ success: false, error: error.message });
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
 
     // Return true to indicate we'll send a response asynchronously
@@ -77,6 +86,8 @@ async function handleMessage(message: Message): Promise<unknown> {
 
     case 'APPLY_VISION_FILTER': {
       const { mode } = message.payload as { mode: VisionMode };
+      // Remember the active mode so an SPA navigation can restore it.
+      currentVisionMode = mode;
       applyVisionFilter(mode);
       return { success: true };
     }
@@ -92,11 +103,66 @@ async function handleMessage(message: Message): Promise<unknown> {
   }
 }
 
+// Re-apply the active vision filter after client-side (SPA) navigations.
+// Frameworks that swap large DOM subtrees can drop the injected SVG <defs> and
+// the inline <html> filter, silently disabling the simulation (correctness-22).
+// We patch the history API + listen for popstate, then tear it all down on
+// unload so nothing leaks if the script outlives the page.
+function reapplyVisionFilter(): void {
+  if (currentVisionMode !== 'none') {
+    applyVisionFilter(currentVisionMode);
+  }
+}
+
+// Defer to a microtask so the framework finishes its synchronous DOM swap
+// before we re-inject the filter onto the freshly-rendered content.
+function handleSpaNavigation(): void {
+  queueMicrotask(reapplyVisionFilter);
+}
+
+let originalPushState: History['pushState'] | null = null;
+let originalReplaceState: History['replaceState'] | null = null;
+
+function installSpaHooks(): void {
+  if (typeof history === 'undefined') return;
+
+  originalPushState = history.pushState.bind(history);
+  originalReplaceState = history.replaceState.bind(history);
+
+  history.pushState = function (...args: Parameters<History['pushState']>): void {
+    originalPushState?.(...args);
+    handleSpaNavigation();
+  };
+  history.replaceState = function (...args: Parameters<History['replaceState']>): void {
+    originalReplaceState?.(...args);
+    handleSpaNavigation();
+  };
+
+  window.addEventListener('popstate', handleSpaNavigation);
+}
+
+function uninstallSpaHooks(): void {
+  if (originalPushState) {
+    history.pushState = originalPushState;
+    originalPushState = null;
+  }
+  if (originalReplaceState) {
+    history.replaceState = originalReplaceState;
+    originalReplaceState = null;
+  }
+  window.removeEventListener('popstate', handleSpaNavigation);
+}
+
 // Clear highlights, vision filters, and focus order when page unloads
 window.addEventListener('beforeunload', () => {
   clearHighlights();
   removeVisionFilter();
   hideFocusOrder();
+  uninstallSpaHooks();
 });
 
-console.log('WatchDog content script loaded');
+installSpaHooks();
+
+// perf-rel-12: dropped the raw `console.log('WatchDog content script loaded')`
+// that shipped on every on-demand injection; injection is already traced via
+// the shared logger in shared/inject.ts.

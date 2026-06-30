@@ -58,6 +58,23 @@ describe('background/index', () => {
     it('returns true from the message listener (async sendResponse)', () => {
       expect(messageListener({ type: 'GET_SETTINGS' }, {}, vi.fn())).toBe(true);
     });
+
+    // correctness-30 / err-12: the listener's rejection handler used to read
+    // `error.message` directly, so a non-Error throwable (here a bare string)
+    // produced `error: undefined` instead of a usable message.
+    it('serializes non-Error rejections from the listener catch', async () => {
+      updateBadge.mockRejectedValueOnce('badge boom');
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const sendResponse = vi.fn();
+      messageListener(
+        { type: 'SCAN_RESULT', payload: { summary: { total: 1 } } },
+        { tab: { id: 3 } },
+        sendResponse
+      );
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'badge boom' });
+      errorSpy.mockRestore();
+    });
   });
 
   describe('handleMessage routing', () => {

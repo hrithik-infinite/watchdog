@@ -60,11 +60,12 @@ describe('background/badge', () => {
       expect(setBadgeText).toHaveBeenCalledWith({ tabId: 5, text: '' });
     });
 
-    // Documents current behavior: clearBadge resets text only, not the background
-    // color (correctness-31 in the Phase-3 backlog will change this).
-    it('does not reset the background color', async () => {
+    // correctness-31: clearBadge used to reset the text only, leaving the prior
+    // severity color in place to resurface the next time text was set. It now
+    // also resets the background color to a neutral, fully-transparent default.
+    it('also resets the background color to the neutral default', async () => {
       await clearBadge(5);
-      expect(setBadgeBackgroundColor).not.toHaveBeenCalled();
+      expect(setBadgeBackgroundColor).toHaveBeenCalledWith({ tabId: 5, color: [0, 0, 0, 0] });
     });
 
     it('ignores errors when the tab is already closed', async () => {

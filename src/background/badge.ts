@@ -7,6 +7,10 @@ const BADGE_COLORS: Record<string, string> = {
   high: '#DC2626', // Red - many issues
 };
 
+// Neutral, fully-transparent default used when clearing the badge so we don't
+// leave a stale severity color behind (correctness-31).
+const DEFAULT_BADGE_COLOR: chrome.extensionTypes.ColorArray = [0, 0, 0, 0];
+
 function getBadgeColor(count: number): string {
   if (count === 0) return BADGE_COLORS.none;
   if (count <= 5) return BADGE_COLORS.low;
@@ -46,6 +50,14 @@ export async function clearBadge(tabId: number): Promise<void> {
     await chrome.action.setBadgeText({
       tabId,
       text: '',
+    });
+
+    // Resetting only the text left the previous severity color in place, which
+    // would resurface the moment the badge text was set again. Reset the
+    // background color to a neutral default too (correctness-31).
+    await chrome.action.setBadgeBackgroundColor({
+      tabId,
+      color: DEFAULT_BADGE_COLOR,
     });
   } catch {
     // Tab may already be closed, ignore error

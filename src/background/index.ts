@@ -18,9 +18,14 @@ chrome.sidePanel
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
   handleMessage(message, sender)
     .then(sendResponse)
-    .catch((error) => {
+    .catch((error: unknown) => {
+      // error is unknown in a rejection handler; guard before reading .message
+      // so non-Error throwables don't crash the handler (correctness-30 / err-12).
       console.error('Message handler error:', error);
-      sendResponse({ success: false, error: error.message });
+      sendResponse({
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      });
     });
 
   // Return true to indicate we'll send a response asynchronously
