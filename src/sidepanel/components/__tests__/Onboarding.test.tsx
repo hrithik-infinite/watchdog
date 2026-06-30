@@ -24,7 +24,7 @@ describe('Onboarding', () => {
     const onComplete = vi.fn();
     render(<Onboarding onComplete={onComplete} />);
 
-    fireEvent.click(screen.getByRole('button', { name: /start checking/i }));
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     expect(onComplete).toHaveBeenCalledWith('site-owner');
   });
@@ -34,7 +34,7 @@ describe('Onboarding', () => {
     render(<Onboarding onComplete={onComplete} />);
 
     fireEvent.click(screen.getByRole('radio', { name: /developer/i }));
-    fireEvent.click(screen.getByRole('button', { name: /start checking/i }));
+    fireEvent.click(screen.getByRole('button', { name: /continue/i }));
 
     expect(onComplete).toHaveBeenCalledWith('developer');
   });

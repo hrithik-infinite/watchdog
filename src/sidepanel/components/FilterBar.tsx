@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/sidepanel/components/ui/select';
-import { SEVERITY_PLAIN, useIsSiteOwner } from '@/sidepanel/lib/persona';
 import { cn } from '@/sidepanel/lib/utils';
 import { useScanStore } from '@/sidepanel/store';
 
@@ -24,13 +23,6 @@ interface FilterBarProps {
   onSearchChange: (query: string) => void;
   onHideIgnoredChange: (hide: boolean) => void;
 }
-
-const SEVERITY_LABELS: Record<Severity, string> = {
-  critical: 'Critical',
-  serious: 'Serious',
-  moderate: 'Moderate',
-  minor: 'Minor',
-};
 
 const CATEGORY_LABELS: Record<Category, string> = {
   images: 'Images',
@@ -54,12 +46,10 @@ export default function FilterBar({
   onSearchChange,
   onHideIgnoredChange,
 }: FilterBarProps) {
-  const isSiteOwner = useIsSiteOwner();
   // Read the current scan so the Category filter only offers categories that
   // actually occur in the results (ux-public-14).
   const scanResult = useScanStore((s) => s.scanResult);
 
-  const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
   const categories: Category[] = [
     'images',
     'interactive',
@@ -103,78 +93,52 @@ export default function FilterBar({
         />
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 items-end">
-        <div className="flex-1">
-          <label
-            htmlFor="severity-filter"
-            className="block text-caption text-muted-foreground mb-1"
-          >
-            Severity
-          </label>
-          <Select value={severityFilter} onValueChange={onSeverityChange}>
-            <SelectTrigger id="severity-filter">
-              <SelectValue placeholder="All Severities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Severities</SelectItem>
-              {severities.map((severity) => (
-                <SelectItem key={severity} value={severity}>
-                  <span className="flex flex-col items-start">
-                    <span>{SEVERITY_LABELS[severity]}</span>
-                    {/* Plain-language subtitle for the Site-owner audience. */}
-                    {isSiteOwner && (
-                      <span className="text-[10px] leading-tight text-muted-foreground">
-                        {SEVERITY_PLAIN[severity]}
-                      </span>
-                    )}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Filters. Severity is filtered from the Summary chips above the list, so
+          it is intentionally NOT duplicated here — this row is category + a
+          clear-all affordance. */}
+      {(showCategoryFilter || hasActiveFilters) && (
+        <div className="flex gap-3 items-end">
+          {/* Category filter is hidden when there is nothing meaningful to filter
+              by (0 or 1 category present in the results). */}
+          {showCategoryFilter && (
+            <div className="flex-1">
+              <label
+                htmlFor="category-filter"
+                className="block text-caption text-muted-foreground mb-1"
+              >
+                Category
+              </label>
+              <Select value={categoryFilter} onValueChange={onCategoryChange}>
+                <SelectTrigger id="category-filter">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {presentCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {CATEGORY_LABELS[category]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-        {/* Category filter is hidden when there is nothing meaningful to filter
-            by (0 or 1 category present in the results). */}
-        {showCategoryFilter && (
-          <div className="flex-1">
-            <label
-              htmlFor="category-filter"
-              className="block text-caption text-muted-foreground mb-1"
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear all filters"
             >
-              Category
-            </label>
-            <Select value={categoryFilter} onValueChange={onCategoryChange}>
-              <SelectTrigger id="category-filter">
-                <SelectValue placeholder="All Categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                {presentCategories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {CATEGORY_LABELS[category]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
-        {/* Clear Filters Button */}
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearAllFilters}
-            className="gap-2 text-muted-foreground hover:text-foreground"
-            aria-label="Clear all filters"
-          >
-            <X className="h-4 w-4" />
-            Clear
-          </Button>
-        )}
-      </div>
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* Known Issues Toggle */}
       {ignoredCount > 0 && (
@@ -186,8 +150,8 @@ export default function FilterBar({
             className={cn(
               'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors',
               hideIgnored
-                ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                : 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                ? 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                : 'text-warning bg-warning/10 hover:bg-warning/20'
             )}
           >
             <Ban className="h-3.5 w-3.5" />

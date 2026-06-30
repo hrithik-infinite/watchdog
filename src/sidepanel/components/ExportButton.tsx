@@ -140,7 +140,7 @@ export default function ExportButton({ scanResult }: ExportButtonProps) {
       {error && (
         <div
           role="alert"
-          className="absolute right-0 top-full z-50 mt-1 flex w-64 items-start gap-2 rounded-md border border-destructive/30 bg-background p-2 text-xs text-destructive shadow-md"
+          className="absolute right-0 top-full z-50 mt-1 flex w-64 items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/15 p-2 text-xs text-destructive shadow-[var(--shadow-elev-2)]"
         >
           <AlertCircle className="h-4 w-4 flex-shrink-0" />
           <span className="flex-1 break-words">{error}</span>
@@ -148,7 +148,7 @@ export default function ExportButton({ scanResult }: ExportButtonProps) {
             type="button"
             onClick={() => setError(null)}
             aria-label="Dismiss export error"
-            className="flex-shrink-0 text-destructive/70 hover:text-destructive"
+            className="flex-shrink-0 rounded-md p-0.5 text-destructive hover:bg-destructive/20"
           >
             <X className="h-3.5 w-3.5" />
           </button>

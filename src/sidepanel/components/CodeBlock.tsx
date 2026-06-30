@@ -21,9 +21,9 @@ export default function CodeBlock({ code, showCopy = false }: CodeBlockProps) {
   };
 
   return (
-    <div className="relative bg-card rounded-lg overflow-hidden border border-primary/10">
+    <div className="relative bg-input rounded-xl overflow-hidden border border-border">
       <pre className={`p-4 text-xs overflow-x-auto ${showCopy ? 'pr-24' : ''}`}>
-        <code className="text-primary-light font-mono whitespace-pre-wrap break-words">{code}</code>
+        <code className="text-mono text-foreground whitespace-pre-wrap break-words">{code}</code>
       </pre>
       {showCopy && (
         <Button

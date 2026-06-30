@@ -7,7 +7,9 @@ function Card({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot="card"
       className={cn(
-        'bg-card text-card-foreground flex flex-col rounded-xl border border-primary/20 shadow-[0_0_15px_rgba(0,122,255,0.1)]',
+        // Neutral elevation: hairline border + soft dark drop shadow. No blue
+        // glow — colored elevation erased severity triage and selection.
+        'bg-card text-card-foreground flex flex-col rounded-xl border border-border shadow-[var(--shadow-elev-1)]',
         className
       )}
       {...props}

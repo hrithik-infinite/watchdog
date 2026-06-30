@@ -71,7 +71,7 @@ export default function CopyDropdown({
     <DropdownMenuItem onClick={() => handleCopy(format)} className="cursor-pointer">
       <Icon className="h-4 w-4 mr-2" />
       <span>{label}</span>
-      {copied === format && <Check className="h-3 w-3 ml-auto text-green-500" />}
+      {copied === format && <Check className="h-3 w-3 ml-auto text-success" />}
     </DropdownMenuItem>
   );
 
@@ -80,12 +80,12 @@ export default function CopyDropdown({
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className={className} disabled={issueCount === 0}>
           {copied ? (
-            <Check className="h-4 w-4 text-green-500" />
+            <Check className="h-4 w-4 text-success" />
           ) : (
             <ClipboardCopy className="h-4 w-4" />
           )}
           <span className="ml-1.5">{buttonLabel}</span>
-          <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
+          <ChevronDown className="h-3 w-3 ml-1 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

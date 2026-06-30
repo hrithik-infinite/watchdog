@@ -181,7 +181,7 @@ export default function IgnoreIssueModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-sm bg-card border border-border rounded-lg shadow-xl"
+        className="w-full max-w-sm bg-card border border-border rounded-xl shadow-[var(--shadow-elev-overlay)] animate-fade-in"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -191,18 +191,20 @@ export default function IgnoreIssueModal({
               {dialogTitle}
             </h2>
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={onClose}
             aria-label="Close"
-            className="p-1 rounded hover:bg-muted/50 text-muted-foreground hover:text-foreground transition-colors"
+            className="text-muted-foreground"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
 
         {/* Issue Preview */}
-        <div className="px-4 py-3 border-b border-border/50 bg-muted/30">
+        <div className="px-4 py-3 border-b border-border bg-muted">
           <p className="text-xs text-muted-foreground line-clamp-2">{issue.message}</p>
         </div>
 
@@ -227,21 +229,21 @@ export default function IgnoreIssueModal({
                 onClick={() => setSelectedReason(reason)}
                 onKeyDown={(event) => handleRadioKeyDown(event, index)}
                 className={cn(
-                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border text-left transition-all',
+                  'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left',
                   selectedReason === reason
                     ? 'border-primary bg-primary/5'
-                    : 'border-border/50 hover:border-border hover:bg-muted/30'
+                    : 'border-border hover:bg-accent'
                 )}
               >
                 <div
                   className={cn(
                     'h-4 w-4 rounded-full border-2 flex items-center justify-center flex-shrink-0',
-                    selectedReason === reason
-                      ? 'border-primary bg-primary'
-                      : 'border-muted-foreground/30'
+                    selectedReason === reason ? 'border-primary bg-primary' : 'border-border'
                   )}
                 >
-                  {selectedReason === reason && <Check className="h-2.5 w-2.5 text-white" />}
+                  {selectedReason === reason && (
+                    <Check className="h-2.5 w-2.5 text-primary-foreground" />
+                  )}
                 </div>
                 <span className="text-sm">{reasonLabels[reason]}</span>
               </button>
@@ -256,7 +258,7 @@ export default function IgnoreIssueModal({
                 onChange={(e) => setCustomNote(e.target.value)}
                 placeholder="Add a note (optional)"
                 aria-label="Additional note"
-                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-background resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-input resize-none placeholder:text-muted-foreground"
                 rows={2}
               />
             </div>
@@ -264,7 +266,7 @@ export default function IgnoreIssueModal({
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted/30">
+        <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border bg-muted">
           <Button variant="ghost" size="sm" onClick={onClose}>
             Cancel
           </Button>
@@ -276,7 +278,7 @@ export default function IgnoreIssueModal({
           >
             {isSubmitting ? (
               <>
-                <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="h-3 w-3 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                 Saving...
               </>
             ) : (

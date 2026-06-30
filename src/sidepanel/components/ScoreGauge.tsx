@@ -13,6 +13,10 @@ interface ScoreGaugeProps {
   showLabel?: boolean;
   animate?: boolean;
   className?: string;
+  // 'score' colors the ring/number by grade (Lighthouse-style). 'neutral'
+  // renders a grey ring + neutral number — the verdict is then carried by an
+  // adjacent word, so the score isn't communicated by color alone.
+  tone?: 'score' | 'neutral';
 }
 
 const SIZE_CONFIG = {
@@ -28,7 +32,7 @@ const SIZE_CONFIG = {
     strokeWidth: 5,
     radius: 42,
     fontSize: 'text-2xl',
-    labelSize: 'text-[10px]',
+    labelSize: 'text-xs',
   },
   lg: {
     container: 'w-32 h-32',
@@ -45,7 +49,9 @@ export default function ScoreGauge({
   showLabel = true,
   animate = true,
   className,
+  tone = 'score',
 }: ScoreGaugeProps) {
+  const ringColor = tone === 'neutral' ? 'var(--color-muted-foreground)' : scoreResult.color;
   const [animatedScore, setAnimatedScore] = useState(0);
   const animationRef = useRef<number | null>(null);
   const config = SIZE_CONFIG[size];
@@ -56,6 +62,19 @@ export default function ScoreGauge({
   // Animate score on mount (only when animate is true)
   useEffect(() => {
     if (!animate) {
+      return;
+    }
+
+    // Respect reduced-motion: the global CSS reduced-motion block cannot reach
+    // this requestAnimationFrame loop, so gate it explicitly and render the
+    // final score instantly. (WCAG 2.2.2 / 2.3.3 — the tool must not animate
+    // when the user asked it not to.)
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      setAnimatedScore(scoreResult.score);
       return;
     }
 
@@ -117,7 +136,7 @@ export default function ScoreGauge({
             fill="none"
             stroke="currentColor"
             strokeWidth={config.strokeWidth}
-            className="text-muted/20"
+            className="text-border"
           />
           {/* Progress circle */}
           <circle
@@ -125,7 +144,7 @@ export default function ScoreGauge({
             cy={center}
             r={config.radius}
             fill="none"
-            stroke={scoreResult.color}
+            stroke={ringColor}
             strokeWidth={config.strokeWidth}
             strokeLinecap="round"
             strokeDasharray={circumference}
@@ -139,8 +158,12 @@ export default function ScoreGauge({
         {/* Score text in center */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
-            className={cn('font-bold tabular-nums', config.fontSize)}
-            style={{ color: scoreResult.color }}
+            className={cn(
+              'font-bold tabular-nums',
+              config.fontSize,
+              tone === 'neutral' && 'text-foreground'
+            )}
+            style={tone === 'neutral' ? undefined : { color: scoreResult.color }}
           >
             {displayScore}
           </span>

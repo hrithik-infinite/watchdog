@@ -5,7 +5,7 @@
  * over the screen.
  */
 
-import { Upload } from 'lucide-react';
+import { ChevronRight, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import type { ScanResult } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
@@ -46,12 +46,14 @@ export default function ImportReportButton({ onImport, className }: ImportReport
       />
       <Button
         variant="outline"
-        size="sm"
-        className="gap-1.5"
         onClick={() => inputRef.current?.click()}
+        className="w-full justify-between"
       >
-        <Upload className="h-4 w-4" />
-        Open report
+        <span className="flex items-center gap-2">
+          <Upload className="h-4 w-4" />
+          Open a saved report
+        </span>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
       </Button>
       {error && (
         <p role="alert" className="text-xs text-destructive mt-1">

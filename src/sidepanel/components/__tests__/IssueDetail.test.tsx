@@ -71,7 +71,7 @@ describe('IssueDetail', () => {
 
     expect(screen.getByRole('heading', { name: mockIssue.message })).toBeInTheDocument();
     expect(screen.getByText(mockIssue.description)).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'How to Fix' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'How to fix' })).toBeInTheDocument();
     expect(screen.getByText(mockIssue.fix.description)).toBeInTheDocument();
   });
 
@@ -103,13 +103,13 @@ describe('IssueDetail', () => {
     const whyItMatters = 'Visitors using a screen reader cannot tell what this button does.';
     renderDetail({ issue: { ...mockIssue, whyItMatters } });
 
-    expect(screen.getByText('Why this matters')).toBeInTheDocument();
+    expect(screen.getByText('WHY THIS MATTERS')).toBeInTheDocument();
     expect(screen.getByText(whyItMatters)).toBeInTheDocument();
   });
 
   it('omits the "Why this matters" block when absent', () => {
     renderDetail();
-    expect(screen.queryByText('Why this matters')).not.toBeInTheDocument();
+    expect(screen.queryByText('WHY THIS MATTERS')).not.toBeInTheDocument();
   });
 
   // --- Standard / WCAG display ---------------------------------------------
@@ -117,21 +117,23 @@ describe('IssueDetail', () => {
   it('labels an accessibility issue with its WCAG criterion and level', () => {
     renderDetail({ issue: { ...mockIssue, standard: 'wcag' } });
 
-    expect(screen.getByText('WCAG Info')).toBeInTheDocument();
-    expect(screen.getByText(/WCAG 4\.1\.2 \(Level A\)/)).toBeInTheDocument();
+    expect(screen.getByText('STANDARD')).toBeInTheDocument();
+    expect(screen.getByText(/WCAG 4\.1\.2/)).toBeInTheDocument();
+    expect(screen.getByText('Level A')).toBeInTheDocument();
   });
 
   it('treats a legacy issue without a standard as accessibility (WCAG)', () => {
     renderDetail(); // mockIssue has no `standard`
 
-    expect(screen.getByText('WCAG Info')).toBeInTheDocument();
-    expect(screen.getByText(/WCAG 4\.1\.2 \(Level A\)/)).toBeInTheDocument();
+    expect(screen.getByText('STANDARD')).toBeInTheDocument();
+    expect(screen.getByText(/WCAG 4\.1\.2/)).toBeInTheDocument();
+    expect(screen.getByText('Level A')).toBeInTheDocument();
   });
 
   it('labels a non-accessibility issue with a neutral standard, not WCAG', () => {
     renderDetail({ issue: { ...mockIssue, standard: 'performance' } });
 
-    expect(screen.getByText('Performance metric Info')).toBeInTheDocument();
+    expect(screen.getByText('Performance metric')).toBeInTheDocument();
     expect(screen.queryByText(/WCAG/)).not.toBeInTheDocument();
   });
 
@@ -265,9 +267,9 @@ describe('IssueDetail', () => {
     expect(toggle).toHaveAccessibleName(/hide code/i);
   });
 
-  it('labels the ignore action "Hide" in site-owner mode', () => {
+  it('labels the ignore action "Mark as known" in site-owner mode', () => {
     renderDetail();
-    expect(screen.getByRole('button', { name: /^hide$/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /mark as known/i })).toBeInTheDocument();
   });
 
   it('shows raw markup directly and offers no code toggle in developer mode', () => {
@@ -279,11 +281,11 @@ describe('IssueDetail', () => {
     expect(screen.queryByRole('button', { name: /show code/i })).not.toBeInTheDocument();
   });
 
-  it('labels the ignore action "Mark Known" in developer mode', () => {
+  it('labels the ignore action "Hide" in developer mode', () => {
     useScanStore.setState({ settings: { ...DEFAULT_SETTINGS, persona: 'developer' } });
     renderDetail();
 
-    expect(screen.getByRole('button', { name: /mark known/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^hide$/i })).toBeInTheDocument();
   });
 
   // --- Ignore modal --------------------------------------------------------
@@ -293,7 +295,7 @@ describe('IssueDetail', () => {
     renderDetail();
 
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /^hide$/i }));
+    await user.click(screen.getByRole('button', { name: /mark as known/i }));
 
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('Hide this issue')).toBeInTheDocument();
@@ -303,7 +305,7 @@ describe('IssueDetail', () => {
     const user = userEvent.setup();
     renderDetail();
 
-    await user.click(screen.getByRole('button', { name: /^hide$/i }));
+    await user.click(screen.getByRole('button', { name: /mark as known/i }));
     const dialog = screen.getByRole('dialog');
 
     await user.click(within(dialog).getByRole('button', { name: /cancel/i }));

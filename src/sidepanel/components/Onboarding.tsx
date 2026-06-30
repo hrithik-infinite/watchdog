@@ -8,7 +8,7 @@
  * audit it ships.
  */
 
-import { ArrowRight, Check, Code2, ShieldCheck, Store } from 'lucide-react';
+import { Check, Code2, ShieldCheck, Store } from 'lucide-react';
 import { type KeyboardEvent as ReactKeyboardEvent, useRef, useState } from 'react';
 import type { Persona } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
@@ -30,13 +30,14 @@ const PERSONA_OPTIONS: PersonaOption[] = [
   {
     value: 'site-owner',
     label: 'I own or manage a website',
-    description: 'Plain-language results and fixes, no jargon.',
+    description: 'Plain-language results and step-by-step fixes. Audits everything by default.',
     icon: Store,
   },
   {
     value: 'developer',
     label: "I'm a developer",
-    description: 'Full technical detail, code fixes, and dev exports.',
+    description:
+      'Full technical detail, code previews and developer exports. Starts with Accessibility.',
     icon: Code2,
   },
 ];
@@ -64,35 +65,35 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-bg-dark">
+    <div className="h-screen flex flex-col bg-background">
       <div className="flex-1 overflow-y-auto px-5 py-6 flex flex-col">
         {/* Pitch */}
-        <div className="text-center mb-6">
-          <h1 className="text-h1 text-foreground mb-2">Welcome to WatchDog</h1>
-          <p className="text-body text-muted-foreground max-w-xs mx-auto">
-            Check any web page for accessibility, performance, SEO, security, and more — in one
-            click.
+        <div className="mb-6">
+          <h1 className="text-h1 text-foreground mb-2">Audit any site, right where you work.</h1>
+          <p className="text-body text-muted-foreground">
+            Check accessibility, performance, SEO, security and more — and get plain-language steps
+            to fix what it finds.
           </p>
         </div>
 
         {/* Privacy reassurance */}
-        <div className="flex items-start gap-2.5 bg-primary/5 border border-primary/20 rounded-lg p-3 mb-6">
+        <div className="flex items-start gap-3 bg-muted border border-border rounded-xl p-3 mb-6">
           <ShieldCheck className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-foreground/80 text-left">
-            Everything runs in your browser. Nothing about the pages you scan is uploaded.
-          </p>
+          <div className="text-left">
+            <p className="text-caption uppercase text-muted-foreground">Private by design</p>
+            <p className="text-sm text-foreground">
+              Everything runs in your browser. Nothing about the pages you scan is uploaded.
+            </p>
+          </div>
         </div>
 
         {/* Persona choice */}
         <div className="mb-2">
-          <p id="onboarding-persona-label" className="text-h3 text-foreground mb-1">
-            How should we show results?
-          </p>
-          <p className="text-sm text-muted-foreground mb-3">
-            You can change this anytime in Settings.
+          <p id="onboarding-persona-label" className="text-h3 text-foreground mb-3">
+            How should WatchDog talk to you?
           </p>
 
-          <div role="radiogroup" aria-labelledby="onboarding-persona-label" className="space-y-2.5">
+          <div role="radiogroup" aria-labelledby="onboarding-persona-label" className="space-y-2">
             {PERSONA_OPTIONS.map((option, index) => {
               const Icon = option.icon;
               const isSelected = selected === option.value;
@@ -110,19 +111,18 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   onClick={() => setSelected(option.value)}
                   onKeyDown={(event) => handleRadioKeyDown(event, index)}
                   className={cn(
-                    'w-full flex items-start gap-3 px-3.5 py-3 rounded-lg border-2 text-left transition-all',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                    isSelected
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border/50 hover:border-border hover:bg-muted/30'
+                    'w-full flex items-start gap-3 p-3 rounded-xl border-2 text-left',
+                    isSelected ? 'border-primary bg-primary/5' : 'border-border hover:bg-accent'
                   )}
                 >
-                  <Icon
-                    className={cn(
-                      'h-5 w-5 flex-shrink-0 mt-0.5',
-                      isSelected ? 'text-primary' : 'text-muted-foreground'
-                    )}
-                  />
+                  <span className="inline-flex items-center justify-center h-9 w-9 rounded-lg bg-muted shrink-0">
+                    <Icon
+                      className={cn(
+                        'h-5 w-5',
+                        isSelected ? 'text-primary' : 'text-muted-foreground'
+                      )}
+                    />
+                  </span>
                   <div className="flex-1">
                     <span className="text-sm font-semibold text-foreground block">
                       {option.label}
@@ -132,10 +132,10 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
                   <div
                     className={cn(
                       'h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5',
-                      isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30'
+                      isSelected ? 'border-primary bg-primary' : 'border-border'
                     )}
                   >
-                    {isSelected && <Check className="h-3 w-3 text-white" />}
+                    {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                   </div>
                 </button>
               );
@@ -145,14 +145,16 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
       </div>
 
       {/* Primary CTA */}
-      <div className="px-5 py-4 border-t border-border bg-card/50">
+      <div className="px-5 py-4 border-t border-border bg-card">
         <Button
           onClick={() => onComplete(selected)}
           className="w-full py-3 text-base font-semibold rounded-lg gap-2"
         >
-          Start checking
-          <ArrowRight className="h-4 w-4" />
+          Continue
         </Button>
+        <p className="text-xs text-muted-foreground text-center mt-2">
+          You can change this any time in Settings.
+        </p>
       </div>
     </div>
   );

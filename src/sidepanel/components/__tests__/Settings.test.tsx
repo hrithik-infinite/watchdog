@@ -60,16 +60,16 @@ describe('Settings', () => {
       const developer = screen.getByRole('button', { name: 'Developer' });
       expect(siteOwner).toHaveAttribute('aria-pressed', 'true');
       expect(developer).toHaveAttribute('aria-pressed', 'false');
-      expect(screen.getByText(/recommended view for non-developers/i)).toBeInTheDocument();
+      expect(screen.getByText(/plain-language results/i)).toBeInTheDocument();
     });
 
-    it('shows the developer description when developer is active', () => {
+    it('keeps the Experience consequence line when developer is active', () => {
       renderSettings({ persona: 'developer' });
       expect(screen.getByRole('button', { name: 'Developer' })).toHaveAttribute(
         'aria-pressed',
         'true'
       );
-      expect(screen.getByText(/full technical detail/i)).toBeInTheDocument();
+      expect(screen.getByText(/switch to developer/i)).toBeInTheDocument();
     });
 
     it('fires onUpdate with the chosen persona', () => {
@@ -80,20 +80,20 @@ describe('Settings', () => {
   });
 
   describe('WCAG level', () => {
-    it('marks the active level button as default variant', () => {
+    it('marks the active level as pressed', () => {
       renderSettings({ wcagLevel: 'AA' });
-      // All three levels render (accessible names are exact full-string matches).
-      expect(screen.getByRole('button', { name: 'Level A' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Level AA' })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Level AAA' })).toBeInTheDocument();
+      // The segmented control renders A / AA / AAA; the active level is pressed.
+      expect(screen.getByRole('button', { name: 'A' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'AAA' })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'AA' })).toHaveAttribute('aria-pressed', 'true');
     });
 
     it('fires onUpdate for each level selection', () => {
       const { onUpdate } = renderSettings({ wcagLevel: 'AA' });
-      fireEvent.click(screen.getByRole('button', { name: 'Level A' }));
+      fireEvent.click(screen.getByRole('button', { name: 'A' }));
       expect(onUpdate).toHaveBeenCalledWith({ wcagLevel: 'A' });
 
-      fireEvent.click(screen.getByRole('button', { name: 'Level AAA' }));
+      fireEvent.click(screen.getByRole('button', { name: 'AAA' }));
       expect(onUpdate).toHaveBeenCalledWith({ wcagLevel: 'AAA' });
     });
   });

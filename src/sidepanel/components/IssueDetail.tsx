@@ -1,9 +1,8 @@
-import { Ban, ChevronLeft, ChevronRight, Code, Eye, Glasses, Info } from 'lucide-react';
+import { Ban, ChevronLeft, ChevronRight, Code, Eye, Glasses } from 'lucide-react';
 import { useState } from 'react';
 import type { Issue, Severity } from '@/shared/types';
 import { Badge } from '@/sidepanel/components/ui/badge';
 import { Button } from '@/sidepanel/components/ui/button';
-import { Card, CardContent } from '@/sidepanel/components/ui/card';
 import { usePageOverlays } from '@/sidepanel/hooks/usePageOverlays';
 import { describeElement } from '@/sidepanel/lib/element-descriptor';
 import { useIsSiteOwner } from '@/sidepanel/lib/persona';
@@ -70,21 +69,16 @@ export default function IssueDetail({
 
   return (
     <div className="flex flex-col h-full animate-slide-in bg-background">
-      {/* Header with prominent back button */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/30">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onBack}
-          className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10 font-medium"
-        >
+      {/* Header with back button */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center px-4 py-3 border-b border-border bg-card">
+        <Button variant="outline" size="sm" onClick={onBack} className="gap-1.5 font-medium">
           <ChevronLeft className="h-4 w-4" />
           <span className="text-sm">Back</span>
         </Button>
-        <div className="flex-1" />
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground tabular-nums text-center">
           Issue {currentIndex + 1} of {totalCount}
         </span>
+        <span className="w-9" />
       </div>
 
       {/* Content */}
@@ -101,66 +95,60 @@ export default function IssueDetail({
             above the technical description so non-developers get the stakes
             first. Omitted when the scanner supplied no copy for this rule. */}
         {issue.whyItMatters && (
-          <div className="rounded-lg border-l-4 border-primary bg-primary/5 p-3">
-            <p className="text-sm font-semibold text-primary-light mb-1">Why this matters</p>
+          <div className="rounded-xl border border-border bg-muted p-3">
+            <p className="text-caption uppercase text-muted-foreground mb-1">WHY THIS MATTERS</p>
             <p className="text-sm text-foreground">{issue.whyItMatters}</p>
           </div>
         )}
 
         {/* Standard info: WCAG criterion for accessibility, a neutral label
             (e.g. "Performance metric") for the other audits. */}
-        <Card className="bg-wcag-bg border-wcag-border">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Info className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary-light">
-                {isWcagIssue(issue.standard)
-                  ? 'WCAG Info'
-                  : `${STANDARD_LABELS[issue.standard!]} Info`}
-              </span>
+        <div className="bg-muted border border-border rounded-xl p-3">
+          <p className="text-caption uppercase text-muted-foreground mb-1">STANDARD</p>
+          {isWcagIssue(issue.standard) ? (
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-foreground font-medium">WCAG {issue.wcag.id}</span>
+              <Badge variant="outline">Level {issue.wcag.level}</Badge>
             </div>
-            {isWcagIssue(issue.standard) && (
-              <p className="text-foreground font-medium mb-1">
-                WCAG {issue.wcag.id} (Level {issue.wcag.level})
-              </p>
-            )}
-            <p className="text-sm text-muted-foreground">{issue.description}</p>
-          </CardContent>
-        </Card>
+          ) : (
+            <p className="text-foreground font-medium mb-1">{STANDARD_LABELS[issue.standard!]}</p>
+          )}
+          <p className="text-sm text-muted-foreground">{issue.description}</p>
+        </div>
 
         {/* Current Element */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-h3 text-foreground">Current Element</h3>
-            <div className="flex items-center gap-2">
-              {isColorIssue && canHighlight && (
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={togglePreview}
-                  aria-pressed={isPreviewingCVD}
-                  className="gap-1.5"
-                >
-                  <Glasses className="h-4 w-4" />
-                  {isPreviewingCVD ? 'Stop preview' : 'Preview color blindness'}
-                </Button>
-              )}
-              {canHighlight && (
-                <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
-                  <Eye className="h-4 w-4" />
-                  Highlight
-                </Button>
-              )}
+          <p className="text-caption uppercase text-muted-foreground mb-2">CURRENT ELEMENT</p>
+          {/* Actions wrap onto their own line(s) — at 360px a single row of
+              "Preview color blindness" + "Highlight" + "Hide" overflowed. */}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {isColorIssue && canHighlight && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
-                onClick={() => setShowIgnoreModal(true)}
-                className="gap-1.5 text-muted-foreground hover:text-foreground"
+                onClick={togglePreview}
+                aria-pressed={isPreviewingCVD}
+                className="gap-1.5"
               >
-                <Ban className="h-4 w-4" />
-                {isSiteOwner ? 'Hide' : 'Mark Known'}
+                <Glasses className="h-4 w-4" />
+                {isPreviewingCVD ? 'Stop preview' : 'Preview color blindness'}
               </Button>
-            </div>
+            )}
+            {canHighlight && (
+              <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
+                <Eye className="h-4 w-4" />
+                Highlight
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowIgnoreModal(true)}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Ban className="h-4 w-4" />
+              {isSiteOwner ? 'Mark as known' : 'Hide'}
+            </Button>
           </div>
           {isSiteOwner ? (
             <>
@@ -190,7 +178,7 @@ export default function IssueDetail({
 
         {/* How to Fix */}
         <div>
-          <h3 className="text-h3 text-foreground mb-2">How to Fix</h3>
+          <h3 className="text-h3 text-foreground mb-2">How to fix</h3>
           <p className="text-body text-muted-foreground mb-2">{issue.fix.description}</p>
         </div>
 

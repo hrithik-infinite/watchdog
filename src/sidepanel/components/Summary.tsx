@@ -1,14 +1,13 @@
 import { Info } from 'lucide-react';
 import { calculateScoreFromSummary } from '@/shared/scoring';
 import type { ScanSummary, Severity } from '@/shared/types';
-import { Button } from '@/sidepanel/components/ui/button';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/sidepanel/components/ui/tooltip';
-import { SEVERITY_PLAIN, useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
 import { cn } from '@/sidepanel/lib/utils';
 import type { AuditType } from '@/sidepanel/store';
 import ScoreGauge from './ScoreGauge';
@@ -22,18 +21,35 @@ interface SummaryProps {
   auditType?: AuditType;
 }
 
-const SEVERITY_CLASSES: Record<Severity, string> = {
-  critical: 'text-critical',
-  serious: 'text-serious',
-  moderate: 'text-moderate',
-  minor: 'text-minor',
-};
-
 const SEVERITY_LABELS: Record<Severity, string> = {
   critical: 'Critical',
   serious: 'Serious',
   moderate: 'Moderate',
   minor: 'Minor',
+};
+
+// Soft-chip classes for the active (filtered) severity, and the always-on dot.
+const SEVERITY_CHIP_ACTIVE: Record<Severity, string> = {
+  critical: 'border-critical/40 bg-critical/15 text-critical',
+  serious: 'border-serious/40 bg-serious/15 text-serious',
+  moderate: 'border-moderate/40 bg-moderate/15 text-moderate',
+  minor: 'border-minor/40 bg-minor/15 text-minor',
+};
+
+const SEVERITY_DOT: Record<Severity, string> = {
+  critical: 'bg-critical',
+  serious: 'bg-serious',
+  moderate: 'bg-moderate',
+  minor: 'bg-minor',
+};
+
+const AUDIT_LABELS: Partial<Record<AuditType, string>> = {
+  accessibility: 'Accessibility',
+  performance: 'Performance',
+  seo: 'SEO',
+  security: 'Security',
+  'best-practices': 'Best Practices',
+  pwa: 'PWA',
 };
 
 export default function Summary({
@@ -45,67 +61,70 @@ export default function Summary({
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
   const scoreResult = calculateScoreFromSummary(summary, auditType);
   const isSiteOwner = useIsSiteOwner();
+  const total = summary.total;
+
+  // Verdict beside the gauge. The gauge ring is neutral, so the score is never
+  // communicated by color alone — the verdict word/count carries the meaning.
+  // Site owners get a plain verdict + "Score N / 100"; developers get the audit
+  // name + an issue count.
+  const verdict = isSiteOwner
+    ? scoreResult.label
+    : (auditType && AUDIT_LABELS[auditType]) || 'Score';
+  const subline = isSiteOwner
+    ? `Score ${scoreResult.score} / 100`
+    : `${total} ${total === 1 ? 'issue' : 'issues'}`;
 
   return (
-    <div className="flex items-center gap-4 animate-fade-in">
-      {/* Score Gauge with a universal "what does this number mean?" explainer */}
-      <div className="flex items-center gap-1">
-        <ScoreGauge scoreResult={scoreResult} size="sm" showLabel={false} />
-        <TooltipProvider delayDuration={200}>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                type="button"
-                aria-label="How the score is calculated"
-                className="p-0.5 rounded hover:bg-muted/50 transition-colors cursor-help focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              >
-                <Info className="h-3.5 w-3.5 text-muted-foreground/60 hover:text-muted-foreground" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" className="max-w-xs">
-              100 = no problems found. A lower score means more — or more serious — problems.
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+    <div className="flex flex-col gap-3 flex-1 min-w-0 animate-fade-in">
+      {/* Score + verdict */}
+      <div className="flex items-center gap-3">
+        <ScoreGauge scoreResult={scoreResult} size="sm" showLabel={false} tone="neutral" />
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <span className="text-h3 text-foreground truncate">{verdict}</span>
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="How the score is calculated"
+                    className="inline-flex items-center justify-center size-6 rounded-md hover:bg-accent transition-colors cursor-help text-muted-foreground hover:text-foreground shrink-0"
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  Every page starts at 100. Each issue subtracts points by severity and how many
+                  elements it hits — Critical weighs most.
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <p className="text-xs text-muted-foreground tabular-nums">{subline}</p>
+        </div>
       </div>
 
-      {/* Severity breakdown */}
-      <div className="flex items-center gap-1 flex-1">
+      {/* Severity breakdown — filter chips (the only place severity is filtered). */}
+      <div className="flex flex-wrap items-center gap-1.5">
         {severities.map((severity) => {
           const count = summary.bySeverity[severity] || 0;
           const isActive = activeSeverity === severity;
-
           return (
-            <Button
+            <button
               key={severity}
-              variant="ghost"
+              type="button"
               aria-pressed={isActive}
               onClick={() => onFilterBySeverity(isActive ? 'all' : severity)}
               className={cn(
-                'flex-1 flex flex-col items-center h-auto px-2 py-2 rounded-lg transition-all',
-                isActive && 'bg-card ring-2 ring-primary/20 shadow-sm'
+                'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                isActive
+                  ? SEVERITY_CHIP_ACTIVE[severity]
+                  : 'border-border text-muted-foreground hover:text-foreground'
               )}
             >
-              <span className={cn('text-2xl font-bold leading-none', SEVERITY_CLASSES[severity])}>
-                {count}
-              </span>
-              <span
-                className={cn(
-                  'text-xs font-medium mt-1.5 leading-none',
-                  isActive ? SEVERITY_CLASSES[severity] : 'text-muted-foreground'
-                )}
-              >
-                {SEVERITY_LABELS[severity]}
-              </span>
-              {/* Plain-language subtitle for the Site-owner audience. Supplements
-                  the canonical severity label rather than replacing it, so the
-                  accessible name still contains "Critical"/"Serious"/etc. */}
-              {isSiteOwner && (
-                <span className="text-[9px] leading-tight mt-1 text-center text-muted-foreground/80">
-                  {SEVERITY_PLAIN[severity]}
-                </span>
-              )}
-            </Button>
+              <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', SEVERITY_DOT[severity])} />
+              <span className="tabular-nums">{count}</span> {SEVERITY_LABELS[severity]}
+            </button>
           );
         })}
       </div>

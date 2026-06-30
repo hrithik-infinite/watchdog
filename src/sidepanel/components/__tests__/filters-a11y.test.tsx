@@ -3,7 +3,6 @@ import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Category, ScanResult, ScanSummary } from '@/shared/types';
-import { SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
 import { useScanStore } from '@/sidepanel/store';
 import FilterBar from '../FilterBar';
 import Summary from '../Summary';
@@ -102,18 +101,14 @@ describe('Summary severity filter accessibility (cws-19)', () => {
     expect(explainer).not.toHaveAttribute('aria-pressed');
   });
 
-  it('shows plain-language severity subtitles in Site-owner mode (ux-public-5)', () => {
+  it('renders the severity filter chips with their counts and labels', () => {
+    // summary fixture → critical 1, serious 2, moderate 3, minor 4. Severity is
+    // filtered from these chips (the only place), shown as compact count+label
+    // pills rather than the old plain-language subtitles.
     render(<Summary summary={summary} activeSeverity="all" onFilterBySeverity={vi.fn()} />);
 
-    expect(screen.getByText(SEVERITY_PLAIN.critical)).toBeInTheDocument();
-    expect(screen.getByText(SEVERITY_PLAIN.minor)).toBeInTheDocument();
-  });
-
-  it('omits the plain subtitles in developer mode', () => {
-    useScanStore.setState({ settings: { ...DEFAULT_SETTINGS, persona: 'developer' } });
-    render(<Summary summary={summary} activeSeverity="all" onFilterBySeverity={vi.fn()} />);
-
-    expect(screen.queryByText(SEVERITY_PLAIN.critical)).toBeNull();
+    expect(screen.getByRole('button', { name: /1 critical/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /4 minor/i })).toBeInTheDocument();
   });
 });
 
@@ -155,9 +150,10 @@ describe('FilterBar accessibility (cws-19, cws-20)', () => {
     renderFilterBar();
 
     // The "Category" control label should not render when there is nothing to
-    // filter by; the "Severity" control remains.
+    // filter by. Severity is filtered from the Summary chips above the list, so
+    // it is intentionally not duplicated in the FilterBar anymore.
     expect(screen.queryByText('Category')).toBeNull();
-    expect(screen.getByText('Severity')).toBeInTheDocument();
+    expect(screen.queryByText('Severity')).toBeNull();
   });
 
   it('shows the category filter when multiple categories are present', () => {

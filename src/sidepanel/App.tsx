@@ -1,4 +1,4 @@
-import { Highlighter } from 'lucide-react';
+import { Highlighter, RotateCw } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import logger from '@/shared/logger';
 import type { Persona, ScanResult } from '@/shared/types';
@@ -12,11 +12,13 @@ import IncompleteSection from './components/IncompleteSection';
 import IssueDetail from './components/IssueDetail';
 import IssueList from './components/IssueList';
 import Onboarding from './components/Onboarding';
-import ScanButton from './components/ScanButton';
 import ScanProgress from './components/ScanProgress';
 import Settings from './components/Settings';
 import Summary from './components/Summary';
 import TopFixesCard from './components/TopFixesCard';
+import { Button } from './components/ui/button';
+import { Card } from './components/ui/card';
+import { Switch } from './components/ui/switch';
 import { useHighlight } from './hooks/useHighlight';
 import { useIgnoredIssues } from './hooks/useIgnoredIssues';
 import { useIssues } from './hooks/useIssues';
@@ -34,6 +36,18 @@ const AUDIT_LABELS: Partial<Record<AuditType, string>> = {
   'best-practices': 'Best Practices',
   pwa: 'PWA',
 };
+
+// "Last audited" relative time for the results Rescan row. Coarse on purpose —
+// it only conveys recency, not a precise clock, and isn't reactive.
+function relativeTime(ts: number): string {
+  if (!ts) return 'just now';
+  const min = Math.floor((Date.now() - ts) / 60000);
+  if (min < 1) return 'just now';
+  if (min < 60) return `${min} min ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr} hr ago`;
+  return `${Math.floor(hr / 24)} d ago`;
+}
 
 export default function App() {
   const [showSettings, setShowSettings] = useState(false);
@@ -244,14 +258,14 @@ export default function App() {
   // of the wrong persona's UI (onboarding for returning users, the site-owner
   // default audit selection for developers) before their saved settings arrive.
   if (!settingsLoaded) {
-    return <div className="h-screen flex flex-col bg-bg-dark" aria-busy="true" />;
+    return <div className="h-screen flex flex-col bg-background" aria-busy="true" />;
   }
 
   // First-run tour — takes priority over every other view. Settings are loaded
   // by this point, so `hasSeenOnboarding` reflects the user's real state.
   if (!settings.hasSeenOnboarding) {
     return (
-      <div className="h-screen flex flex-col bg-bg-dark">
+      <div className="h-screen flex flex-col bg-background">
         {liveRegion}
         <Onboarding onComplete={handleOnboardingComplete} />
       </div>
@@ -261,7 +275,7 @@ export default function App() {
   // Settings view
   if (showSettings) {
     return (
-      <div className="h-screen flex flex-col bg-bg-dark">
+      <div className="h-screen flex flex-col bg-background">
         {liveRegion}
         <Settings
           settings={settings}
@@ -272,12 +286,13 @@ export default function App() {
     );
   }
 
-  // Detail view
+  // Detail view. No app Header here — IssueDetail owns a full header bar (back
+  // control + "Issue X of N"), so rendering the logo Header above it stacked a
+  // dead second bar.
   if (view === 'detail' && selectedIssue) {
     return (
-      <div className="h-screen flex flex-col bg-bg-dark">
+      <div className="h-screen flex flex-col bg-background">
         {liveRegion}
-        <Header scanResult={scanResult} />
         <IssueDetail
           issue={selectedIssue}
           url={scanResult?.url || ''}
@@ -305,13 +320,14 @@ export default function App() {
   // Scanning state - show progress
   if (isScanning) {
     return (
-      <div className="h-screen flex flex-col bg-bg-dark">
+      <div className="h-screen flex flex-col bg-background">
         {liveRegion}
         <Header scanResult={scanResult} />
         <ScanProgress
           currentAuditType={currentAuditType}
           currentAuditIndex={currentAuditIndex}
           totalAudits={totalAudits}
+          auditTypes={selectedAuditTypes}
           onCancel={cancelScan}
         />
       </div>
@@ -321,10 +337,12 @@ export default function App() {
   // Initial state - show audit type selector
   if (!error && !scanResult) {
     return (
-      <div className="h-screen flex flex-col bg-bg-dark">
+      <div className="h-screen flex flex-col bg-background">
         {liveRegion}
         <Header onSettingsClick={() => setShowSettings(true)} scanResult={scanResult} />
-        <div className="flex justify-end px-4 pt-2">
+        {/* Entry point to the read-only saved-report journey — a full-width row
+            at the top of Home, per the wireframe. */}
+        <div className="px-4 pt-3">
           <ImportReportButton onImport={handleImportReport} />
         </div>
         <AuditSelector
@@ -338,7 +356,7 @@ export default function App() {
 
   // List view with results
   return (
-    <div className="h-screen flex flex-col bg-bg-dark">
+    <div className="h-screen flex flex-col bg-background">
       {liveRegion}
       <Header
         showBackButton
@@ -347,10 +365,20 @@ export default function App() {
         scanResult={scanResult}
       />
 
-      {/* Scan button at top for results view */}
-      <div className="px-4 py-2">
-        <ScanButton isScanning={isScanning} onScan={handleRescan} hasResults={!!scanResult} />
-      </div>
+      {/* Rescan row with a "last audited" meta line — the iterate loop. Shown
+          only when there are results to re-run; the no-issues and full-error
+          states carry their own single retry, so no duplicate CTA. */}
+      {scanResult && scanResult.issues.length > 0 && (
+        <div className="flex items-center justify-between gap-2 px-4 py-2">
+          <span className="text-xs text-muted-foreground truncate">
+            Audited {relativeTime(scanResult.timestamp)}
+          </span>
+          <Button variant="outline" size="sm" onClick={handleRescan} className="gap-1.5 shrink-0">
+            <RotateCw className="h-4 w-4" />
+            Rescan
+          </Button>
+        </div>
+      )}
 
       {/* Full-screen error only when there are no results to show */}
       {error && !scanResult && <EmptyState type="error" error={error} onScan={handleRescan} />}
@@ -359,7 +387,7 @@ export default function App() {
       {error && scanResult && (
         <div
           role="alert"
-          className="mx-4 my-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-300"
+          className="mx-4 my-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
         >
           {error}
         </div>
@@ -378,40 +406,40 @@ export default function App() {
             />
           ) : (
             <>
-              <div className="flex items-center justify-between px-4 py-2 border-b border-border/40">
-                <Summary
-                  summary={scanResult.summary}
-                  onFilterBySeverity={(severity) => setFilter('severity', severity)}
-                  activeSeverity={filters.severity}
-                  auditType={selectedAuditTypes.length === 1 ? selectedAuditTypes[0] : undefined}
-                />
-                <CopyDropdown
-                  issues={filteredIssues}
-                  scanResult={scanResult}
-                  auditType={selectedAuditType}
-                />
-              </div>
-
-              {/* WAVE-style whole-page overlay toggle. Only for accessibility
-                  scans, where issue selectors map to real on-page elements. */}
-              {selectedAuditTypes.includes('accessibility') && filteredIssues.length > 0 && (
-                <div className="px-4 py-2 border-b border-border/40">
-                  <button
-                    type="button"
-                    onClick={toggleShowAllOnPage}
-                    aria-pressed={showAllOnPage}
-                    className={
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors ' +
-                      (showAllOnPage
-                        ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50')
-                    }
-                  >
-                    <Highlighter className="h-3.5 w-3.5" />
-                    {showAllOnPage ? 'Hide markers on the page' : 'Show all issues on the page'}
-                  </button>
+              {/* Results toolbar — a single contained card: neutral score gauge +
+                  verdict + severity filter chips, the copy control, and the
+                  WAVE-style page-overlay switch. */}
+              <Card className="mx-4 my-2 p-3 gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <Summary
+                    summary={scanResult.summary}
+                    onFilterBySeverity={(severity) => setFilter('severity', severity)}
+                    activeSeverity={filters.severity}
+                    auditType={selectedAuditTypes.length === 1 ? selectedAuditTypes[0] : undefined}
+                  />
+                  <CopyDropdown
+                    issues={filteredIssues}
+                    scanResult={scanResult}
+                    auditType={selectedAuditType}
+                  />
                 </div>
-              )}
+
+                {/* Only for accessibility scans, where issue selectors map to
+                    real on-page elements. */}
+                {selectedAuditTypes.includes('accessibility') && filteredIssues.length > 0 && (
+                  <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                    <span className="flex items-center gap-2 text-sm text-foreground">
+                      <Highlighter className="h-4 w-4 text-muted-foreground" />
+                      Show all issues on the page
+                    </span>
+                    <Switch
+                      checked={showAllOnPage}
+                      onCheckedChange={toggleShowAllOnPage}
+                      aria-label="Show all issues on the page"
+                    />
+                  </div>
+                )}
+              </Card>
 
               {/* Plain-language ranked starting point above the raw list. */}
               <TopFixesCard issues={filteredIssues} onSelectIssue={handleSelectIssue} />

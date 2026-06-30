@@ -5,20 +5,24 @@ import type * as React from 'react';
 import { cn } from '@/sidepanel/lib/utils';
 
 const badgeVariants = cva(
-  'inline-flex items-center justify-center rounded-full border px-2.5 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden text-ellipsis',
+  'inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-semibold w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none overflow-hidden text-ellipsis',
   {
     variants: {
+      // Severity uses SOFT tinted chips — solid hue text on a /15 fill of the
+      // same hue, with a /30 border. This replaces the old white-on-red /
+      // white-on-orange fills that failed WCAG 1.4.3 (the auditor flagging
+      // itself). Every pair here clears AA on the card surface.
       variant: {
-        default: 'border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90',
-        secondary:
-          'border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90',
+        default: 'border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary-dark',
+        secondary: 'border-border bg-secondary text-secondary-foreground [a&]:hover:bg-accent',
         destructive:
-          'border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60',
-        outline: 'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
-        critical: 'border-transparent bg-critical text-white',
-        serious: 'border-transparent bg-serious text-white',
-        moderate: 'border-transparent bg-moderate text-[#1c1c1e]',
-        minor: 'border-transparent bg-minor text-[#1c1c1e]',
+          'border-destructive/30 bg-destructive/15 text-destructive [a&]:hover:bg-destructive/20',
+        outline:
+          'border-border text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+        critical: 'border-critical/30 bg-critical/15 text-critical',
+        serious: 'border-serious/30 bg-serious/15 text-serious',
+        moderate: 'border-moderate/30 bg-moderate/15 text-moderate',
+        minor: 'border-minor/30 bg-minor/15 text-minor',
       },
     },
     defaultVariants: {

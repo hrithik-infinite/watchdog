@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
@@ -162,11 +162,11 @@ describe('App view branching', () => {
 
     render(<App />);
 
-    expect(screen.getByText('Welcome to WatchDog')).toBeInTheDocument();
+    expect(screen.getByText('Audit any site, right where you work.')).toBeInTheDocument();
     expect(screen.getByRole('radiogroup')).toBeInTheDocument();
 
     // Completing the tour persists the chosen persona and dismisses onboarding.
-    await userEvent.click(screen.getByRole('button', { name: /start checking/i }));
+    await userEvent.click(screen.getByRole('button', { name: /continue/i }));
     expect(h.settings.current.updateSettings).toHaveBeenCalledWith({
       persona: 'site-owner',
       hasSeenOnboarding: true,
@@ -177,7 +177,7 @@ describe('App view branching', () => {
     const { container } = render(<App />);
 
     expect(screen.getByRole('heading', { name: 'Choose Audit Types' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /open report/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /open a saved report/i })).toBeInTheDocument();
     // WatchDog itself must pass an a11y audit — assert it on the entry view.
     expect(await axe(container)).toHaveNoViolations();
   });
@@ -215,7 +215,7 @@ describe('App view branching', () => {
 
     render(<App />);
 
-    expect(screen.getByRole('button', { name: /rescan page/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^rescan$/i })).toBeInTheDocument();
     expect(screen.getByText('Button has no accessible name')).toBeInTheDocument();
     // The live region announces completion (derived during render, not via effect).
     expect(screen.getByRole('status')).toHaveTextContent('Scan complete, 1 issue found');
@@ -230,14 +230,14 @@ describe('App view branching', () => {
 
     render(<App />);
 
-    const toggle = screen.getByRole('button', { name: /show all issues on the page/i });
+    const toggle = screen.getByRole('switch', { name: /show all issues on the page/i });
     await user.click(toggle);
     expect(h.highlight.current.highlightAll).toHaveBeenCalledWith([
       { selector: 'button.submit', severity: 'critical' },
     ]);
 
-    // Pressing again hides markers and clears the on-page highlights.
-    await user.click(screen.getByRole('button', { name: /hide markers on the page/i }));
+    // Toggling the same switch off clears the on-page highlights.
+    await user.click(screen.getByRole('switch', { name: /show all issues on the page/i }));
     expect(h.highlight.current.clearHighlights).toHaveBeenCalled();
   });
 
@@ -322,8 +322,10 @@ describe('App detail view', () => {
 
     render(<App />);
 
-    // The detail view exposes a back control and the issue's message.
-    expect(within(screen.getByRole('banner')).getByText('WatchDog')).toBeInTheDocument();
+    // The detail view exposes a back control and the issue's message. The app
+    // logo/banner is intentionally NOT stacked above IssueDetail's own header
+    // bar (which already carries the back control + "Issue X of N").
+    expect(screen.getByRole('button', { name: /back/i })).toBeInTheDocument();
     expect(screen.getByText('Button has no accessible name')).toBeInTheDocument();
   });
 });

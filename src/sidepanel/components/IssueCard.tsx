@@ -34,6 +34,15 @@ const SEVERITY_LABELS: Record<Severity, string> = {
   minor: 'Minor',
 };
 
+// A colored left rail makes a list of 20–30 issues triageable by severity at a
+// glance, instead of identical boxes whose only signal is a small corner chip.
+const SEVERITY_RAIL: Record<Severity, string> = {
+  critical: 'border-l-critical',
+  serious: 'border-l-serious',
+  moderate: 'border-l-moderate',
+  minor: 'border-l-minor',
+};
+
 export default function IssueCard({
   issue,
   isSelected,
@@ -56,21 +65,18 @@ export default function IssueCard({
   // The raw HTML preview. Rendered inside the activatable region for developers
   // (raw-first), or behind the "Show code" toggle for site owners.
   const codePreview = (
-    <div className="bg-background/50 rounded-md p-2 mb-2 overflow-hidden border border-primary/20 backdrop-blur-sm relative group">
-      <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <span className="text-mono text-[9px] text-muted-foreground/50 tracking-wider">HTML</span>
-      </div>
-      <code className="text-mono text-xs text-primary-light block truncate leading-relaxed">
+    <div className="bg-input rounded-lg p-2 mb-2 overflow-hidden border border-border">
+      <code className="text-mono text-xs text-foreground block truncate leading-relaxed">
         {truncateHtml(issue.element.html)}
       </code>
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
     </div>
   );
 
   return (
     <Card
       className={cn(
-        'mb-2 transition-all animate-fade-in hover:bg-accent',
+        'mb-2 animate-fade-in hover:bg-accent border-l-[3px]',
+        SEVERITY_RAIL[issue.severity],
         // Native off-screen virtualization (perf-rel-6): the browser skips
         // layout/paint for cards scrolled out of view. contain-intrinsic-size
         // reserves an approximate card height so the scrollbar stays stable.
@@ -109,24 +115,22 @@ export default function IssueCard({
 
           {/* Plain-language consequence (ux-public-3), one-line under the title. */}
           {issue.whyItMatters && (
-            <p className="text-sm text-foreground/80 mb-1.5 line-clamp-1">{issue.whyItMatters}</p>
+            <p className="text-sm text-foreground mb-1.5 line-clamp-1">{issue.whyItMatters}</p>
           )}
 
           {/* Standard reference: WCAG criterion for accessibility, a neutral
               label otherwise. */}
           <div className="flex items-center gap-2 mb-2">
             {issue.standard && !isWcagIssue(issue.standard) ? (
-              <span className="text-mono text-[10px] text-muted-foreground tracking-wider px-2 py-0.5 bg-muted/30 rounded border border-border/50">
+              <span className="text-mono text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-md border border-border">
                 {STANDARD_LABELS[issue.standard]}
               </span>
             ) : (
               <>
-                <span className="text-mono text-[10px] text-muted-foreground tracking-wider px-2 py-0.5 bg-muted/30 rounded border border-border/50">
+                <span className="text-mono text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded-md border border-border">
                   WCAG {issue.wcag.id}
                 </span>
-                <span className="text-caption text-muted-foreground/70">
-                  Level {issue.wcag.level}
-                </span>
+                <span className="text-caption text-muted-foreground">Level {issue.wcag.level}</span>
               </>
             )}
           </div>

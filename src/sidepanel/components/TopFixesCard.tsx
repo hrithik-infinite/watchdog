@@ -89,19 +89,19 @@ export default function TopFixesCard({ issues, onSelectIssue, max = 4 }: TopFixe
   return (
     <section
       aria-labelledby="top-fixes-heading"
-      className="px-4 py-3 border-b border-border/40 bg-card/30"
+      className="mx-4 my-2 p-3 bg-card text-card-foreground rounded-xl border border-border shadow-[var(--shadow-elev-1)]"
     >
       <div className="flex items-center gap-2 mb-1">
-        <Wrench className="h-4 w-4 text-primary" />
+        <Wrench className="h-4 w-4 text-muted-foreground" />
         <h3 id="top-fixes-heading" className="text-h3 text-foreground">
           Top fixes
         </h3>
       </div>
-      <p className="text-xs text-muted-foreground mb-2.5">
+      <p className="text-xs text-muted-foreground mb-3">
         Start with the changes that affect the most visitors.
       </p>
 
-      <ul className="space-y-1.5">
+      <ul className="space-y-2">
         {top.map((group) => (
           <li key={group.ruleId}>
             <button
@@ -110,7 +110,7 @@ export default function TopFixesCard({ issues, onSelectIssue, max = 4 }: TopFixe
               aria-label={`${group.representative.message} — ${group.count} ${
                 group.count === 1 ? 'place' : 'places'
               }. Open first.`}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-border/40 bg-background/40 text-left hover:bg-accent hover:border-border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-border bg-muted text-left hover:bg-accent"
             >
               <span
                 className={cn(
