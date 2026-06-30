@@ -203,7 +203,7 @@ export default function AuditSelector({
   }, [isScanning, selectedAudits]);
 
   return (
-    <div className="flex flex-col h-full animate-fade-in">
+    <div className="flex flex-col flex-1 min-h-0 animate-fade-in">
       {/* Header Section */}
       <div className="px-4 py-3 border-b border-border/40">
         <div className="flex items-center justify-between mb-1.5">
@@ -271,11 +271,22 @@ export default function AuditSelector({
                       : undefined
                   }
                 >
-                  {/* Checkbox indicator - top right (filled in the category color) */}
-                  <div className="absolute top-2 right-2">
+                  {/* Top row: category icon tile (left) and the select checkbox
+                      (right) on their own line. Keeping the checkbox out of the
+                      title's row means long labels like "Accessibility" can never
+                      run underneath it. */}
+                  <div className="flex items-start justify-between mb-2">
+                    <span
+                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg shrink-0"
+                      // Tile carries the category color; the lucide icon inherits
+                      // it via currentColor (its prop type only allows className).
+                      style={{ backgroundColor: `${color}1f`, color }}
+                    >
+                      <Icon className="h-4 w-4" />
+                    </span>
                     <div
                       className={cn(
-                        'h-5 w-5 rounded-md border-2 flex items-center justify-center',
+                        'h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0',
                         !isSelected && 'border-border group-hover:border-muted-foreground'
                       )}
                       style={
@@ -286,27 +297,19 @@ export default function AuditSelector({
                     </div>
                   </div>
 
-                  {/* Icon and Label Row — the icon sits in a category-colored tile
-                      so each audit is recognizable at a glance, selected or not. */}
-                  <div className="flex items-center gap-2 mb-2 pr-6">
-                    <span
-                      className="inline-flex items-center justify-center h-8 w-8 rounded-lg shrink-0"
-                      // Tile carries the category color; the lucide icon inherits
-                      // it via currentColor (its prop type only allows className).
-                      style={{ backgroundColor: `${color}1f`, color }}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <h3 className="text-sm font-semibold flex-1 text-foreground">{audit.label}</h3>
-                  </div>
+                  {/* Title — full card width so it wraps cleanly instead of
+                      running under the checkbox. */}
+                  <h3 className="text-sm font-semibold text-foreground leading-snug mb-1">
+                    {audit.label}
+                  </h3>
 
                   {/* Description */}
                   <p className="text-xs leading-relaxed text-muted-foreground mb-2">
                     {displayDescription}
                   </p>
 
-                  {/* Rule Count — stays neutral so color belongs to the icon only */}
-                  <div className="flex items-center gap-1.5 text-xs">
+                  {/* Rule Count — keeps clear of the info button bottom-right. */}
+                  <div className="flex items-center gap-1.5 text-xs pr-6">
                     <span className="font-medium text-muted-foreground">
                       {audit.ruleCount} checks
                     </span>
