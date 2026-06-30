@@ -13,15 +13,17 @@ export default defineConfig({
     // run them and crash. Keeping this to `*.test.*` under src cleanly separates
     // the two runners.
     include: ['src/**/*.test.{ts,tsx}'],
-    // The app logger (src/shared/logger.ts) is gated on import.meta.env.DEV,
-    // which Vitest sets to true — so every scanner/hook/background test spews
-    // intentional `[WatchDog] …` dev logs that drown the real signal (React
-    // act() warnings, deprecations). We can't flip DEV off globally: logger.test
-    // asserts it logs in dev. So drop only those prefixed lines at the reporter,
-    // leaving genuine warnings intact. (Spied-console assertions are unaffected —
-    // onConsoleLog only controls what the reporter prints, not what tests see.)
+    // App logging is gated on import.meta.env.DEV, which Vitest sets to true — so
+    // every scanner/hook/background test spews dev logs that drown the real signal
+    // (React act() warnings, deprecations). Drop anything carrying the app's
+    // `WatchDog` marker: the `[WatchDog]` logger (src/shared/logger.ts) AND the
+    // handful of raw `console.*('WatchDog: …')` calls in the content/background
+    // code. We can't flip DEV off globally (logger.test asserts it logs in dev),
+    // and this leaves genuine third-party warnings intact. Spied-console
+    // assertions are unaffected — onConsoleLog only controls what the reporter
+    // prints, not what tests observe via vi.spyOn.
     onConsoleLog(log) {
-      if (log.includes('[WatchDog]')) return false;
+      if (log.includes('WatchDog')) return false;
     },
     coverage: {
       provider: 'v8',

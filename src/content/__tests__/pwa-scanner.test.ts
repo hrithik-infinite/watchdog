@@ -747,10 +747,15 @@ describe('PWA Scanner', () => {
       const mockFetch = vi.fn().mockRejectedValue(new Error('Fetch failed'));
       vi.stubGlobal('fetch', mockFetch);
 
+      // The scanner console.error's the fetch failure (it still returns a result);
+      // we assert the graceful handling, so silence the expected error log.
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
       const result = await scanPWA();
 
       expect(Array.isArray(result.issues)).toBe(true);
       expect(result.duration).toBeGreaterThanOrEqual(0);
+      errorSpy.mockRestore();
     });
 
     it('should handle non-OK fetch response', async () => {

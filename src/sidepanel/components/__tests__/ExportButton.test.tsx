@@ -94,6 +94,15 @@ describe('ExportButton — export failure surfacing (err-10)', () => {
   // Regression: a thrown export (e.g. pdf-lib rejecting a non-WinAnsi character)
   // was only console.error'd, so the user clicked Export and saw nothing. The
   // failure must now show up in the UI.
+  // The component still console.error's the failure (prod diagnostics); these
+  // tests assert the UI surfacing, so silence the expected error to keep output
+  // clean — matching how the badge/storage error tests suppress theirs.
+  let errorSpy: ReturnType<typeof vi.spyOn>;
+  beforeEach(() => {
+    errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  });
+  afterEach(() => errorSpy.mockRestore());
+
   it('shows an inline alert with the failure detail when an export throws', async () => {
     vi.mocked(exportHTML).mockImplementationOnce(() => {
       throw new Error('Pretend pdf-lib failure');
