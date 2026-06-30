@@ -155,10 +155,16 @@ export default function App() {
           selector: issue.element.selector,
           severity: issue.severity,
         });
-        highlightElement(issue.element.selector, issue.severity);
+        // Only highlight (and scroll) for accessibility scans — non-a11y issues
+        // (Performance/SEO/…) carry synthetic selectors that don't map to a real
+        // element, so highlighting would scroll the page to the wrong place or
+        // nowhere (correctness-34).
+        if (selectedAuditTypes.includes('accessibility')) {
+          highlightElement(issue.element.selector, issue.severity);
+        }
       }
     },
-    [selectIssue, filteredIssues, highlightElement]
+    [selectIssue, filteredIssues, highlightElement, selectedAuditTypes]
   );
 
   const handleHighlightIssue = useCallback(
