@@ -110,7 +110,10 @@ describe('Scoring - Audit scoring logic', () => {
       const issues = [createIssue('critical'), createIssue('critical'), createIssue('critical')];
       const result = calculateScore(issues);
 
-      expect(result.score).toBeLessThan(50);
+      // Three criticals (weighted 30) land in "Needs Work" on the asymptotic
+      // curve — a clear drop from a single critical (~83) without bottoming out.
+      expect(result.score).toBeLessThan(70);
+      expect(result.score).toBeGreaterThan(45);
     });
 
     it('should score with multiple minor issues', () => {
@@ -164,41 +167,42 @@ describe('Scoring - Audit scoring logic', () => {
       expect(result.score).toBeLessThan(100);
     });
 
-    it('should return grade C for score 50-74', () => {
+    it('should return grade C for a mid-range score', () => {
+      // 2 critical + 2 serious = weighted 30 → ~59 on the asymptotic curve.
       const issues = [
-        ...Array(3)
+        createIssue('critical'),
+        createIssue('critical'),
+        createIssue('serious'),
+        createIssue('serious'),
+      ];
+      const result = calculateScore(issues);
+      expect(result.score).toBeGreaterThanOrEqual(50);
+      expect(result.score).toBeLessThan(75);
+      expect(result.grade).toBe('C');
+      expect(result.color).toBe('#FFD600');
+      expect(result.label).toBe('Needs Work');
+    });
+
+    it('should return grade D for a low score', () => {
+      // 4 critical + 4 serious = weighted 60 → ~39 on the asymptotic curve.
+      const issues = [
+        ...Array(4)
           .fill(null)
           .map(() => createIssue('critical')),
-        ...Array(5)
+        ...Array(4)
           .fill(null)
           .map(() => createIssue('serious')),
       ];
       const result = calculateScore(issues);
-      if (result.score >= 50 && result.score < 75) {
-        expect(result.grade).toBe('C');
-        expect(result.color).toBe('#FFD600');
-        expect(result.label).toBe('Needs Work');
-      }
+      expect(result.score).toBeGreaterThanOrEqual(25);
+      expect(result.score).toBeLessThan(50);
+      expect(result.grade).toBe('D');
+      expect(result.color).toBe('#FF9100');
+      expect(result.label).toBe('Poor');
     });
 
-    it('should return grade D for score 25-49', () => {
-      const issues = [
-        ...Array(8)
-          .fill(null)
-          .map(() => createIssue('critical')),
-        ...Array(10)
-          .fill(null)
-          .map(() => createIssue('serious')),
-      ];
-      const result = calculateScore(issues);
-      if (result.score >= 25 && result.score < 50) {
-        expect(result.grade).toBe('D');
-        expect(result.color).toBe('#FF9100');
-        expect(result.label).toBe('Poor');
-      }
-    });
-
-    it('should return grade F for score 0-24', () => {
+    it('should return grade F for a failing score', () => {
+      // 20 critical + 30 serious = weighted 350 → ~5 on the asymptotic curve.
       const issues = [
         ...Array(20)
           .fill(null)
@@ -208,11 +212,10 @@ describe('Scoring - Audit scoring logic', () => {
           .map(() => createIssue('serious')),
       ];
       const result = calculateScore(issues);
-      if (result.score < 25) {
-        expect(result.grade).toBe('F');
-        expect(result.color).toBe('#FF3D00');
-        expect(result.label).toBe('Failing');
-      }
+      expect(result.score).toBeLessThan(25);
+      expect(result.grade).toBe('F');
+      expect(result.color).toBe('#FF3D00');
+      expect(result.label).toBe('Failing');
     });
   });
 
@@ -229,8 +232,9 @@ describe('Scoring - Audit scoring logic', () => {
       expect(moderateResult.score).toBeLessThan(minorResult.score);
     });
 
-    it('should use logarithmic scaling', () => {
-      // Adding more issues should have diminishing impact on score reduction
+    it('applies diminishing marginal impact per added issue', () => {
+      // The asymptotic curve is convex, so each additional issue reduces the
+      // score by less than the previous one.
       const one = calculateScore([createIssue('critical')]);
       const two = calculateScore([createIssue('critical'), createIssue('critical')]);
       const three = calculateScore([
@@ -242,7 +246,6 @@ describe('Scoring - Audit scoring logic', () => {
       const diff1 = one.score - two.score;
       const diff2 = two.score - three.score;
 
-      // Logarithmic scaling means second issue has less impact than first
       expect(diff2).toBeLessThanOrEqual(diff1);
     });
   });
@@ -536,14 +539,17 @@ describe('Scoring - Audit scoring logic', () => {
       expect(result.score).toBeLessThanOrEqual(100);
     });
 
-    it('should reach 0 score eventually', () => {
-      // Very many critical issues should approach 0
+    it('floors at 1 for catastrophic pages — never a flat 0', () => {
+      // The asymptotic curve approaches but never reaches 0; an absurd issue count
+      // bottoms out at the floor of 1, so even the worst pages still differentiate
+      // and any fix can move the number.
       const issues = Array(1000)
         .fill(null)
         .map(() => createIssue('critical'));
       const result = calculateScore(issues);
 
       expect(result.score).toBeLessThan(5);
+      expect(result.score).toBeGreaterThanOrEqual(1);
     });
 
     it('should handle score rounding correctly', () => {

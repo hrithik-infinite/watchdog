@@ -14,15 +14,16 @@ const SEVERITY_WEIGHTS: Record<Severity, number> = {
   minor: 1,
 };
 
-// Weighted-issue count at which the score reaches 0 (defines the log curve).
-// A single fixed value scored every audit on the same curve despite them running
-// very different numbers of checks (accessibility ~39 rules vs PWA ~7), so a
-// couple of issues tanked a small audit while barely denting accessibility. These
-// per-audit ceilings calibrate the curve to each audit's scale (correctness-29).
+// Per-audit scale for the scoring curve: the weighted-issue count at which the
+// score reaches 25 (the grade-D boundary). A single fixed value scored every
+// audit the same despite very different check counts (accessibility ~39 rules vs
+// PWA ~7), so a couple of issues tanked a small audit while barely denting
+// accessibility. These per-audit values calibrate the curve to each audit's
+// scale (correctness-29).
 //
 // PROVISIONAL: the relative values are a product judgment — validate against real
 // scores and tune. Omitting the audit (e.g. a combined multi-scan, or the
-// per-category breakdown) keeps the original audit-agnostic curve.
+// per-category breakdown) uses the audit-agnostic default.
 const DEFAULT_MAX_WEIGHTED_ISSUES = 100;
 const MAX_WEIGHTED_BY_AUDIT: Partial<Record<AuditType, number>> = {
   accessibility: 100,
@@ -37,6 +38,23 @@ function maxWeightedFor(auditType?: AuditType): number {
   return (auditType && MAX_WEIGHTED_BY_AUDIT[auditType]) || DEFAULT_MAX_WEIGHTED_ISSUES;
 }
 
+// Map a weighted-issue count to a 0–100 score with an ASYMPTOTIC curve:
+//
+//   score = 100 · (scale / (scale + weighted))²
+//
+// It starts at 100 (no issues) and decays toward 0 as issues grow, but never
+// actually reaches it — so a worse page always scores below a less-bad one and
+// fixing any issue always nudges the number up. (The previous log curve crossed
+// 0 at weighted == scale and clamped everything beyond to a flat, uninformative
+// 0, giving no progress signal for busy real-world pages.) `scale` is the
+// per-audit calibration point where the score is 25 (grade D). Floored at 1 so a
+// catastrophic page still differentiates from a merely bad one — never a flat 0.
+function scoreFromWeighted(weightedCount: number, auditType?: AuditType): number {
+  const scale = maxWeightedFor(auditType);
+  const ratio = scale / (scale + weightedCount);
+  return Math.max(1, Math.min(100, Math.round(100 * ratio * ratio)));
+}
+
 export interface ScoreResult {
   score: number; // 0-100
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
@@ -45,8 +63,9 @@ export interface ScoreResult {
 }
 
 /**
- * Calculate score based on issues found
- * Uses a logarithmic scale to prevent immediate 0 scores
+ * Calculate score based on issues found.
+ * Uses an asymptotic curve (see scoreFromWeighted) so the score decays toward but
+ * never reaches 0 — every fix moves the number and worse pages always rank lower.
  */
 export function calculateScore(issues: Issue[], auditType?: AuditType): ScoreResult {
   if (issues.length === 0) {
@@ -63,10 +82,7 @@ export function calculateScore(issues: Issue[], auditType?: AuditType): ScoreRes
     return total + SEVERITY_WEIGHTS[issue.severity];
   }, 0);
 
-  // Use logarithmic scaling for smoother curve, with a per-audit ceiling.
-  const max = maxWeightedFor(auditType);
-  const logScore = 100 * (1 - Math.log(1 + weightedCount) / Math.log(1 + max));
-  const score = Math.max(0, Math.min(100, Math.round(logScore)));
+  const score = scoreFromWeighted(weightedCount, auditType);
 
   return {
     score,
@@ -96,9 +112,7 @@ export function calculateScoreFromSummary(
     (summary.bySeverity.moderate || 0) * SEVERITY_WEIGHTS.moderate +
     (summary.bySeverity.minor || 0) * SEVERITY_WEIGHTS.minor;
 
-  const max = maxWeightedFor(auditType);
-  const logScore = 100 * (1 - Math.log(1 + weightedCount) / Math.log(1 + max));
-  const score = Math.max(0, Math.min(100, Math.round(logScore)));
+  const score = scoreFromWeighted(weightedCount, auditType);
 
   return {
     score,
