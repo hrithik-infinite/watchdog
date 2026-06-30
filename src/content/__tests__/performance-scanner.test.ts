@@ -2690,4 +2690,159 @@ describe('Performance Scanner', () => {
       expect(tbtIssues.length).toBe(0);
     });
   });
+
+  describe('Navigation Timing Level 2 (correctness-20)', () => {
+    // Regression: the scanner read the deprecated performance.timing /
+    // navigationStart directly. It now prefers a PerformanceNavigationTiming
+    // entry from getEntriesByType('navigation') and only falls back to
+    // performance.timing when no navigation entry exists.
+    it('prefers the navigation entry over the deprecated performance.timing', async () => {
+      // performance.timing reports a GOOD TTFB (1800 - 1300 = 500ms). The
+      // navigation entry reports a POOR one (4000 - 1300 = 2700ms). The poor
+      // reading must win, which is only possible if the navigation entry is used.
+      const navEntry = {
+        entryType: 'navigation',
+        startTime: 0,
+        requestStart: 1300,
+        responseStart: 4000, // TTFB = 2700ms (poor)
+        domContentLoadedEventStart: 100,
+        domContentLoadedEventEnd: 150, // DCL = 50ms (good)
+        loadEventEnd: 1500, // Page load = 1500ms (good)
+      };
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'navigation' ? [navEntry] : []
+      );
+
+      const result = await runScanWithTimers();
+
+      const ttfb = result.issues.find((i) => i.message?.includes('Time to First Byte'));
+      expect(ttfb).toBeDefined();
+      expect(ttfb?.severity).toMatch(/serious|moderate/);
+    });
+
+    it('computes Page Load Time from loadEventEnd relative to the entry startTime', async () => {
+      // Navigation Level 2 marks are relative to startTime (0), so page load is
+      // loadEventEnd - startTime. A 5000ms load must surface a poor page-load issue.
+      const navEntry = {
+        entryType: 'navigation',
+        startTime: 0,
+        requestStart: 1300,
+        responseStart: 1500, // good TTFB
+        domContentLoadedEventStart: 100,
+        domContentLoadedEventEnd: 150,
+        loadEventEnd: 5000, // page load = 5000ms (poor)
+      };
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'navigation' ? [navEntry] : []
+      );
+
+      const result = await runScanWithTimers();
+
+      const plt = result.issues.find((i) => i.message?.includes('Page Load Time'));
+      expect(plt).toBeDefined();
+    });
+
+    it('falls back to performance.timing when no navigation entry exists', async () => {
+      // No navigation entry → deprecated fallback path. Poor TTFB from timing
+      // (4000 - 1300 = 2700ms) must still be reported.
+      mockPerformanceAPI.timing.responseStart = 4000;
+      mockPerformanceAPI.timing.requestStart = 1300;
+      mockGetEntriesByType.mockReturnValue([]); // no 'navigation' entry
+
+      const result = await runScanWithTimers();
+
+      const ttfb = result.issues.find((i) => i.message?.includes('Time to First Byte'));
+      expect(ttfb).toBeDefined();
+
+      mockPerformanceAPI.timing.responseStart = 1800;
+    });
+  });
+
+  describe('Cross-origin / cached resource sizes (correctness-21)', () => {
+    // Regression: sizes were read as `transferSize || 0`, so cross-origin
+    // (no Timing-Allow-Origin) and cached resources counted as 0 bytes and
+    // undercounted page weight. The scanner now falls back to the body sizes.
+    it('falls back to encodedBodySize when transferSize is 0', async () => {
+      const resources = [
+        // transferSize 0 (opaque/cached) but a real 2MB body.
+        {
+          transferSize: 0,
+          encodedBodySize: 2_000_000,
+          decodedBodySize: 2_500_000,
+          initiatorType: 'img',
+        },
+      ];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      // On the buggy `transferSize || 0` path these would both be absent.
+      expect(result.issues.some((i) => i.message?.includes('Image Size'))).toBe(true);
+      expect(result.issues.some((i) => i.message?.includes('Total Resource Size'))).toBe(true);
+    });
+
+    it('falls back to decodedBodySize when transferSize and encodedBodySize are 0', async () => {
+      const resources = [
+        { transferSize: 0, encodedBodySize: 0, decodedBodySize: 1_500_000, initiatorType: 'script' },
+      ];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      expect(result.issues.some((i) => i.message?.includes('JavaScript Size'))).toBe(true);
+    });
+
+    it('counts each resource once (transferSize is not added to body sizes)', async () => {
+      // 2,000,000 bytes ≈ 1953KB. Summing transferSize AND encodedBodySize would
+      // report ~3906KB instead. The message carries the rounded KB value.
+      const resources = [
+        { transferSize: 2_000_000, encodedBodySize: 2_000_000, initiatorType: 'other' },
+      ];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      const totalSize = result.issues.find((i) => i.message?.includes('Total Resource Size'));
+      expect(totalSize).toBeDefined();
+      expect(totalSize?.message).toContain('1953');
+      expect(totalSize?.message).not.toContain('3906');
+    });
+
+    it('does not report a size metric when no size is known (no misleading 0 bytes)', async () => {
+      const resources = [{ transferSize: 0, initiatorType: 'script' }];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      expect(result.issues.some((i) => i.message?.includes('Total Resource Size'))).toBe(false);
+    });
+  });
+
+  describe('Observer settle window (perf-rel-4)', () => {
+    it('resolves within the observer settle window without ~500ms of dead time', async () => {
+      // Observers settle at 500ms. The buggy code then waited a fixed 1000ms
+      // before resolving — ~500ms of dead time. Advancing only 600ms must now be
+      // enough to fully resolve the scan; on the old code it would still be pending.
+      mockGetEntriesByType.mockReturnValue([]);
+
+      const scanPromise = scanPerformance();
+      let resolved = false;
+      void scanPromise.then(() => {
+        resolved = true;
+      });
+
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(resolved).toBe(true);
+      await scanPromise; // cleanup
+    });
+  });
 });

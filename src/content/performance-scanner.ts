@@ -13,6 +13,13 @@ function generateId(): string {
   return `perf-issue-${Date.now()}-${++idCounter}`;
 }
 
+// How long each CLS/INP/TBT PerformanceObserver stays attached to capture late
+// entries. scanPerformance waits this SAME window before reading the
+// navigation/resource metrics — and no longer, because the observers have
+// already settled by then. A prior version waited a fixed 1000ms there while the
+// observers settled at 500ms, burning ~500ms of pure dead time on every scan.
+const OBSERVER_SETTLE_MS = 500;
+
 interface PerformanceMetric {
   name: string;
   value: number;
@@ -174,7 +181,7 @@ async function measureCLS(): Promise<CLSResult> {
         rating: getRating(clsValue, THRESHOLDS.CLS),
         shiftingElements: shiftingElementsArray,
       });
-    }, 500); // Wait 500ms for additional shifts
+    }, OBSERVER_SETTLE_MS); // Wait for any additional shifts to settle
   });
 }
 
@@ -276,7 +283,7 @@ async function measureINP(): Promise<INPResult> {
         rating: getRating(inpValue, THRESHOLDS.INP),
         worstInteraction,
       });
-    }, 500);
+    }, OBSERVER_SETTLE_MS);
   });
 }
 
@@ -336,7 +343,7 @@ async function measureTBT(): Promise<TBTResult> {
         rating: getRating(totalBlockingTime, THRESHOLDS.TBT),
         longTasks: longTasks.slice(0, 5), // Top 5 worst long tasks
       });
-    }, 500);
+    }, OBSERVER_SETTLE_MS);
   });
 }
 
@@ -372,18 +379,59 @@ function mapRatingToSeverity(rating: 'good' | 'needs-improvement' | 'poor'): Sev
   }
 }
 
-// Get performance metrics using Navigation Timing API
+// Read a PerformanceNavigationTiming entry (Navigation Timing Level 2). Returns
+// null when the engine doesn't expose one, so callers can fall back.
+function getNavigationEntry(): PerformanceNavigationTiming | null {
+  if (!performance || typeof performance.getEntriesByType !== 'function') {
+    return null;
+  }
+  const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+  return entries.length > 0 ? entries[0] : null;
+}
+
+// Get performance metrics using the Navigation Timing API
 function getNavigationMetrics(): PerformanceMetric[] {
   const metrics: PerformanceMetric[] = [];
 
-  if (!performance || !performance.timing) {
+  if (!performance) {
     return metrics;
   }
 
-  const timing = performance.timing;
+  // Prefer Navigation Timing Level 2 (PerformanceNavigationTiming): its marks are
+  // relative to the entry's own startTime (0). The buggy version read the
+  // deprecated performance.timing / navigationStart directly — those are
+  // epoch-based, removed from the spec, and read 0 in some bfcache restores. We
+  // keep performance.timing only as a graceful fallback for old engines.
+  const nav = getNavigationEntry();
+
+  let responseStart: number;
+  let requestStart: number;
+  let domContentLoadedEventStart: number;
+  let domContentLoadedEventEnd: number;
+  let loadEventEnd: number;
+  let navStart: number;
+
+  if (nav) {
+    responseStart = nav.responseStart;
+    requestStart = nav.requestStart;
+    domContentLoadedEventStart = nav.domContentLoadedEventStart;
+    domContentLoadedEventEnd = nav.domContentLoadedEventEnd;
+    loadEventEnd = nav.loadEventEnd;
+    navStart = nav.startTime; // 0 by definition; the other marks are relative to it
+  } else if (performance.timing) {
+    const timing = performance.timing;
+    responseStart = timing.responseStart;
+    requestStart = timing.requestStart;
+    domContentLoadedEventStart = timing.domContentLoadedEventStart;
+    domContentLoadedEventEnd = timing.domContentLoadedEventEnd;
+    loadEventEnd = timing.loadEventEnd;
+    navStart = timing.navigationStart;
+  } else {
+    return metrics;
+  }
 
   // Time to First Byte (TTFB)
-  const ttfb = timing.responseStart - timing.requestStart;
+  const ttfb = responseStart - requestStart;
   if (ttfb > 0) {
     metrics.push({
       name: 'TTFB (Time to First Byte)',
@@ -421,7 +469,7 @@ function getNavigationMetrics(): PerformanceMetric[] {
   }
 
   // DOM Content Loaded
-  const domContentLoaded = timing.domContentLoadedEventEnd - timing.domContentLoadedEventStart;
+  const domContentLoaded = domContentLoadedEventEnd - domContentLoadedEventStart;
   if (domContentLoaded > 0) {
     metrics.push({
       name: 'DOM Content Loaded',
@@ -434,7 +482,7 @@ function getNavigationMetrics(): PerformanceMetric[] {
   }
 
   // Page Load Time
-  const pageLoadTime = timing.loadEventEnd - timing.navigationStart;
+  const pageLoadTime = loadEventEnd - navStart;
   if (pageLoadTime > 0) {
     metrics.push({
       name: 'Page Load Time',
@@ -446,6 +494,28 @@ function getNavigationMetrics(): PerformanceMetric[] {
   }
 
   return metrics;
+}
+
+// Best-effort byte size for a resource. transferSize is the over-the-wire size
+// (headers + compressed body) but is 0 for cross-origin/opaque responses without
+// a Timing-Allow-Origin header, and 0 for cache hits. The buggy version used
+// `transferSize || 0`, so those resources counted as 0 bytes and undercounted
+// real page weight. Fall back to the body-size fields (populated for
+// same-origin, CORS+TAO, and cached resources). Each resource contributes
+// exactly one of these values — never summed together — so nothing is
+// double-counted; a truly unknown size stays 0 rather than reporting a
+// misleading figure.
+function getResourceSize(resource: PerformanceResourceTiming): number {
+  if (resource.transferSize && resource.transferSize > 0) {
+    return resource.transferSize;
+  }
+  if (resource.encodedBodySize && resource.encodedBodySize > 0) {
+    return resource.encodedBodySize;
+  }
+  if (resource.decodedBodySize && resource.decodedBodySize > 0) {
+    return resource.decodedBodySize;
+  }
+  return 0;
 }
 
 // Get resource performance metrics
@@ -460,7 +530,7 @@ function getResourceMetrics(): PerformanceMetric[] {
   let scriptSize = 0;
 
   for (const resource of resources) {
-    const size = resource.transferSize || 0;
+    const size = getResourceSize(resource);
     totalSize += size;
 
     if (resource.initiatorType === 'img') {
@@ -977,8 +1047,10 @@ export async function scanPerformance(): Promise<ScanResult> {
   const inpPromise = measureINP();
   const tbtPromise = measureTBT();
 
-  // Wait a bit to ensure metrics are collected
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // Give the CLS/INP/TBT observers exactly their settle window to capture late
+  // entries, then read navigation/resource metrics. The previous fixed 1000ms
+  // wait left ~500ms of dead time after the observers had already settled.
+  await new Promise((resolve) => setTimeout(resolve, OBSERVER_SETTLE_MS));
 
   // Collect all metrics
   const navigationMetrics = getNavigationMetrics();
