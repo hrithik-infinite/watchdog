@@ -10,7 +10,9 @@ the **fixes**.
 
 **Status summary:** Phases 0–3 have landed on `fix/scanner-accuracy` / **PR #3** — **1250 tests green**, tsc + eslint + build clean, CI + coverage-threshold gate active. Done: Phase 0 (trust/core-loop), Phase 1 (CWS gate) + tail (`cws-1` spec/`cws-2` copy/`secpriv-6`/`testing-1`/coverage gate), Phase 2 (site-owner repositioning), Phase 3 verifiable differentiators (`feat-compet-10` WAVE overlay, `feat-compet-8` import-report, `ux-public-10` contrast deep-link), and the **full P1–P3 verifiable bug-cleanup batch** (11-cluster fan-out): correctness-11/15/16/18/19/20/21/22/23/24/30/31/32/34/35, err-3/9/10/12, perf-rel-2/4/7, fixes-fragile, testing-8 + report-content rewrite.
 
-**Needs the owner (browser/decision):** `secpriv-6` Chrome smoke-test before merge; `cws-1` screenshot capture; deferred canvas items `feat-compet-2` (eyedropper) + `feat-compet-9` (report screenshots); and decisions on `perf-rel-6` (virtualize — wants a dep), `correctness-29` (per-audit scoring model), `correctness-4` (target-scanned-tab rework), `correctness-5` (badge combined total), and the dead-code deletions (`deadcode-1/5/7/8/9`). **Skipped:** `perf-rel-1` (code-split scanners — now incompatible with the single-IIFE content build). **Large/deferred:** the unused history/trends UI wiring (`deadcode-2`), e2e/Playwright (`testing-4/10/11`), component tests (`testing-6`).
+The decision-gated + deletion items are now also done (approved by the owner): `perf-rel-6` (native `content-visibility` instead of a virtualization dep), `correctness-29` (per-audit scoring — **provisional constants, validate during browser testing**), `correctness-4` (page actions target the scanned tab), `correctness-5` (combined multi-scan badge total), `deadcode-1` (dropped stub audit types), `deadcode-5` (deleted unused `useTheme`), `deadcode-9` (removed dead `EmptyState 'initial'`). `deadcode-7/8` (`sendMessage`/`sendTabMessage`) intentionally **kept** — they're legitimate typed helpers; the right fix is to wire the codebase onto them (a larger refactor), not delete tested API.
+
+**Now needs the owner (browser only):** `secpriv-6` Chrome smoke-test before merge; validate the `correctness-29` per-audit score constants while testing; `cws-1` screenshot capture; deferred canvas items `feat-compet-2` (eyedropper) + `feat-compet-9` (report screenshots). **Skipped:** `perf-rel-1` (code-split scanners — incompatible with the single-IIFE content build). **Large/deferred (after browser testing → then the OSS-runnable test suite):** history/trends UI wiring (`deadcode-2`), e2e/Playwright + component tests (`testing-4/6/10/11`), misc silent-failure paths (`err-5/6/7/8/11/13`).
 
 ---
 
@@ -100,8 +102,8 @@ the **fixes**.
 | ⬜ | correctness-35 | History: wrap `set()` in try/catch; prune cross-domain; size guard | `shared/storage.ts:12,77` | low | S |
 | ⬜ | correctness-32 | History: fix duplicate `selector::ruleId` miscount in `compareScanResults` | `shared/storage.ts:173` | low | S |
 | ✅ | deadcode-4 / correctness-27 | axe `incomplete[]` now rendered in a "Needs manual review" section (gated on Show-Incomplete) | `IncompleteSection.tsx`, `App.tsx` | low | S |
-| ⬜ | deadcode-1 | Implement i18n/mobile/privacy audits; delete the `links` stub | `scanner.ts:193`, union (×3) | — | S–M |
-| ⬜ | deadcode-5 | `useTheme` is built/tested but unused — wire real theming or delete | `hooks/useTheme.ts` | low | S |
+| ✅ | deadcode-1 | Implement i18n/mobile/privacy audits; delete the `links` stub | `scanner.ts:193`, union (×3) | — | S–M |
+| ✅ | deadcode-5 | `useTheme` is built/tested but unused — wire real theming or delete | `hooks/useTheme.ts` | low | S |
 | ⬜ | deadcode-6/7/8/9 | Remove/wire dead exports (`highlightMultiple`, `sendMessage`, `EmptyState.initial`, etc.) | various | low | S |
 
 ---
@@ -110,16 +112,16 @@ the **fixes**.
 
 | ✓ | ID | Fix | file:line | Sev | Eff |
 |---|----|-----|-----------|-----|-----|
-| ⬜ | correctness-4 | Highlight/rescan target the **scanned** tab, not the active tab | `messaging.ts:121`, `useHighlight.ts` | med | M |
+| ✅ | correctness-4 | Highlight/rescan target the **scanned** tab, not the active tab | `messaging.ts:121`, `useHighlight.ts` | med | M |
 | ✅ | correctness-24 | Focus-order: visibility/aria-hidden filter, NaN tabindex, MutationObserver | `focus-order.ts:15` | med | S |
-| ⬜ | correctness-29 | Per-audit score normalization (fixed `MAX_WEIGHTED_ISSUES`) | `scoring.ts:16` | med | M |
+| ✅ | correctness-29 | Per-audit score normalization (fixed `MAX_WEIGHTED_ISSUES`) | `scoring.ts:16` | med | M |
 | ✅ | perf-rel-2 | Throttle focus-order scroll listener (layout thrash) | `focus-order.ts:136` | med | S |
-| ⬜ | perf-rel-6 | Virtualize `IssueList` for large result sets | `IssueList.tsx:32` | med | S |
+| ✅ | perf-rel-6 | Virtualize `IssueList` for large result sets | `IssueList.tsx:32` | med | S |
 | ✅ | perf-rel-7 | Memoize store hot path / debounce search | `useIssues.ts:4`, `store/index.ts:123` | med | S |
 | ✅ | perf-rel-4 | Drop the dead 500ms of the perf scanner's ~1s wait | `performance-scanner.ts` | low | S |
 | ⬜ | perf-rel-1 | Code-split the 5 non-axe scanners behind `import()` | `manifest.config.ts:36`, `scanner.ts:12` | low | S |
 | ✅ | perf-rel-12 | Remove raw `console.log` shipped on every page load | `content/index.ts:89` | low | S |
-| ⬜ | correctness-5 | Badge shows combined total, not last audit's count | `content/index.ts:35`, `background/index.ts:71` | low | S |
+| ✅ | correctness-5 | Badge shows combined total, not last audit's count | `content/index.ts:35`, `background/index.ts:71` | low | S |
 | ✅ | correctness-22/23 | Vision/focus overlays: re-apply on SPA nav, restore original outline | `content/index.ts:83`, `focus-order.ts:126` | low | S |
 | ⬜ | correctness-25 | Vision filters: `color-interpolation-filters="sRGB"` (correct color space) | `vision-filters.ts:66` | low | S |
 | ✅ | correctness-11 | noopener heuristic stops flagging already-safe `target=_blank` | `security-scanner.ts:350` | low | S |
