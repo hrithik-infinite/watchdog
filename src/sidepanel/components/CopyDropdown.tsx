@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { ClipboardCopy, Check, ChevronDown, FileText, Code, Github } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { useState, type ComponentType } from 'react';
+import { ClipboardCopy, Check, ChevronDown, FileText, Code } from 'lucide-react';
+import { GithubIcon } from '@/sidepanel/components/icons';
 import { Button } from '@/sidepanel/components/ui/button';
 import {
   DropdownMenu,
@@ -63,7 +63,11 @@ export default function CopyDropdown({
   const issueCount = issues.length;
   const buttonLabel = copied ? 'Copied!' : `Copy All (${issueCount})`;
 
-  const renderCopy = (format: CopyFormat, Icon: LucideIcon, label: string) => (
+  const renderCopy = (
+    format: CopyFormat,
+    Icon: ComponentType<{ className?: string }>,
+    label: string
+  ) => (
     <DropdownMenuItem onClick={() => handleCopy(format)} className="cursor-pointer">
       <Icon className="h-4 w-4 mr-2" />
       <span>{label}</span>
@@ -93,14 +97,14 @@ export default function CopyDropdown({
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Advanced</DropdownMenuLabel>
             {renderCopy('markdown', Code, 'Copy as Markdown')}
-            {renderCopy('github', Github, 'Copy for GitHub')}
+            {renderCopy('github', GithubIcon, 'Copy for GitHub')}
           </>
         ) : (
           <>
             {renderCopy('markdown', Code, 'Copy as Markdown')}
             {renderCopy('plain', FileText, 'Copy as Plain Text')}
             <DropdownMenuSeparator />
-            {renderCopy('github', Github, 'Copy for GitHub')}
+            {renderCopy('github', GithubIcon, 'Copy for GitHub')}
           </>
         )}
       </DropdownMenuContent>
