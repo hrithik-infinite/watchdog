@@ -3,7 +3,7 @@ import { ensureContentScript } from '@/shared/inject';
 import logger from '@/shared/logger';
 import { ensureHostAccess } from '@/shared/permissions';
 import type { Settings, VisionMode } from '@/shared/types';
-import { getTargetTabId } from '@/sidepanel/lib/target-tab';
+import { getTargetTab } from '@/sidepanel/lib/target-tab';
 import { useScanStore } from '../store';
 
 /**
@@ -32,11 +32,11 @@ export function usePageOverlays() {
     async (mode: VisionMode) => {
       persist({ visionMode: mode });
       try {
-        const tabId = await getTargetTabId();
-        if (tabId != null) {
-          await ensureHostAccess();
-          await ensureContentScript(tabId);
-          await chrome.tabs.sendMessage(tabId, { type: 'APPLY_VISION_FILTER', payload: { mode } });
+        const tab = await getTargetTab();
+        if (tab?.id != null) {
+          await ensureHostAccess(tab.url);
+          await ensureContentScript(tab.id);
+          await chrome.tabs.sendMessage(tab.id, { type: 'APPLY_VISION_FILTER', payload: { mode } });
         }
       } catch (error) {
         logger.error('Failed to apply vision filter', { error });
@@ -49,11 +49,11 @@ export function usePageOverlays() {
     async (show: boolean) => {
       persist({ showFocusOrder: show });
       try {
-        const tabId = await getTargetTabId();
-        if (tabId != null) {
-          await ensureHostAccess();
-          await ensureContentScript(tabId);
-          await chrome.tabs.sendMessage(tabId, { type: 'TOGGLE_FOCUS_ORDER', payload: { show } });
+        const tab = await getTargetTab();
+        if (tab?.id != null) {
+          await ensureHostAccess(tab.url);
+          await ensureContentScript(tab.id);
+          await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_FOCUS_ORDER', payload: { show } });
         }
       } catch (error) {
         logger.error('Failed to toggle focus order', { error });

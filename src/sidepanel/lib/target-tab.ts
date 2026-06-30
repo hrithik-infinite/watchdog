@@ -13,3 +13,20 @@ export async function getTargetTabId(): Promise<number | undefined> {
   if (scanned != null) return scanned;
   return (await getCurrentTab())?.id;
 }
+
+/**
+ * Like getTargetTabId, but resolves the full tab so callers can read its `url`
+ * (e.g. to scope a host-permission request to the page's own origin). Falls back
+ * to the active tab if the scanned tab has since been closed.
+ */
+export async function getTargetTab(): Promise<chrome.tabs.Tab | undefined> {
+  const scanned = useScanStore.getState().scannedTabId;
+  if (scanned != null) {
+    try {
+      return await chrome.tabs.get(scanned);
+    } catch {
+      // Scanned tab is gone (closed/navigated away) — fall back to the active tab.
+    }
+  }
+  return getCurrentTab();
+}

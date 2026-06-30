@@ -1,8 +1,8 @@
 import logger from './logger';
 
-// Matches optional_host_permissions in manifest.config.ts. Requested at runtime
-// (not at install) so the install prompt stays warning-free (secpriv-6), while
-// still giving the on-demand scanner real host access to inject into pages.
+// The optional host-permission umbrella declared in manifest.config.ts. Held as
+// an OPTIONAL permission (no install-time warning, secpriv-6) and used only as a
+// fallback — real requests are scoped per-page below.
 const ALL_URLS = '<all_urls>';
 
 // Shown when the user declines Chrome's host-permission prompt. Wording is
@@ -11,33 +11,58 @@ export const HOST_PERMISSION_DENIED_MESSAGE =
   'WatchDog needs permission to read this page. Choose "Allow" when Chrome asks, then scan again.';
 
 /**
- * Ensure the extension holds host access so chrome.scripting.executeScript can
- * inject the scanner, prompting the user with Chrome's native permission dialog
- * the first time.
+ * Turn a page URL into a host-permission match pattern, e.g.
+ * "https://www.youtube.com/*". Returns null for URLs with no http(s) host we can
+ * scope to (callers already reject unscannable pages), so the caller falls back
+ * to the broad umbrella.
+ */
+function originPatternForUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  try {
+    const { protocol, host } = new URL(url);
+    if (protocol !== 'http:' && protocol !== 'https:') return null;
+    return `${protocol}//${host}/*`;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ensure the extension holds host access for `url`'s origin so
+ * chrome.scripting.executeScript can inject the scanner, prompting the user with
+ * Chrome's native permission dialog the first time that site is scanned.
  *
- * This is required because a side panel opened via the action icon does NOT get
- * the `activeTab` grant — Chrome only grants activeTab for action/context-menu/
+ * The request is SCOPED to the page's own origin rather than `<all_urls>`, so
+ * Chrome's prompt stays narrow — "Read and change your data on example.com" —
+ * instead of the alarming all-sites warning, and chrome://extensions lists only
+ * the sites the user actually approved. A site already approved short-circuits on
+ * permissions.contains() (a prior broad `<all_urls>` grant also satisfies this,
+ * so existing users are never re-prompted).
+ *
+ * Required because a side panel opened via the action icon does NOT get the
+ * `activeTab` grant — Chrome only grants activeTab for action/context-menu/
  * command/omnibox invocations and deliberately excluded side-panel-open. Without
- * a host grant, executeScript throws and every scan fails with E009. We hold
- * `<all_urls>` as an OPTIONAL host permission (no install-time warning) and
- * request it on demand here.
+ * a host grant, executeScript throws and every scan fails with E009.
  *
  * MUST be called synchronously enough after a user gesture (e.g. the Start Scan
  * click) to stay within Chrome's transient-activation window, since
- * permissions.request() requires user activation. Subsequent calls short-circuit
- * on permissions.contains() and need no gesture.
+ * permissions.request() requires user activation. Subsequent calls for an
+ * already-granted origin short-circuit on permissions.contains() and need no
+ * gesture.
  *
  * Throws HOST_PERMISSION_DENIED_MESSAGE if the user declines.
  */
-export async function ensureHostAccess(): Promise<void> {
-  if (await chrome.permissions.contains({ origins: [ALL_URLS] })) {
+export async function ensureHostAccess(url: string | undefined): Promise<void> {
+  const origin = originPatternForUrl(url) ?? ALL_URLS;
+
+  if (await chrome.permissions.contains({ origins: [origin] })) {
     return;
   }
 
-  const granted = await chrome.permissions.request({ origins: [ALL_URLS] });
+  const granted = await chrome.permissions.request({ origins: [origin] });
   if (!granted) {
-    logger.warn('Host permission denied by user');
+    logger.warn('Host permission denied by user', { origin });
     throw new Error(HOST_PERMISSION_DENIED_MESSAGE);
   }
-  logger.info('Host permission granted');
+  logger.info('Host permission granted', { origin });
 }

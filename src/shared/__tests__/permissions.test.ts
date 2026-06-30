@@ -8,25 +8,38 @@ vi.stubGlobal('chrome', {
   permissions: { contains, request },
 });
 
-describe('ensureHostAccess (optional <all_urls> host permission)', () => {
+describe('ensureHostAccess (per-origin optional host permission)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('short-circuits without prompting when access is already held', async () => {
+  it('scopes the check to the page origin and short-circuits when already held', async () => {
     contains.mockResolvedValue(true);
 
-    await ensureHostAccess();
+    await ensureHostAccess('https://www.youtube.com/watch?v=abc');
 
-    expect(contains).toHaveBeenCalledWith({ origins: ['<all_urls>'] });
+    expect(contains).toHaveBeenCalledWith({ origins: ['https://www.youtube.com/*'] });
     expect(request).not.toHaveBeenCalled();
   });
 
-  it('requests <all_urls> when not yet held and resolves on grant', async () => {
+  it('requests only the page origin when not yet held and resolves on grant', async () => {
     contains.mockResolvedValue(false);
     request.mockResolvedValue(true);
 
-    await expect(ensureHostAccess()).resolves.toBeUndefined();
+    await expect(ensureHostAccess('https://example.com/page')).resolves.toBeUndefined();
+
+    expect(request).toHaveBeenCalledWith({ origins: ['https://example.com/*'] });
+  });
+
+  it.each([
+    ['no url', undefined],
+    ['a non-http(s) scheme', 'chrome://settings'],
+    ['a malformed url', 'not a real url'],
+  ])('falls back to <all_urls> for %s', async (_label, url) => {
+    contains.mockResolvedValue(false);
+    request.mockResolvedValue(true);
+
+    await ensureHostAccess(url);
 
     expect(request).toHaveBeenCalledWith({ origins: ['<all_urls>'] });
   });
@@ -35,6 +48,8 @@ describe('ensureHostAccess (optional <all_urls> host permission)', () => {
     contains.mockResolvedValue(false);
     request.mockResolvedValue(false);
 
-    await expect(ensureHostAccess()).rejects.toThrow(HOST_PERMISSION_DENIED_MESSAGE);
+    await expect(ensureHostAccess('https://example.com/')).rejects.toThrow(
+      HOST_PERMISSION_DENIED_MESSAGE
+    );
   });
 });

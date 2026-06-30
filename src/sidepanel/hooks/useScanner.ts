@@ -209,7 +209,7 @@ export function useScanner() {
         // Acquire host access before injecting. A side-panel-opened action never
         // grants activeTab, so without this prompt executeScript fails (E009).
         // Runs within the Start Scan click's transient-activation window.
-        await ensureHostAccess();
+        await ensureHostAccess(tab.url);
 
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScript(tab.id);
@@ -294,7 +294,7 @@ export function useScanner() {
         // Acquire host access before injecting (see scan() above) — the
         // side-panel action grants no activeTab, so this prompt is what lets
         // executeScript run. Within the Start Scan click's activation window.
-        await ensureHostAccess();
+        await ensureHostAccess(tab.url);
 
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScript(tab.id);

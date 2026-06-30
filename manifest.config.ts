@@ -16,12 +16,15 @@ export default defineManifest({
   permissions: ['activeTab', 'storage', 'sidePanel', 'scripting'],
 
   // Optional (not granted at install, so NO "read and change all your data"
-  // install warning — secpriv-6's clean-prompt goal is preserved). Requested at
-  // runtime via chrome.permissions.request() on the first scan (see
-  // shared/permissions.ts). Required because a side panel opened from the action
-  // icon never receives the `activeTab` grant — Chrome grants activeTab only for
-  // action/context-menu/command/omnibox invocations, deliberately excluding
-  // side-panel-open — so executeScript has no host access without this.
+  // install warning — secpriv-6's clean-prompt goal is preserved). `<all_urls>`
+  // is the umbrella under which specific origins can be requested at runtime;
+  // ensureHostAccess() actually requests just the scanned page's origin (see
+  // shared/permissions.ts), so Chrome's first-scan prompt reads "…your data on
+  // example.com" rather than all-sites. Required because a side panel opened from
+  // the action icon never receives the `activeTab` grant — Chrome grants
+  // activeTab only for action/context-menu/command/omnibox invocations,
+  // deliberately excluding side-panel-open — so executeScript has no host access
+  // without this.
   optional_host_permissions: ['<all_urls>'],
 
   action: {
