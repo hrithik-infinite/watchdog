@@ -8,7 +8,9 @@ the **fixes**.
 
 **Legend:** ✅ done · 🚧 in progress · ⬜ pending  ·  Eff: S `<1d` / M `~days` / L `1–2wk` / XL `>2wk`
 
-**Status summary:** Phase 0, **Phase 1** (CWS launch gate), and **Phase 2 — Site-owner repositioning** have landed on `fix/scanner-accuracy` / **PR #3** — **1144 tests green**, tsc + eslint + build clean, CI + coverage-threshold gate active. The Phase-1/2 tail is now also done: `cws-2` listing copy (all six audits), `cws-1` store-asset capture spec (actual PNG capture is an owner task), `secpriv-6` (dropped `<all_urls>` for on-demand activeTab injection — **needs a Chrome smoke-test before merge**, see its commit), `testing-1` background tests, and the coverage threshold gate. **Remaining:** the actual store-screenshot capture (`cws-1`, owner) and **Phase 3 — Differentiators** (promote vision-sim/focus-order, WAVE overlay, contrast eyedropper, report screenshots) + remaining P1–P3 bug cleanup + the unused history/trends layer.
+**Status summary:** Phases 0–3 have landed on `fix/scanner-accuracy` / **PR #3** — **1250 tests green**, tsc + eslint + build clean, CI + coverage-threshold gate active. Done: Phase 0 (trust/core-loop), Phase 1 (CWS gate) + tail (`cws-1` spec/`cws-2` copy/`secpriv-6`/`testing-1`/coverage gate), Phase 2 (site-owner repositioning), Phase 3 verifiable differentiators (`feat-compet-10` WAVE overlay, `feat-compet-8` import-report, `ux-public-10` contrast deep-link), and the **full P1–P3 verifiable bug-cleanup batch** (11-cluster fan-out): correctness-11/15/16/18/19/20/21/22/23/24/30/31/32/34/35, err-3/9/10/12, perf-rel-2/4/7, fixes-fragile, testing-8 + report-content rewrite.
+
+**Needs the owner (browser/decision):** `secpriv-6` Chrome smoke-test before merge; `cws-1` screenshot capture; deferred canvas items `feat-compet-2` (eyedropper) + `feat-compet-9` (report screenshots); and decisions on `perf-rel-6` (virtualize — wants a dep), `correctness-29` (per-audit scoring model), `correctness-4` (target-scanned-tab rework), `correctness-5` (badge combined total), and the dead-code deletions (`deadcode-1/5/7/8/9`). **Skipped:** `perf-rel-1` (code-split scanners — now incompatible with the single-IIFE content build). **Large/deferred:** the unused history/trends UI wiring (`deadcode-2`), e2e/Playwright (`testing-4/10/11`), component tests (`testing-6`).
 
 ---
 
@@ -109,32 +111,32 @@ the **fixes**.
 | ✓ | ID | Fix | file:line | Sev | Eff |
 |---|----|-----|-----------|-----|-----|
 | ⬜ | correctness-4 | Highlight/rescan target the **scanned** tab, not the active tab | `messaging.ts:121`, `useHighlight.ts` | med | M |
-| ⬜ | correctness-24 | Focus-order: visibility/aria-hidden filter, NaN tabindex, MutationObserver | `focus-order.ts:15` | med | S |
+| ✅ | correctness-24 | Focus-order: visibility/aria-hidden filter, NaN tabindex, MutationObserver | `focus-order.ts:15` | med | S |
 | ⬜ | correctness-29 | Per-audit score normalization (fixed `MAX_WEIGHTED_ISSUES`) | `scoring.ts:16` | med | M |
-| ⬜ | perf-rel-2 | Throttle focus-order scroll listener (layout thrash) | `focus-order.ts:136` | med | S |
+| ✅ | perf-rel-2 | Throttle focus-order scroll listener (layout thrash) | `focus-order.ts:136` | med | S |
 | ⬜ | perf-rel-6 | Virtualize `IssueList` for large result sets | `IssueList.tsx:32` | med | S |
-| ⬜ | perf-rel-7 | Memoize store hot path / debounce search | `useIssues.ts:4`, `store/index.ts:123` | med | S |
-| ⬜ | perf-rel-4 | Drop the dead 500ms of the perf scanner's ~1s wait | `performance-scanner.ts` | low | S |
+| ✅ | perf-rel-7 | Memoize store hot path / debounce search | `useIssues.ts:4`, `store/index.ts:123` | med | S |
+| ✅ | perf-rel-4 | Drop the dead 500ms of the perf scanner's ~1s wait | `performance-scanner.ts` | low | S |
 | ⬜ | perf-rel-1 | Code-split the 5 non-axe scanners behind `import()` | `manifest.config.ts:36`, `scanner.ts:12` | low | S |
-| ⬜ | perf-rel-12 | Remove raw `console.log` shipped on every page load | `content/index.ts:89` | low | S |
+| ✅ | perf-rel-12 | Remove raw `console.log` shipped on every page load | `content/index.ts:89` | low | S |
 | ⬜ | correctness-5 | Badge shows combined total, not last audit's count | `content/index.ts:35`, `background/index.ts:71` | low | S |
-| ⬜ | correctness-22/23 | Vision/focus overlays: re-apply on SPA nav, restore original outline | `content/index.ts:83`, `focus-order.ts:126` | low | S |
+| ✅ | correctness-22/23 | Vision/focus overlays: re-apply on SPA nav, restore original outline | `content/index.ts:83`, `focus-order.ts:126` | low | S |
 | ⬜ | correctness-25 | Vision filters: `color-interpolation-filters="sRGB"` (correct color space) | `vision-filters.ts:66` | low | S |
-| ⬜ | correctness-11 | noopener heuristic stops flagging already-safe `target=_blank` | `security-scanner.ts:350` | low | S |
-| ⬜ | correctness-16 | Notification/geolocation checks ignore external bundles & comments | `best-practices-scanner.ts:289` | low | S |
-| ⬜ | correctness-15 | Empty-link counter double-counts `href="#"` + empty | `best-practices-scanner.ts:684` | low | S |
-| ⬜ | correctness-18 | PWA icon size by substring (`1192`/`1920` false-pass) | `pwa-scanner.ts:220` | low | S |
-| ⬜ | correctness-19 | SEO title/desc thresholds contradict their own copy | `seo-scanner.ts:52,58,103` | low | S |
-| ⬜ | correctness-20 | Replace deprecated `performance.timing`/`navigationStart` | `performance-scanner.ts:409` | low | S |
-| ⬜ | correctness-21 | Resource sizes miss cross-origin (`transferSize` 0 without TAO) | `performance-scanner.ts:493` | low | S |
-| ⬜ | correctness-7 | Atomic read-modify-write on `chrome.storage.local` | `shared/storage.ts:358`, `background/storage.ts:17` | low | S |
-| ⬜ | correctness-30 / err-12 | `instanceof Error` guards in background/content catch blocks | `background/index.ts:59`, `content/index.ts:13` | low | S |
-| ⬜ | correctness-34 | Don't send HIGHLIGHT for non-a11y scans (scrolls the page) | `App.tsx:107` | low | S |
-| ⬜ | correctness-31 | `clearBadge` also resets background color | `background/badge.ts:30` | low | S |
-| ⬜ | fixes-fragile | Accessibility fix code: stop naive string-replace producing invalid markup | `fixes.ts:6,329` | low | S |
-| ⬜ | err-9 | Global `unhandledrejection`/`onerror` handling | `ErrorBoundary.tsx:25` | low | S |
-| ⬜ | err-10 | Surface export failures (esp. PDF non-WinAnsi chars) to the user | `ExportButton.tsx:26`, `export.ts:28` | med | S |
-| ⬜ | err-3 | Distinct message for unscannable page types (Web Store / PDF / `file://`) | `useScanner.ts:107` | med | S |
+| ✅ | correctness-11 | noopener heuristic stops flagging already-safe `target=_blank` | `security-scanner.ts:350` | low | S |
+| ✅ | correctness-16 | Notification/geolocation checks ignore external bundles & comments | `best-practices-scanner.ts:289` | low | S |
+| ✅ | correctness-15 | Empty-link counter double-counts `href="#"` + empty | `best-practices-scanner.ts:684` | low | S |
+| ✅ | correctness-18 | PWA icon size by substring (`1192`/`1920` false-pass) | `pwa-scanner.ts:220` | low | S |
+| ✅ | correctness-19 | SEO title/desc thresholds contradict their own copy | `seo-scanner.ts:52,58,103` | low | S |
+| ✅ | correctness-20 | Replace deprecated `performance.timing`/`navigationStart` | `performance-scanner.ts:409` | low | S |
+| ✅ | correctness-21 | Resource sizes miss cross-origin (`transferSize` 0 without TAO) | `performance-scanner.ts:493` | low | S |
+| ✅ | correctness-7 | Atomic read-modify-write on `chrome.storage.local` | `shared/storage.ts:358`, `background/storage.ts:17` | low | S |
+| ✅ | correctness-30 / err-12 | `instanceof Error` guards in background/content catch blocks | `background/index.ts:59`, `content/index.ts:13` | low | S |
+| ✅ | correctness-34 | Don't send HIGHLIGHT for non-a11y scans (scrolls the page) | `App.tsx:107` | low | S |
+| ✅ | correctness-31 | `clearBadge` also resets background color | `background/badge.ts:30` | low | S |
+| ✅ | fixes-fragile | Accessibility fix code: stop naive string-replace producing invalid markup | `fixes.ts:6,329` | low | S |
+| ✅ | err-9 | Global `unhandledrejection`/`onerror` handling | `ErrorBoundary.tsx:25` | low | S |
+| ✅ | err-10 | Surface export failures (esp. PDF non-WinAnsi chars) to the user | `ExportButton.tsx:26`, `export.ts:28` | med | S |
+| ✅ | err-3 | Distinct message for unscannable page types (Web Store / PDF / `file://`) | `useScanner.ts:107` | med | S |
 | ⬜ | err-5/6/7/8/11/13 | Misc silent-failure paths (highlight, vision toggles, settings/ignore writes, error-code matching, fire-and-forget SCAN_RESULT) | various | low | S |
 
 ### Testing & CI (beyond Phase 0)
@@ -144,7 +146,7 @@ the **fixes**.
 | ⬜ | testing-6 | Component tests for interactive surfaces + App routing (repo has **zero**) | med | M |
 | ⬜ | testing-4 / testing-11 | Playwright e2e against `test-site/` + the unused violation fixtures | med | M |
 | ⬜ | testing-10 | Move layout/SVG-correctness assertions out of happy-dom into e2e | med | M |
-| ⬜ | testing-8/9/13 | ErrorBoundary, content-script injection edges, storage quota/concurrency | low | S–M |
+| ✅ | testing-8/9/13 | ErrorBoundary, content-script injection edges, storage quota/concurrency | low | S–M |
 
 ---
 
