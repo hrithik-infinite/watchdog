@@ -365,112 +365,119 @@ export default function App() {
         scanResult={scanResult}
       />
 
-      {/* Rescan row with a "last audited" meta line — the iterate loop. Shown
-          only when there are results to re-run; the no-issues and full-error
-          states carry their own single retry, so no duplicate CTA. */}
+      {/* Toolbar: a "last audited" meta line plus the page-level actions (copy +
+          rescan). Pinned above the scroll area. Shown only when there are results
+          to re-run; the no-issues and full-error states carry their own single
+          retry, so no duplicate CTA. */}
       {scanResult && scanResult.issues.length > 0 && (
         <div className="flex items-center justify-between gap-2 px-4 py-2">
           <span className="text-xs text-muted-foreground truncate">
             Audited {relativeTime(scanResult.timestamp)}
           </span>
-          <Button variant="outline" size="sm" onClick={handleRescan} className="gap-1.5 shrink-0">
-            <RotateCw className="h-4 w-4" />
-            Rescan
-          </Button>
-        </div>
-      )}
-
-      {/* Full-screen error only when there are no results to show */}
-      {error && !scanResult && <EmptyState type="error" error={error} onScan={handleRescan} />}
-
-      {/* Partial-failure banner: some audits failed but others returned results */}
-      {error && scanResult && (
-        <div
-          role="alert"
-          className="mx-4 my-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
-        >
-          {error}
-        </div>
-      )}
-
-      {/* Results */}
-      {scanResult && (
-        <>
-          {scanResult.issues.length === 0 ? (
-            <EmptyState
-              type="no-issues"
-              onScan={handleRescan}
-              auditLabel={
-                selectedAuditTypes.length === 1 ? AUDIT_LABELS[selectedAuditTypes[0]] : undefined
-              }
+          <div className="flex items-center gap-2 shrink-0">
+            <CopyDropdown
+              issues={filteredIssues}
+              scanResult={scanResult}
+              auditType={selectedAuditType}
             />
-          ) : (
-            <>
-              {/* Results toolbar — a single contained card: neutral score gauge +
-                  verdict + severity filter chips, the copy control, and the
-                  WAVE-style page-overlay switch. */}
-              <Card className="mx-4 my-2 p-3 gap-3">
-                <div className="flex items-start justify-between gap-2">
+            <Button variant="outline" size="sm" onClick={handleRescan} className="gap-1.5">
+              <RotateCw className="h-4 w-4" />
+              Rescan
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* One scroll region for the whole report — summary, top fixes, filters and
+          the issue list scroll together as a single page instead of nesting a
+          tiny scrollbar inside the list. `flex flex-col` lets the full-height
+          empty/error states still center via flex-1. */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        {/* Full-screen error only when there are no results to show */}
+        {error && !scanResult && <EmptyState type="error" error={error} onScan={handleRescan} />}
+
+        {/* Partial-failure banner: some audits failed but others returned results */}
+        {error && scanResult && (
+          <div
+            role="alert"
+            className="mx-4 my-2 rounded-xl border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
+          >
+            {error}
+          </div>
+        )}
+
+        {/* Results */}
+        {scanResult && (
+          <>
+            {scanResult.issues.length === 0 ? (
+              <EmptyState
+                type="no-issues"
+                onScan={handleRescan}
+                auditLabel={
+                  selectedAuditTypes.length === 1 ? AUDIT_LABELS[selectedAuditTypes[0]] : undefined
+                }
+              />
+            ) : (
+              <>
+                {/* Score card: full-width gauge + verdict + severity filter chips
+                    and the page-overlay switch. The copy/rescan actions live in
+                    the pinned toolbar above, so the chips get the full width. */}
+                <Card className="mx-4 my-2 p-3 gap-3">
                   <Summary
                     summary={scanResult.summary}
                     onFilterBySeverity={(severity) => setFilter('severity', severity)}
                     activeSeverity={filters.severity}
                     auditType={selectedAuditTypes.length === 1 ? selectedAuditTypes[0] : undefined}
                   />
-                  <CopyDropdown
-                    issues={filteredIssues}
-                    scanResult={scanResult}
-                    auditType={selectedAuditType}
-                  />
-                </div>
 
-                {/* Only for accessibility scans, where issue selectors map to
-                    real on-page elements. */}
-                {selectedAuditTypes.includes('accessibility') && filteredIssues.length > 0 && (
-                  <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-                    <span className="flex items-center gap-2 text-sm text-foreground">
-                      <Highlighter className="h-4 w-4 text-muted-foreground" />
-                      Show all issues on the page
-                    </span>
-                    <Switch
-                      checked={showAllOnPage}
-                      onCheckedChange={toggleShowAllOnPage}
-                      aria-label="Show all issues on the page"
-                    />
-                  </div>
-                )}
-              </Card>
+                  {/* Only for accessibility scans, where issue selectors map to
+                      real on-page elements. */}
+                  {selectedAuditTypes.includes('accessibility') && filteredIssues.length > 0 && (
+                    <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+                      <span className="flex items-center gap-2 text-sm text-foreground">
+                        <Highlighter className="h-4 w-4 text-muted-foreground" />
+                        Show all issues on the page
+                      </span>
+                      <Switch
+                        checked={showAllOnPage}
+                        onCheckedChange={toggleShowAllOnPage}
+                        aria-label="Show all issues on the page"
+                      />
+                    </div>
+                  )}
+                </Card>
 
-              {/* Plain-language ranked starting point above the raw list. */}
-              <TopFixesCard issues={filteredIssues} onSelectIssue={handleSelectIssue} />
+                {/* Plain-language ranked starting point above the raw list. */}
+                <TopFixesCard issues={filteredIssues} onSelectIssue={handleSelectIssue} />
 
-              <FilterBar
-                severityFilter={filters.severity}
-                categoryFilter={filters.category}
-                searchQuery={filters.searchQuery}
-                hideIgnored={hideIgnored}
-                ignoredCount={ignoredCount}
-                onSeverityChange={(severity) => setFilter('severity', severity)}
-                onCategoryChange={(category) => setFilter('category', category)}
-                onSearchChange={(query) => setFilter('searchQuery', query)}
-                onHideIgnoredChange={setHideIgnored}
-              />
+                <FilterBar
+                  severityFilter={filters.severity}
+                  categoryFilter={filters.category}
+                  searchQuery={filters.searchQuery}
+                  hideIgnored={hideIgnored}
+                  ignoredCount={ignoredCount}
+                  onSeverityChange={(severity) => setFilter('severity', severity)}
+                  onCategoryChange={(category) => setFilter('category', category)}
+                  onSearchChange={(query) => setFilter('searchQuery', query)}
+                  onHideIgnoredChange={setHideIgnored}
+                />
 
-              <IssueList
-                issues={filteredIssues}
-                selectedIssueId={null}
-                onSelectIssue={handleSelectIssue}
-                onHighlightIssue={handleHighlightIssue}
-                canHighlight={selectedAuditTypes.includes('accessibility')}
-                autoHighlight={settings.autoHighlight}
-              />
-            </>
-          )}
+                <IssueList
+                  issues={filteredIssues}
+                  selectedIssueId={null}
+                  onSelectIssue={handleSelectIssue}
+                  onHighlightIssue={handleHighlightIssue}
+                  canHighlight={selectedAuditTypes.includes('accessibility')}
+                  autoHighlight={settings.autoHighlight}
+                />
+              </>
+            )}
 
-          {/* Axe "needs manual review" items, gated on the Show Incomplete setting */}
-          {settings.showIncomplete && <IncompleteSection issues={scanResult.incomplete} />}
-        </>
-      )}
+            {/* Axe "needs manual review" items, gated on the Show Incomplete setting */}
+            {settings.showIncomplete && <IncompleteSection issues={scanResult.incomplete} />}
+          </>
+        )}
+      </div>
     </div>
   );
 }

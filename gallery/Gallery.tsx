@@ -48,53 +48,59 @@ function ResultsScreen() {
       />
       <div className="flex items-center justify-between gap-2 px-4 py-2">
         <span className="text-xs text-muted-foreground truncate">Audited just now</span>
-        <Button variant="outline" size="sm" onClick={noop} className="gap-1.5 shrink-0">
-          <RotateCw className="h-4 w-4" />
-          Rescan
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <CopyDropdown
+            issues={MOCK_ISSUES}
+            scanResult={MOCK_SCAN_RESULT}
+            auditType="accessibility"
+          />
+          <Button variant="outline" size="sm" onClick={noop} className="gap-1.5">
+            <RotateCw className="h-4 w-4" />
+            Rescan
+          </Button>
+        </div>
       </div>
-      <Card className="mx-4 my-2 p-3 gap-3">
-        <div className="flex items-start justify-between gap-2">
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col">
+        <Card className="mx-4 my-2 p-3 gap-3">
           <Summary
             summary={MOCK_SCAN_RESULT.summary}
             onFilterBySeverity={noop}
             activeSeverity="all"
             auditType="accessibility"
           />
-          <CopyDropdown
-            issues={MOCK_ISSUES}
-            scanResult={MOCK_SCAN_RESULT}
-            auditType="accessibility"
-          />
-        </div>
-        <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
-          <span className="flex items-center gap-2 text-sm text-foreground">
-            <Highlighter className="h-4 w-4 text-muted-foreground" />
-            Show all issues on the page
-          </span>
-          <Switch checked={false} onCheckedChange={noop} aria-label="Show all issues on the page" />
-        </div>
-      </Card>
-      <TopFixesCard issues={MOCK_ISSUES} onSelectIssue={noop} />
-      <FilterBar
-        severityFilter="all"
-        categoryFilter="all"
-        searchQuery=""
-        hideIgnored
-        ignoredCount={0}
-        onSeverityChange={noop}
-        onCategoryChange={noop}
-        onSearchChange={noop}
-        onHideIgnoredChange={noop}
-      />
-      <IssueList
-        issues={MOCK_ISSUES}
-        selectedIssueId={null}
-        onSelectIssue={noop}
-        onHighlightIssue={noop}
-        canHighlight
-        autoHighlight={false}
-      />
+          <div className="flex items-center justify-between gap-2 border-t border-border pt-3">
+            <span className="flex items-center gap-2 text-sm text-foreground">
+              <Highlighter className="h-4 w-4 text-muted-foreground" />
+              Show all issues on the page
+            </span>
+            <Switch
+              checked={false}
+              onCheckedChange={noop}
+              aria-label="Show all issues on the page"
+            />
+          </div>
+        </Card>
+        <TopFixesCard issues={MOCK_ISSUES} onSelectIssue={noop} />
+        <FilterBar
+          severityFilter="all"
+          categoryFilter="all"
+          searchQuery=""
+          hideIgnored
+          ignoredCount={0}
+          onSeverityChange={noop}
+          onCategoryChange={noop}
+          onSearchChange={noop}
+          onHideIgnoredChange={noop}
+        />
+        <IssueList
+          issues={MOCK_ISSUES}
+          selectedIssueId={null}
+          onSelectIssue={noop}
+          onHighlightIssue={noop}
+          canHighlight
+          autoHighlight={false}
+        />
+      </div>
     </div>
   );
 }
