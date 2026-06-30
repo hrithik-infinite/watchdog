@@ -1,0 +1,32 @@
+<!--
+  Deterministic accessibility-violation fixture for the content-script E2E.
+  Each element below trips a specific axe rule that lives in MVP_RULES
+  (src/shared/constants.ts), so the real scanner must report them. Keep the
+  violations structural (no reliance on layout/contrast — happy-dom and headless
+  geometry differ); these are decidable from the DOM alone.
+-->
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WatchDog E2E Fixture — Broken A11y</title>
+  </head>
+  <body>
+    <main>
+      <h1>Broken accessibility fixture</h1>
+
+      <!-- image-alt: image with no alt text -->
+      <img src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA=" />
+
+      <!-- button-name: button with no accessible name -->
+      <button type="button"></button>
+
+      <!-- link-name: anchor with href but no discernible text -->
+      <a href="/somewhere"></a>
+
+      <!-- label: form control with no associated label -->
+      <input type="text" />
+    </main>
+  </body>
+</html>

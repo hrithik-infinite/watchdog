@@ -8,6 +8,11 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
+    // Only the Vitest unit suite. The Playwright E2E specs live in e2e/*.spec.ts
+    // and import @playwright/test — Vitest's default glob would otherwise try to
+    // run them and crash. Keeping this to `*.test.*` under src cleanly separates
+    // the two runners.
+    include: ['src/**/*.test.{ts,tsx}'],
     // The app logger (src/shared/logger.ts) is gated on import.meta.env.DEV,
     // which Vitest sets to true — so every scanner/hook/background test spews
     // intentional `[WatchDog] …` dev logs that drown the real signal (React
