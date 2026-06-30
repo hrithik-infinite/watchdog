@@ -1662,7 +1662,7 @@ describe('Performance Scanner', () => {
 
   describe('getElementHtml edge cases', () => {
     it('should truncate very long HTML', async () => {
-      const longHTML = '<div class="' + 'x'.repeat(300) + '">Content</div>';
+      const longHTML = `<div class="${'x'.repeat(300)}">Content</div>`;
       const mockQuerySelector = vi.fn().mockReturnValue({
         outerHTML: longHTML,
       });
@@ -2401,7 +2401,7 @@ describe('Performance Scanner', () => {
 
   describe('Helper Functions Coverage', () => {
     it('should truncate long HTML in getElementHtml', async () => {
-      const longHtml = '<div class="' + 'x'.repeat(300) + '">Content</div>';
+      const longHtml = `<div class="${'x'.repeat(300)}">Content</div>`;
       mockQuerySelector.mockReturnValue({ outerHTML: longHtml });
 
       const mockElement = { id: 'long-el', tagName: 'DIV', className: '', parentElement: null };

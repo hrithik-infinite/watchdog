@@ -90,6 +90,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
           <p className="text-sm text-muted-foreground mb-3">
             Choose how WatchDog presents results.
           </p>
+          {/* biome-ignore lint/a11y/useSemanticElements: intentional ARIA group of toggle buttons (aria-pressed) */}
           <div className="flex gap-2 mt-3" role="group" aria-label="Experience mode">
             {personaOptions.map((option) => (
               <Button

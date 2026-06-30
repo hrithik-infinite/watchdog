@@ -214,6 +214,7 @@ export default function IgnoreIssueModal({
 
           <div role="radiogroup" aria-labelledby={reasonLabelId} className="space-y-2">
             {REASON_OPTIONS.map((reason, index) => (
+              // biome-ignore lint/a11y/useSemanticElements: custom radio — a styled button with roving tabindex + aria-checked that a native input can't replicate
               <button
                 key={reason}
                 type="button"

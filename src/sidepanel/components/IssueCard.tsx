@@ -50,7 +50,7 @@ export default function IssueCard({
   const truncateHtml = (html: string, maxLength: number = 80) => {
     const stripped = html.replace(/<[^>]*>/g, '').trim();
     if (stripped.length <= maxLength) return html;
-    return html.slice(0, maxLength) + '...';
+    return `${html.slice(0, maxLength)}...`;
   };
 
   // The raw HTML preview. Rendered inside the activatable region for developers
@@ -86,6 +86,7 @@ export default function IssueCard({
           this element (not a descendant) so the role="button" never contains a
           nested interactive control (avoids axe nested-interactive).
         */}
+        {/* biome-ignore lint/a11y/useSemanticElements: intentional role=button div (see note above) — a real <button> would nest the sibling "Learn more" link as an interactive descendant */}
         <div
           className="cursor-pointer"
           role="button"

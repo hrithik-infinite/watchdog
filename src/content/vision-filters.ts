@@ -127,7 +127,7 @@ export function getCurrentVisionFilter(): VisionMode {
   }
 
   if (filter.startsWith('blur(')) {
-    const blurValue = parseInt(filter.match(/blur\((\d+)px\)/)?.[1] || '0');
+    const blurValue = parseInt(filter.match(/blur\((\d+)px\)/)?.[1] || '0', 10);
     if (blurValue === BLUR_LEVELS['blur-low']) return 'blur-low';
     if (blurValue === BLUR_LEVELS['blur-medium']) return 'blur-medium';
     if (blurValue === BLUR_LEVELS['blur-high']) return 'blur-high';

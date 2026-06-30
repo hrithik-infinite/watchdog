@@ -198,6 +198,7 @@ export default function AuditSelector({
           <h2 className="text-h2 text-foreground">Choose Audit Types</h2>
           <div className="flex items-center gap-1.5">
             <button
+              type="button"
               onClick={selectAll}
               disabled={isScanning || selectedAudits.size === auditTypes.length}
               className="text-xs text-primary hover:text-primary/80 disabled:text-muted-foreground disabled:cursor-not-allowed transition-colors"
@@ -206,6 +207,7 @@ export default function AuditSelector({
             </button>
             <span className="text-muted-foreground/40">|</span>
             <button
+              type="button"
               onClick={clearAll}
               disabled={isScanning || selectedAudits.size === 0}
               className="text-xs text-muted-foreground hover:text-foreground disabled:text-muted-foreground/50 disabled:cursor-not-allowed transition-colors"
@@ -221,6 +223,7 @@ export default function AuditSelector({
 
       {/* Audit Grid - Scrollable */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
+        {/* biome-ignore lint/a11y/useSemanticElements: intentional ARIA group wrapping the custom checkbox widgets below */}
         <div className="grid grid-cols-2 gap-2.5" role="group" aria-label="Audit types">
           {auditTypes.map((audit, index) => {
             const Icon = audit.icon;
@@ -235,7 +238,9 @@ export default function AuditSelector({
 
             return (
               <div key={audit.id} className="relative">
+                {/* biome-ignore lint/a11y/useSemanticElements: custom checkbox — a styled button holding icon + label content with roving focus and aria-checked */}
                 <button
+                  type="button"
                   onClick={() => toggleAudit(audit.id)}
                   onMouseEnter={() => setHoveredAudit(audit.id)}
                   onMouseLeave={() => setHoveredAudit(null)}

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { ensureContentScript } from '@/shared/inject';
 import logger from '@/shared/logger';
-import { getCurrentTab } from '@/shared/messaging';
+import { getCurrentTab, type ScanResponse } from '@/shared/messaging';
 import type { Category, Issue, ScanResult, ScanSummary, Severity } from '@/shared/types';
 import { type AuditType, useScanStore } from '../store';
 
@@ -136,7 +136,7 @@ export function useScanner() {
         `${auditType} scan timeout after ${SCAN_TIMEOUT_MS / 1000}s`
       );
 
-      let response;
+      let response: ScanResponse | undefined;
       try {
         // Race the page response against the timeout and a user cancellation, so
         // a hung scan can never leave the panel stuck on the progress screen.

@@ -828,7 +828,7 @@ export async function exportPDF(
       // Selector (truncate if too long)
       const selector =
         issue.element.selector.length > 80
-          ? issue.element.selector.slice(0, 77) + '...'
+          ? `${issue.element.selector.slice(0, 77)}...`
           : issue.element.selector;
       page.drawText(toPdfSafeText(`Location (CSS selector): ${selector}`), {
         x: margin,

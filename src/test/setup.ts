@@ -20,9 +20,7 @@ global.chrome = {
   tabs: {
     query: vi.fn(() => Promise.resolve([])),
     sendMessage: vi.fn(() => Promise.resolve()),
-    captureVisibleTab: vi.fn(
-      (_opts, callback) => callback && callback('data:image/png;base64,mock')
-    ),
+    captureVisibleTab: vi.fn((_opts, callback) => callback?.('data:image/png;base64,mock')),
   },
   storage: {
     local: {

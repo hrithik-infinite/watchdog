@@ -106,9 +106,14 @@ export default function FilterBar({
       {/* Filters */}
       <div className="flex gap-3 items-end">
         <div className="flex-1">
-          <label className="block text-caption text-muted-foreground mb-1">Severity</label>
+          <label
+            htmlFor="severity-filter"
+            className="block text-caption text-muted-foreground mb-1"
+          >
+            Severity
+          </label>
           <Select value={severityFilter} onValueChange={onSeverityChange}>
-            <SelectTrigger>
+            <SelectTrigger id="severity-filter">
               <SelectValue placeholder="All Severities" />
             </SelectTrigger>
             <SelectContent>
@@ -134,9 +139,14 @@ export default function FilterBar({
             by (0 or 1 category present in the results). */}
         {showCategoryFilter && (
           <div className="flex-1">
-            <label className="block text-caption text-muted-foreground mb-1">Category</label>
+            <label
+              htmlFor="category-filter"
+              className="block text-caption text-muted-foreground mb-1"
+            >
+              Category
+            </label>
             <Select value={categoryFilter} onValueChange={onCategoryChange}>
-              <SelectTrigger>
+              <SelectTrigger id="category-filter">
                 <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
@@ -170,6 +180,7 @@ export default function FilterBar({
       {ignoredCount > 0 && (
         <div className="flex items-center justify-between py-1">
           <button
+            type="button"
             onClick={() => onHideIgnoredChange(!hideIgnored)}
             aria-pressed={hideIgnored}
             className={cn(

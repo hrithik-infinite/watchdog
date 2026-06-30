@@ -16,23 +16,31 @@
     "rules": {
       "recommended": true,
       "a11y": {
-        "useButtonType": "warn",
-        "noSvgWithoutTitle": "warn",
-        "useSemanticElements": "warn",
-        "noLabelWithoutControl": "warn"
+        "useButtonType": "error",
+        "noSvgWithoutTitle": "error",
+        "useSemanticElements": "error",
+        "noLabelWithoutControl": "error"
       },
       "complexity": {
-        "noImportantStyles": "off"
+        "noImportantStyles": "off",
+        "noUselessFragments": "error",
+        "useOptionalChain": "error"
       },
       "correctness": {
+        "noUnusedImports": "error",
         "useExhaustiveDependencies": "warn",
-        "useHookAtTopLevel": "error"
+        "useHookAtTopLevel": "error",
+        "useParseIntRadix": "error"
       },
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "useImportType": "error",
+        "useNodejsImportProtocol": "error",
+        "useSelfClosingElements": "error",
+        "useTemplate": "error"
       },
       "suspicious": {
-        "noImplicitAnyLet": "warn"
+        "noImplicitAnyLet": "error"
       }
     }
   },

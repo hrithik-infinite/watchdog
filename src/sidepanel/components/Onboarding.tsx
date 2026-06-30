@@ -97,6 +97,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
               const Icon = option.icon;
               const isSelected = selected === option.value;
               return (
+                // biome-ignore lint/a11y/useSemanticElements: custom radio — a styled button with roving tabindex + aria-checked that a native input can't replicate
                 <button
                   key={option.value}
                   type="button"

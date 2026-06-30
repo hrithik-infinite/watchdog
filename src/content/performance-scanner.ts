@@ -688,7 +688,7 @@ function getElementHtml(selector: string): string {
       const html = element.outerHTML;
       // Truncate if too long
       if (html.length > 200) {
-        return html.substring(0, 200) + '...>';
+        return `${html.substring(0, 200)}...>`;
       }
       return html;
     }
