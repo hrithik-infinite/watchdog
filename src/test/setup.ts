@@ -1,6 +1,9 @@
 import { cleanup } from '@testing-library/react';
 import { afterEach, vi } from 'vitest';
 import '@testing-library/jest-dom/vitest';
+// Registers the axe-core-backed `toHaveNoViolations` matcher globally so any
+// component test can assert `expect(await axe(container)).toHaveNoViolations()`.
+import './a11y';
 
 // Cleanup after each test
 afterEach(() => {
