@@ -1411,4 +1411,201 @@ describe('Storage - Chrome storage API wrapper', () => {
       expect(chrome.storage.local.remove).toHaveBeenCalledWith('watchdog_ignored_issues');
     });
   });
+
+  // ============================================
+  // REGRESSION: correctness-7 — concurrent writes
+  // ============================================
+
+  describe('ignoreIssue concurrency (correctness-7)', () => {
+    it('serializes concurrent ignoreIssue writes so neither update is lost', async () => {
+      // Buggy behavior: read-modify-write on chrome.storage.local was non-atomic.
+      // Two concurrent ignoreIssue calls both read the same empty baseline, so the
+      // second set() clobbered the first and one ignored issue was silently lost
+      // (store ended with length 1 instead of 2).
+      let store: IgnoredIssue[] = [];
+      (chrome.storage.local.get as any) = vi.fn().mockImplementation(
+        async () => ({ watchdog_ignored_issues: store })
+      );
+      (chrome.storage.local.set as any) = vi.fn().mockImplementation(async (obj: any) => {
+        store = obj.watchdog_ignored_issues;
+      });
+
+      await Promise.all([
+        ignoreIssue('https://example.com', '.a', 'rule-a', 'A', 'third-party'),
+        ignoreIssue('https://example.com', '.b', 'rule-b', 'B', 'third-party'),
+      ]);
+
+      expect(store.length).toBe(2);
+      expect(store.map((i) => i.ruleId).sort()).toEqual(['rule-a', 'rule-b']);
+    });
+
+    it('does not lose a concurrent ignore when interleaved with unignore', async () => {
+      // Same root cause: interleaved ignore + unignore on different hashes must
+      // both land; previously the later write overwrote the earlier one.
+      let store: IgnoredIssue[] = [
+        {
+          hash: '.old::rule-old',
+          selector: '.old',
+          ruleId: 'rule-old',
+          message: 'old',
+          reason: 'third-party',
+          ignoredAt: Date.now(),
+          domain: 'example.com',
+        },
+      ];
+      (chrome.storage.local.get as any) = vi.fn().mockImplementation(
+        async () => ({ watchdog_ignored_issues: store })
+      );
+      (chrome.storage.local.set as any) = vi.fn().mockImplementation(async (obj: any) => {
+        store = obj.watchdog_ignored_issues;
+      });
+
+      await Promise.all([
+        ignoreIssue('https://example.com', '.new', 'rule-new', 'new', 'third-party'),
+        unignoreIssue('https://example.com', '.old', 'rule-old'),
+      ]);
+
+      expect(store.map((i) => i.ruleId)).toEqual(['rule-new']);
+    });
+  });
+
+  // ============================================
+  // REGRESSION: correctness-32 — duplicate hash dedup
+  // ============================================
+
+  describe('compareScanResults duplicate hashes (correctness-32)', () => {
+    const dupIssue = () =>
+      createMockIssue({ ruleId: 'rule-dup', element: { selector: '.dup', html: '<div></div>' } });
+
+    const makeEntry = (issues: Issue[]): ScanHistoryEntry => ({
+      id: 'prev',
+      url: 'https://example.com',
+      domain: 'example.com',
+      auditTypes: ['accessibility'],
+      timestamp: Date.now() - 1000,
+      duration: 1000,
+      summary: {
+        total: issues.length,
+        bySeverity: { critical: issues.length, serious: 0, moderate: 0, minor: 0 },
+        byCategory: {
+          images: issues.length,
+          interactive: 0,
+          forms: 0,
+          color: 0,
+          document: 0,
+          structure: 0,
+          aria: 0,
+          technical: 0,
+        },
+      },
+      issueCount: issues.length,
+      issues,
+    });
+
+    it('counts removed duplicates instead of collapsing them to one', () => {
+      // Buggy behavior: getIssueHash produced identical `selector::ruleId` keys for
+      // duplicate issues, so a Set collapsed them. Going from 3 identical issues to
+      // 1 reported 0 fixed and 1 unchanged instead of 2 fixed / 1 unchanged.
+      const previous = makeEntry([dupIssue(), dupIssue(), dupIssue()]);
+      const current = createMockScanResult({ issues: [dupIssue()] });
+
+      const comparison = compareScanResults(current, previous);
+
+      expect(comparison.fixedIssues.length).toBe(2);
+      expect(comparison.newIssues.length).toBe(0);
+      expect(comparison.unchangedCount).toBe(1);
+    });
+
+    it('counts added duplicates instead of collapsing them to one', () => {
+      const previous = makeEntry([dupIssue()]);
+      const current = createMockScanResult({ issues: [dupIssue(), dupIssue(), dupIssue()] });
+
+      const comparison = compareScanResults(current, previous);
+
+      expect(comparison.newIssues.length).toBe(2);
+      expect(comparison.fixedIssues.length).toBe(0);
+      expect(comparison.unchangedCount).toBe(1);
+    });
+  });
+
+  // ============================================
+  // REGRESSION: correctness-35 — history guard / cap
+  // ============================================
+
+  describe('saveScanToHistory guard and cap (correctness-35)', () => {
+    const otherDomainEntry = (i: number): ScanHistoryEntry => ({
+      id: `other-${i}`,
+      url: `https://site${i}.com`,
+      domain: `site${i}.com`,
+      auditTypes: ['accessibility'],
+      timestamp: 1000 + i, // older than a fresh Date.now() entry
+      duration: 1000,
+      summary: {
+        total: 0,
+        bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+        byCategory: {
+          images: 0,
+          interactive: 0,
+          forms: 0,
+          color: 0,
+          document: 0,
+          structure: 0,
+          aria: 0,
+          technical: 0,
+        },
+      },
+      issueCount: 0,
+      issues: [],
+    });
+
+    it('caps total stored history so other-domain entries cannot grow unbounded', async () => {
+      // Buggy behavior: otherHistory (entries from other domains) was kept in full,
+      // so history grew without limit across many scanned sites and could blow the
+      // storage quota. The save is now capped at MAX_TOTAL_HISTORY (100).
+      const existing = Array.from({ length: 150 }, (_, i) => otherDomainEntry(i));
+      (chrome.storage.local.get as any) = vi.fn().mockResolvedValue({
+        watchdog_scan_history: existing,
+      });
+      (chrome.storage.local.set as any) = vi.fn().mockResolvedValue(undefined);
+
+      const entry = await saveScanToHistory(createMockScanResult());
+
+      const setArg = (chrome.storage.local.set as any).mock.calls[0][0];
+      expect(setArg.watchdog_scan_history.length).toBe(100);
+      // The freshly created entry must survive pruning.
+      expect(setArg.watchdog_scan_history.some((e: ScanHistoryEntry) => e.id === entry.id)).toBe(
+        true
+      );
+    });
+
+    it('catches a failing set() and retries with only this domain after pruning others', async () => {
+      // Buggy behavior: set() was unguarded — a QuotaExceeded rejection propagated
+      // and crashed the scan-save flow. It is now caught and retried with only the
+      // current domain's recent entries (other domains dropped to free quota).
+      (chrome.storage.local.get as any) = vi.fn().mockResolvedValue({
+        watchdog_scan_history: [otherDomainEntry(0)],
+      });
+      const setMock = vi
+        .fn()
+        .mockRejectedValueOnce(new Error('QUOTA_BYTES quota exceeded'))
+        .mockResolvedValueOnce(undefined);
+      (chrome.storage.local.set as any) = setMock;
+
+      await expect(saveScanToHistory(createMockScanResult())).resolves.toBeDefined();
+
+      expect(setMock).toHaveBeenCalledTimes(2);
+      const retryArg = setMock.mock.calls[1][0].watchdog_scan_history;
+      expect(retryArg.some((e: ScanHistoryEntry) => e.domain === 'site0.com')).toBe(false);
+      expect(retryArg.some((e: ScanHistoryEntry) => e.domain === 'example.com')).toBe(true);
+    });
+
+    it('does not throw when both the write and the retry fail', async () => {
+      (chrome.storage.local.get as any) = vi.fn().mockResolvedValue({});
+      (chrome.storage.local.set as any) = vi
+        .fn()
+        .mockRejectedValue(new Error('QUOTA_BYTES quota exceeded'));
+
+      await expect(saveScanToHistory(createMockScanResult())).resolves.toBeDefined();
+    });
+  });
 });

@@ -10,6 +10,10 @@ import logger from './logger';
 // Storage keys
 const SCAN_HISTORY_KEY = 'watchdog_scan_history';
 const MAX_HISTORY_PER_DOMAIN = 10;
+// Global cap across all domains. Without this, otherHistory (entries from other
+// domains) grows unbounded as the user scans many sites and can blow the
+// chrome.storage.local quota.
+const MAX_TOTAL_HISTORY = 100;
 
 /**
  * Scan history entry stored in Chrome storage
@@ -79,11 +83,38 @@ export async function saveScanToHistory(
     .slice(0, MAX_HISTORY_PER_DOMAIN - 1);
 
   // Add new entry
-  const updatedHistory = [...otherHistory, ...trimmedDomainHistory, entry];
+  let updatedHistory = [...otherHistory, ...trimmedDomainHistory, entry];
 
-  // Save to storage
-  await chrome.storage.local.set({ [SCAN_HISTORY_KEY]: updatedHistory });
-  logger.debug('Scan history saved', { entryId: entry.id, totalEntries: updatedHistory.length });
+  // Size guard: cap total stored history across all domains so it can't grow
+  // unbounded and blow the storage quota. Keep the most recent entries globally,
+  // but always preserve the entry we just created even if its timestamp is old.
+  if (updatedHistory.length > MAX_TOTAL_HISTORY) {
+    const capped = [...updatedHistory]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, MAX_TOTAL_HISTORY);
+    if (!capped.some((e) => e.id === entry.id)) {
+      capped[capped.length - 1] = entry;
+    }
+    updatedHistory = capped;
+  }
+
+  // Save to storage. set() was previously unguarded — a QuotaExceeded rejection
+  // would propagate and crash the scan-save flow. Catch it and retry with only
+  // this domain's recent entries, dropping other domains to free quota.
+  try {
+    await chrome.storage.local.set({ [SCAN_HISTORY_KEY]: updatedHistory });
+    logger.debug('Scan history saved', { entryId: entry.id, totalEntries: updatedHistory.length });
+  } catch (error) {
+    logger.warn('Failed to save scan history, pruning other domains and retrying', { error });
+    const fallback = [...trimmedDomainHistory, entry]
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, MAX_HISTORY_PER_DOMAIN);
+    try {
+      await chrome.storage.local.set({ [SCAN_HISTORY_KEY]: fallback });
+    } catch (retryError) {
+      logger.error('Failed to save scan history after pruning', { error: retryError });
+    }
+  }
 
   return entry;
 }
@@ -175,6 +206,24 @@ function getIssueHash(issue: Issue): string {
 }
 
 /**
+ * Build per-issue comparison keys that are unique even when several issues share
+ * the same `selector::ruleId` hash. A plain Set keyed only on the hash collapsed
+ * duplicates into one, so a scan with N identical-hash issues counted as 1 —
+ * miscounting added/removed/fixed. Appending an occurrence index gives multiset
+ * semantics: the k-th occurrence of a hash in current is "unchanged" iff a k-th
+ * occurrence exists in previous.
+ */
+function buildIssueKeys(issues: Issue[]): string[] {
+  const seen = new Map<string, number>();
+  return issues.map((issue) => {
+    const hash = getIssueHash(issue);
+    const index = seen.get(hash) ?? 0;
+    seen.set(hash, index + 1);
+    return `${hash}#${index}`;
+  });
+}
+
+/**
  * Compare two scans and calculate differences
  */
 export function compareScanResults(
@@ -196,19 +245,22 @@ export function compareScanResults(
           issues: current.issues,
         };
 
-  // Create hash sets for comparison
-  const currentHashes = new Set(currentEntry.issues.map(getIssueHash));
-  const previousHashes = new Set(previous.issues.map(getIssueHash));
+  // Build occurrence-indexed keys so duplicate `selector::ruleId` hashes don't
+  // collide in the Set and undercount the diff.
+  const currentKeys = buildIssueKeys(currentEntry.issues);
+  const previousKeys = buildIssueKeys(previous.issues);
+  const currentKeySet = new Set(currentKeys);
+  const previousKeySet = new Set(previousKeys);
 
   // Find fixed issues (in previous but not in current)
-  const fixedIssues = previous.issues.filter((issue) => !currentHashes.has(getIssueHash(issue)));
+  const fixedIssues = previous.issues.filter((_, i) => !currentKeySet.has(previousKeys[i]));
 
   // Find new issues (in current but not in previous)
-  const newIssues = currentEntry.issues.filter((issue) => !previousHashes.has(getIssueHash(issue)));
+  const newIssues = currentEntry.issues.filter((_, i) => !previousKeySet.has(currentKeys[i]));
 
   // Unchanged issues
-  const unchangedCount = currentEntry.issues.filter((issue) =>
-    previousHashes.has(getIssueHash(issue))
+  const unchangedCount = currentEntry.issues.filter((_, i) =>
+    previousKeySet.has(currentKeys[i])
   ).length;
 
   // Calculate severity diffs
@@ -257,6 +309,25 @@ export function formatRelativeTime(timestamp: number): string {
 // ============================================
 
 const IGNORED_ISSUES_KEY = 'watchdog_ignored_issues';
+
+// Serialize ignored-issue writes. chrome.storage.local read-modify-write is
+// non-atomic: two interleaved ignoreIssue/unignoreIssue calls both read the same
+// baseline and the later set() clobbers the earlier one, silently losing data.
+// Chaining every write onto this promise guarantees each read-modify-write runs
+// to completion before the next begins.
+let ignoredWriteChain: Promise<unknown> = Promise.resolve();
+
+function withIgnoredIssuesLock<T>(task: () => Promise<T>): Promise<T> {
+  // Run regardless of whether the previous task resolved or rejected.
+  const run = ignoredWriteChain.then(task, task);
+  // Swallow errors on the chain so one failure doesn't block later writers; the
+  // caller still observes the real outcome via the returned `run`.
+  ignoredWriteChain = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
 
 /**
  * Reason for ignoring an issue
@@ -355,12 +426,14 @@ export async function ignoreIssue(
     domain,
   };
 
-  const allIgnored = await getAllIgnoredIssues();
+  await withIgnoredIssuesLock(async () => {
+    const allIgnored = await getAllIgnoredIssues();
 
-  // Remove any existing entry with same hash and domain
-  const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
+    // Remove any existing entry with same hash and domain
+    const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
 
-  await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: [...filtered, entry] });
+    await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: [...filtered, entry] });
+  });
   logger.info('Issue ignored', { hash, reason });
 }
 
@@ -371,9 +444,11 @@ export async function unignoreIssue(url: string, selector: string, ruleId: strin
   const domain = getDomain(url);
   const hash = generateIssueHash(selector, ruleId);
   logger.debug('Unignoring issue', { domain, ruleId, hash });
-  const allIgnored = await getAllIgnoredIssues();
-  const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
-  await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: filtered });
+  await withIgnoredIssuesLock(async () => {
+    const allIgnored = await getAllIgnoredIssues();
+    const filtered = allIgnored.filter((i) => !(i.hash === hash && i.domain === domain));
+    await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: filtered });
+  });
   logger.info('Issue unignored', { hash });
 }
 
@@ -382,14 +457,17 @@ export async function unignoreIssue(url: string, selector: string, ruleId: strin
  */
 export async function clearIgnoredIssuesForDomain(url: string): Promise<void> {
   const domain = getDomain(url);
-  const allIgnored = await getAllIgnoredIssues();
-  const filtered = allIgnored.filter((i) => i.domain !== domain);
-  await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: filtered });
+  await withIgnoredIssuesLock(async () => {
+    const allIgnored = await getAllIgnoredIssues();
+    const filtered = allIgnored.filter((i) => i.domain !== domain);
+    await chrome.storage.local.set({ [IGNORED_ISSUES_KEY]: filtered });
+  });
 }
 
 /**
  * Clear all ignored issues
  */
 export async function clearAllIgnoredIssues(): Promise<void> {
-  await chrome.storage.local.remove(IGNORED_ISSUES_KEY);
+  // Route through the lock so a clear-all isn't reordered ahead of queued writes.
+  await withIgnoredIssuesLock(() => chrome.storage.local.remove(IGNORED_ISSUES_KEY));
 }

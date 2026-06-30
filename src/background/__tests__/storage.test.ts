@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { Settings } from '@/shared/types';
 import { getSettings, saveSettings } from '../storage';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 
@@ -60,6 +61,26 @@ describe('background/storage (settings)', () => {
       await expect(saveSettings({ wcagLevel: 'AAA' })).resolves.toBeUndefined();
       expect(errorSpy).toHaveBeenCalled();
       errorSpy.mockRestore();
+    });
+
+    it('serializes concurrent saves so neither patch is clobbered (correctness-7)', async () => {
+      // Buggy behavior: read-modify-write on chrome.storage.local was non-atomic.
+      // Two concurrent saveSettings calls both read the same baseline, so the
+      // second set() overwrote the first patch (e.g. wcagLevel was lost). Writes
+      // are now serialized so both patches accumulate.
+      let store: Partial<Settings> = { ...DEFAULT_SETTINGS };
+      get.mockImplementation(async () => ({ [KEY]: store }));
+      set.mockImplementation(async (obj: Record<string, Partial<Settings>>) => {
+        store = obj[KEY];
+      });
+
+      await Promise.all([
+        saveSettings({ wcagLevel: 'AAA' }),
+        saveSettings({ persona: 'developer' }),
+      ]);
+
+      expect(store.wcagLevel).toBe('AAA');
+      expect(store.persona).toBe('developer');
     });
   });
 });
