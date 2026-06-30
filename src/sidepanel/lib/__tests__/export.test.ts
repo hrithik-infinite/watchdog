@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { escapeHtml, exportHTML, exportCSV } from '../export';
+import { escapeHtml, exportHTML, exportCSV, exportPDF, toPdfSafeText } from '../export';
 import type { Issue, ScanResult, Severity } from '@/shared/types';
 
 /**
@@ -193,5 +193,101 @@ describe('exportCSV formula injection neutralization', () => {
 
     expect(csv).toContain('Images must have alternate text');
     expect(csv).not.toContain(`'Images`);
+  });
+});
+
+describe('exportHTML report content (report-content)', () => {
+  it('leads each issue with whyItMatters above the technical description', async () => {
+    const why = 'Visitors using a screen reader cannot tell what this image shows.';
+    exportHTML(makeResult([makeIssue({ whyItMatters: why })]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('Why this matters');
+    expect(html).toContain(why);
+
+    // The plain-language line must appear *before* the technical description.
+    const whyIdx = html.indexOf(why);
+    const descIdx = html.indexOf('An image is missing an alt attribute.');
+    expect(whyIdx).toBeGreaterThan(-1);
+    expect(descIdx).toBeGreaterThan(-1);
+    expect(whyIdx).toBeLessThan(descIdx);
+  });
+
+  it('omits the why-this-matters block when the issue has no whyItMatters', async () => {
+    exportHTML(makeResult([makeIssue()])); // makeIssue() supplies no whyItMatters
+    const html = await lastDownloadedText();
+
+    expect(html).not.toContain('Why this matters');
+  });
+
+  it('escapes whyItMatters so it cannot inject markup', async () => {
+    exportHTML(makeResult([makeIssue({ whyItMatters: `<img src=x onerror=alert('why')>` })]));
+    const html = await lastDownloadedText();
+
+    expect(html).not.toContain(`<img src=x onerror=alert('why')>`);
+    expect(html).toContain(`&lt;img src=x onerror=alert(&#39;why&#39;)&gt;`);
+  });
+
+  it('labels a non-accessibility issue with its standard, not a placeholder WCAG id', async () => {
+    // Regression: every non-a11y scanner reuses the wcag field with placeholder
+    // values, so the report used to mislabel e.g. a Performance finding "WCAG".
+    const issue = makeIssue({ standard: 'performance', message: 'Largest Contentful Paint is slow' });
+    exportHTML(makeResult([issue]), 'performance');
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('Performance metric');
+    expect(html).not.toContain('WCAG 1.1.1');
+  });
+
+  it('still shows the WCAG criterion for genuine accessibility issues', async () => {
+    exportHTML(makeResult([makeIssue()])); // no `standard` -> treated as WCAG
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('WCAG 1.1.1 (A)');
+  });
+});
+
+describe('toPdfSafeText (err-10)', () => {
+  it('maps common typographic characters to ASCII equivalents', () => {
+    expect(toPdfSafeText('“quote” ‘q’ — dash … end')).toBe('"quote" \'q\' - dash ... end');
+  });
+
+  it('replaces characters WinAnsi cannot encode with a placeholder', () => {
+    // Emoji and CJK are outside WinAnsi; pdf-lib would otherwise throw on them.
+    const out = toPdfSafeText('Launch 🚀 文字');
+    expect(out.startsWith('Launch ')).toBe(true);
+    expect(out).toContain('?');
+    expect(out).not.toMatch(/[🚀文字]/u);
+    // Only printable ASCII / Latin-1 (all WinAnsi-encodable) survives.
+    for (const ch of out) {
+      const cp = ch.codePointAt(0) ?? 0;
+      expect((cp >= 0x20 && cp <= 0x7e) || (cp >= 0xa0 && cp <= 0xff)).toBe(true);
+    }
+  });
+
+  it('keeps Latin-1 accented characters that WinAnsi can encode', () => {
+    expect(toPdfSafeText('Café résumé')).toBe('Café résumé');
+  });
+});
+
+describe('exportPDF resilience to non-WinAnsi text (err-10)', () => {
+  it('does not throw and produces a PDF when page text has emoji / smart quotes', async () => {
+    // Regression: such characters made pdf-lib's WinAnsi font throw, aborting the
+    // whole export. After sanitization the export must complete.
+    const issue = makeIssue({
+      message: 'Button "Café" 🚀 needs a label — really',
+      whyItMatters: 'Visitors can’t tell what this does 🤷 你好',
+      fix: {
+        description: 'Use the “label” attribute…',
+        code: '',
+        learnMoreUrl: 'https://example.com/learn',
+      },
+    });
+
+    await expect(exportPDF(makeResult([issue], 'https://例え.example/路径'))).resolves.toBeUndefined();
+
+    const blob = capturedBlobs.at(-1);
+    expect(blob?.type).toBe('application/pdf');
+    expect(blob && blob.size > 0).toBe(true);
   });
 });

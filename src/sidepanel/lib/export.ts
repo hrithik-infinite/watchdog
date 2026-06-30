@@ -5,6 +5,7 @@
 
 import type { ScanResult, Issue, Severity } from '@/shared/types';
 import type { AuditType } from '@/sidepanel/store';
+import { STANDARD_LABELS, isWcagIssue } from '@/sidepanel/lib/standards';
 
 /**
  * Format audit type for display
@@ -73,6 +74,55 @@ function sanitizeUrl(rawUrl: string): string {
     // Not a valid absolute URL — fall through to the safe default.
   }
   return '#';
+}
+
+/**
+ * Audit-aware standard label for an issue. Only genuine accessibility findings
+ * carry a real WCAG criterion; every other scanner reuses the `wcag` field with
+ * placeholder values, so labelling e.g. a Performance issue "WCAG 1.1.1" is
+ * wrong. Accessibility issues keep their criterion + level; the rest get their
+ * neutral standard name ("Performance metric", "SEO guideline", ...).
+ */
+function issueStandardLabel(issue: Issue): string {
+  if (isWcagIssue(issue.standard)) {
+    return `WCAG ${issue.wcag.id} (${issue.wcag.level})`;
+  }
+  return STANDARD_LABELS[issue.standard!];
+}
+
+/**
+ * pdf-lib's StandardFonts (Helvetica/Helvetica-Bold) use WinAnsi (CP1252)
+ * encoding, which cannot represent characters outside that set — emoji, CJK,
+ * smart quotes, em dashes, the narrow no-break space some locales put in
+ * timestamps, etc. Passing any such character to drawText OR widthOfTextAtSize
+ * makes pdf-lib throw, which previously aborted the entire PDF export (the user
+ * only saw a silent console.error). Map the common typographic offenders to
+ * their ASCII equivalents and replace anything still unencodable with '?', so a
+ * report with page-derived text always renders instead of failing outright.
+ */
+export function toPdfSafeText(text: string): string {
+  return (
+    String(text)
+      // Curly single quotes / low quotes -> ASCII apostrophe.
+      .replace(/[‘’‚‛]/g, "'")
+      // Curly double quotes / low quotes -> ASCII quote.
+      .replace(/[“”„‟]/g, '"')
+      // Hyphen / en / em / figure dashes and minus sign -> ASCII hyphen.
+      .replace(/[‐‑‒–—―−]/g, '-')
+      // Horizontal ellipsis -> three dots.
+      .replace(/…/g, '...')
+      // Bullet characters -> ASCII hyphen.
+      .replace(/[•‣⁃◦]/g, '-')
+      // Zero-width / non-joiner characters and the BOM -> dropped.
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      // Every remaining whitespace char (tabs, newlines, the no-break / narrow /
+      // CJK spaces some locales emit in formatted timestamps) -> a normal space
+      // drawText can actually lay out.
+      .replace(/\s/g, ' ')
+      // Anything left outside printable ASCII + the Latin-1 supplement (all of
+      // which WinAnsi can encode) becomes '?' so encoding never throws.
+      .replace(/[^\x20-\x7E\xA0-\xFF]/g, '?')
+  );
 }
 
 /**
@@ -356,6 +406,26 @@ export function exportHTML(result: ScanResult, auditType: AuditType = 'accessibi
       margin-left: 1rem;
     }
 
+    .issue-why {
+      border-left: 4px solid #2563EB;
+      background: rgba(37, 99, 235, 0.08);
+      padding: 0.75rem 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+
+    .issue-why-label {
+      font-size: 0.8125rem;
+      font-weight: 700;
+      color: #1e40af;
+      margin-bottom: 0.25rem;
+    }
+
+    .issue-why-text {
+      font-size: 0.9375rem;
+      color: #1a1a1a;
+    }
+
     .issue-description {
       font-size: 0.875rem;
       color: #6b7280;
@@ -496,19 +566,27 @@ export function exportHTML(result: ScanResult, auditType: AuditType = 'accessibi
                 <div class="issue-card">
                   <div class="issue-header">
                     <div class="issue-title">${escapeHtml(issue.message)}</div>
-                    <div class="issue-wcag">WCAG ${escapeHtml(issue.wcag.id)} (${escapeHtml(issue.wcag.level)})</div>
+                    <div class="issue-wcag">${escapeHtml(issueStandardLabel(issue))}</div>
                   </div>
+                  ${
+                    issue.whyItMatters
+                      ? `<div class="issue-why">
+                    <div class="issue-why-label">Why this matters</div>
+                    <div class="issue-why-text">${escapeHtml(issue.whyItMatters)}</div>
+                  </div>`
+                      : ''
+                  }
                   <div class="issue-description">${escapeHtml(issue.description)}</div>
                   <div class="issue-element">
-                    <div class="issue-element-label">Element</div>
+                    <div class="issue-element-label">Affected element</div>
                     <div class="code-block">${escapeHtml(issue.element.html)}</div>
                   </div>
                   <div class="issue-element">
-                    <div class="issue-element-label">Selector</div>
+                    <div class="issue-element-label">Where to find it (CSS selector)</div>
                     <div class="code-block">${escapeHtml(issue.element.selector)}</div>
                   </div>
                   <div class="issue-fix">
-                    <div class="issue-fix-label">How to Fix</div>
+                    <div class="issue-fix-label">How to fix it</div>
                     <div class="issue-fix-description">${escapeHtml(issue.fix.description)}</div>
                     ${
                       issue.fix.code
@@ -627,7 +705,7 @@ export async function exportPDF(
   ];
 
   for (const line of metaLines) {
-    page.drawText(line, {
+    page.drawText(toPdfSafeText(line), {
       x: margin,
       y: yPosition,
       size: 10,
@@ -698,7 +776,12 @@ export async function exportPDF(
       checkPageBreak(80);
 
       // Issue title
-      const titleLines = wrapText(`${i + 1}. ${issue.message}`, contentWidth, 11, helveticaBold);
+      const titleLines = wrapText(
+        toPdfSafeText(`${i + 1}. ${issue.message}`),
+        contentWidth,
+        11,
+        helveticaBold
+      );
       for (const line of titleLines) {
         page.drawText(line, {
           x: margin,
@@ -710,8 +793,34 @@ export async function exportPDF(
         yPosition -= 14;
       }
 
-      // WCAG info
-      page.drawText(`WCAG ${issue.wcag.id} (${issue.wcag.level}) - ${issue.wcag.name}`, {
+      // Lead with the plain-language consequence (when the scanner supplied it)
+      // so a non-technical reader gets the stakes before the standards detail.
+      if (issue.whyItMatters) {
+        const whyLines = wrapText(
+          toPdfSafeText(`Why this matters: ${issue.whyItMatters}`),
+          contentWidth,
+          9,
+          helvetica
+        );
+        for (const line of whyLines) {
+          checkPageBreak(12);
+          page.drawText(line, {
+            x: margin,
+            y: yPosition,
+            size: 9,
+            font: helvetica,
+            color: rgb(0.12, 0.25, 0.6),
+          });
+          yPosition -= 12;
+        }
+      }
+
+      // Standard info — audit-aware so a Performance/SEO/etc. finding is never
+      // mislabelled "WCAG". Accessibility issues keep their criterion and name.
+      const standardLine = isWcagIssue(issue.standard)
+        ? `WCAG ${issue.wcag.id} (${issue.wcag.level}) - ${issue.wcag.name}`
+        : STANDARD_LABELS[issue.standard!];
+      page.drawText(toPdfSafeText(standardLine), {
         x: margin,
         y: yPosition,
         size: 9,
@@ -725,7 +834,7 @@ export async function exportPDF(
         issue.element.selector.length > 80
           ? issue.element.selector.slice(0, 77) + '...'
           : issue.element.selector;
-      page.drawText(`Selector: ${selector}`, {
+      page.drawText(toPdfSafeText(`Location (CSS selector): ${selector}`), {
         x: margin,
         y: yPosition,
         size: 9,
@@ -735,7 +844,12 @@ export async function exportPDF(
       yPosition -= 14;
 
       // Fix description
-      const fixLines = wrapText(`Fix: ${issue.fix.description}`, contentWidth, 9, helvetica);
+      const fixLines = wrapText(
+        toPdfSafeText(`How to fix it: ${issue.fix.description}`),
+        contentWidth,
+        9,
+        helvetica
+      );
       for (const line of fixLines) {
         checkPageBreak(14);
         page.drawText(line, {
@@ -755,7 +869,7 @@ export async function exportPDF(
   }
 
   // Footer on last page
-  page.drawText(`Generated by WatchDog v1.0.0 on ${new Date().toLocaleString()}`, {
+  page.drawText(toPdfSafeText(`Generated by WatchDog v1.0.0 on ${new Date().toLocaleString()}`), {
     x: pageWidth / 2 - 100,
     y: 30,
     size: 8,

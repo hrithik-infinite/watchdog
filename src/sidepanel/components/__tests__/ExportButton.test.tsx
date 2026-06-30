@@ -1,10 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import ExportButton from '../ExportButton';
+import { exportHTML } from '@/sidepanel/lib/export';
 import { useScanStore } from '@/sidepanel/store';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { ScanResult } from '@/shared/types';
+
+// Stub the export module so a failure can be simulated without touching the real
+// pdf-lib/Blob machinery. Each export becomes a no-op the error test overrides.
+vi.mock('@/sidepanel/lib/export', () => ({
+  exportJSON: vi.fn(),
+  exportCSV: vi.fn(),
+  exportHTML: vi.fn(),
+  exportPDF: vi.fn(),
+}));
 
 const scanResult: ScanResult = {
   url: 'https://example.com',
@@ -37,6 +47,11 @@ async function openMenu() {
 beforeEach(() => {
   // Default install is site-owner; tests opt into developer mode explicitly.
   useScanStore.setState({ settings: { ...DEFAULT_SETTINGS } });
+});
+
+afterEach(() => {
+  // Drop any one-shot throwing implementation so it can't leak between tests.
+  vi.resetAllMocks();
 });
 
 describe('ExportButton — site-owner mode', () => {
@@ -72,5 +87,42 @@ describe('ExportButton — developer mode', () => {
 
     expect(screen.queryByText('Advanced')).not.toBeInTheDocument();
     expect(screen.queryByText('Share report')).not.toBeInTheDocument();
+  });
+});
+
+describe('ExportButton — export failure surfacing (err-10)', () => {
+  // Regression: a thrown export (e.g. pdf-lib rejecting a non-WinAnsi character)
+  // was only console.error'd, so the user clicked Export and saw nothing. The
+  // failure must now show up in the UI.
+  it('shows an inline alert with the failure detail when an export throws', async () => {
+    vi.mocked(exportHTML).mockImplementationOnce(() => {
+      throw new Error('Pretend pdf-lib failure');
+    });
+
+    const user = userEvent.setup();
+    render(<ExportButton scanResult={scanResult} />);
+    await user.click(screen.getByRole('button', { name: /export/i }));
+    // Selecting an item closes the (modal) menu, which removes the aria-hidden it
+    // puts on the rest of the app, so the alert below is queryable by role.
+    await user.click(screen.getByRole('menuitem', { name: /share report/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/couldn't export as html/i);
+    expect(alert).toHaveTextContent('Pretend pdf-lib failure');
+  });
+
+  it('lets the user dismiss the error', async () => {
+    vi.mocked(exportHTML).mockImplementationOnce(() => {
+      throw new Error('boom');
+    });
+
+    const user = userEvent.setup();
+    render(<ExportButton scanResult={scanResult} />);
+    await user.click(screen.getByRole('button', { name: /export/i }));
+    await user.click(screen.getByRole('menuitem', { name: /share report/i }));
+
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /dismiss export error/i }));
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
