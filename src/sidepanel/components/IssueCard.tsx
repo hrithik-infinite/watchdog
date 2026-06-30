@@ -71,6 +71,11 @@ export default function IssueCard({
     <Card
       className={cn(
         'mb-2 transition-all animate-fade-in hover:bg-accent',
+        // Native off-screen virtualization (perf-rel-6): the browser skips
+        // layout/paint for cards scrolled out of view. contain-intrinsic-size
+        // reserves an approximate card height so the scrollbar stays stable.
+        // Zero-dependency alternative to a virtualization library.
+        '[content-visibility:auto] [contain-intrinsic-size:0_140px]',
         isSelected && 'ring-2 ring-primary'
       )}
       onMouseEnter={canHighlight && autoHighlight ? onHighlight : undefined}
