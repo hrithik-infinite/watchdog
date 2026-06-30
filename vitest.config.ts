@@ -44,14 +44,14 @@ export default defineConfig({
       ],
       // Regression gate: `npm test` (run with --coverage, and so CI) fails if
       // coverage drops below these floors. Set ~1-2% under the current honest
-      // baseline (stmts 79.2 / branch 68.8 / funcs 74.8 / lines 79.5) so a real
+      // baseline (stmts 91.5 / branch 85.0 / funcs 90.4 / lines 92.1) so a real
       // drop is caught without breaking on normal fluctuation. Raise as coverage
       // improves; never lower to make a red build pass.
       thresholds: {
-        statements: 78,
-        branches: 67,
-        functions: 73,
-        lines: 78,
+        statements: 90,
+        branches: 83,
+        functions: 88,
+        lines: 90,
       },
     },
   },

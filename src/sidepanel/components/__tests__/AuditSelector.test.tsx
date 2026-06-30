@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS, MVP_RULES } from '@/shared/constants';
 import { AUDIT_ONE_LINERS } from '@/sidepanel/lib/persona';
@@ -39,7 +39,7 @@ describe('AuditSelector accessibility roles', () => {
     }
   });
 
-  it('renders the per-audit info control as a focusable button outside the card', () => {
+  it('renders the per-audit info control as a focusable button outside the card', async () => {
     renderSelector();
 
     const infoButton = screen.getByRole('button', {
@@ -55,9 +55,15 @@ describe('AuditSelector accessibility roles', () => {
     });
     expect(accessibilityCard.contains(infoButton)).toBe(false);
 
-    // It is genuinely keyboard-reachable.
-    infoButton.focus();
+    // It is genuinely keyboard-reachable. Focusing the trigger opens its Radix
+    // tooltip, which fires async Presence/Popper positioning updates — do it
+    // inside act and wait for the tooltip to finish opening so none of that
+    // state settles after the test.
+    await act(async () => {
+      infoButton.focus();
+    });
     expect(infoButton).toHaveFocus();
+    await screen.findByRole('tooltip');
   });
 });
 
