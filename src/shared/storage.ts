@@ -333,11 +333,7 @@ function withIgnoredIssuesLock<T>(task: () => Promise<T>): Promise<T> {
  * Reason for ignoring an issue
  */
 export type IgnoreReason =
-  | 'third-party'
-  | 'design-decision'
-  | 'false-positive'
-  | 'will-fix-later'
-  | 'other';
+  'third-party' | 'design-decision' | 'false-positive' | 'will-fix-later' | 'other';
 
 export const IGNORE_REASON_LABELS: Record<IgnoreReason, string> = {
   'third-party': "Third-party code (can't modify)",

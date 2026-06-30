@@ -8,12 +8,7 @@ import { isWcagIssue } from '../lib/standards';
 const WCAG_LEVEL_RANK: Record<WCAGLevel, number> = { A: 1, AA: 2, AAA: 3 };
 
 export type AuditType =
-  | 'accessibility'
-  | 'performance'
-  | 'seo'
-  | 'security'
-  | 'best-practices'
-  | 'pwa';
+  'accessibility' | 'performance' | 'seo' | 'security' | 'best-practices' | 'pwa';
 
 interface ScanState {
   // Scan state

@@ -12,12 +12,7 @@ import { MVP_RULES } from '@/shared/constants';
 import { useIsSiteOwner, AUDIT_ONE_LINERS } from '@/sidepanel/lib/persona';
 
 export type AuditType =
-  | 'accessibility'
-  | 'performance'
-  | 'seo'
-  | 'security'
-  | 'best-practices'
-  | 'pwa';
+  'accessibility' | 'performance' | 'seo' | 'security' | 'best-practices' | 'pwa';
 
 interface AuditTypeConfig {
   id: AuditType;
