@@ -217,6 +217,56 @@ describe('useScanner Hook', () => {
       expect(result.current.isScanning).toBe(false);
     });
 
+    // Regression (err-3): these tabs are valid http(s)/file/view-source URLs, so
+    // they slipped past the chrome://-style internal-page guard and previously fell
+    // through to either a generic "Cannot scan browser internal pages" message or a
+    // 30s timeout. Each must now surface a DISTINCT, page-specific message.
+    it.each([
+      ['https://chromewebstore.google.com/detail/abc', 'Chrome Web Store'],
+      ['view-source:https://example.com', 'view-source'],
+      ['file:///Users/me/index.html', 'local files'],
+      ['https://example.com/report.pdf', 'PDF documents'],
+      ['file:///Users/me/report.pdf', 'PDF documents'],
+      ['https://example.com/report.pdf?download=1', 'PDF documents'],
+    ])('gives a distinct message for unscannable page %s', async (url, expected) => {
+      const { getCurrentTab } = await import('@/shared/messaging');
+      (getCurrentTab as any).mockResolvedValue({ id: 1, url });
+
+      const { result, rerender } = renderHook(() => useScanner());
+
+      await act(async () => {
+        await result.current.scan();
+      });
+
+      rerender();
+      expect(result.current.error).toContain(expected);
+      // Must NOT be the generic internal-pages message, and must not have reached
+      // the content script (no scan attempted on an unscannable page).
+      expect(result.current.error).not.toBe('Cannot scan browser internal pages');
+      expect(result.current.scanResult).toBeNull();
+      expect(result.current.isScanning).toBe(false);
+      expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
+    });
+
+    it('surfaces the distinct unscannable message in multi-scan too', async () => {
+      const { getCurrentTab } = await import('@/shared/messaging');
+      (getCurrentTab as any).mockResolvedValue({
+        id: 1,
+        url: 'https://chromewebstore.google.com/detail/abc',
+      });
+
+      const { result, rerender } = renderHook(() => useScanner());
+
+      await act(async () => {
+        await result.current.scanMultiple(['accessibility', 'performance']);
+      });
+
+      rerender();
+      expect(result.current.error).toContain('Chrome Web Store');
+      expect(result.current.error).not.toBe('Cannot scan browser internal pages');
+      expect(result.current.scanResult).toBeNull();
+    });
+
     it('errors when the content script is absent and on-demand injection fails', async () => {
       const { getCurrentTab } = await import('@/shared/messaging');
       (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });

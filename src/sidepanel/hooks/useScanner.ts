@@ -30,6 +30,39 @@ function rejectOnAbort(signal: AbortSignal): Promise<never> {
   });
 }
 
+// Some tabs are valid http(s)/file/view-source URLs (so they pass the chrome://
+// /about:/extension internal-page check) yet still cannot be scanned: the Chrome
+// Web Store blocks content scripts, and view-source:/file:/PDF tabs have no
+// scannable HTML DOM. Return a DISTINCT, actionable message for each so the user
+// learns *why* instead of seeing the generic "internal pages" error or a confusing
+// 30s timeout. The returned text flows through getErrorDetails() (falls through to
+// E005, which preserves the message verbatim). Returns null when the URL is scannable.
+function getUnscannableReason(url: string | undefined): string | null {
+  if (!url) return null;
+  const lower = url.toLowerCase();
+
+  if (lower.startsWith('view-source:')) {
+    return 'WatchDog cannot scan view-source pages. Open the page normally to scan it.';
+  }
+  // The extension gallery disallows content scripts, so a scan there never responds.
+  if (
+    lower.startsWith('https://chrome.google.com/webstore') ||
+    lower.startsWith('https://chromewebstore.google.com')
+  ) {
+    return 'WatchDog cannot scan the Chrome Web Store. Open a regular website to scan it.';
+  }
+  // PDFs (served or local) render in the built-in viewer, which exposes no HTML DOM.
+  // Strip any query/hash before matching the extension.
+  const pathname = lower.split(/[?#]/)[0];
+  if (pathname.endsWith('.pdf')) {
+    return 'WatchDog cannot scan PDF documents. Open an HTML web page to scan it.';
+  }
+  if (lower.startsWith('file://')) {
+    return 'WatchDog cannot scan local files. Open an http:// or https:// page to scan it.';
+  }
+  return null;
+}
+
 // Generate combined summary from issues
 function generateCombinedSummary(issues: Issue[]): ScanSummary {
   const bySeverity: Record<Severity, number> = {
@@ -150,6 +183,13 @@ export function useScanner() {
           throw new Error('Cannot scan browser internal pages');
         }
 
+        // Distinct messaging for non-internal pages that still can't be scanned
+        // (Chrome Web Store, view-source:, file://, PDF viewer).
+        const unscannable = getUnscannableReason(tab.url);
+        if (unscannable) {
+          throw new Error(unscannable);
+        }
+
         // Ensure content script is loaded (inject on-demand if needed)
         await ensureContentScript(tab.id);
 
@@ -217,6 +257,13 @@ export function useScanner() {
           tab.url?.startsWith('about:')
         ) {
           throw new Error('Cannot scan browser internal pages');
+        }
+
+        // Distinct messaging for non-internal pages that still can't be scanned
+        // (Chrome Web Store, view-source:, file://, PDF viewer).
+        const unscannable = getUnscannableReason(tab.url);
+        if (unscannable) {
+          throw new Error(unscannable);
         }
 
         // Ensure content script is loaded (inject on-demand if needed)

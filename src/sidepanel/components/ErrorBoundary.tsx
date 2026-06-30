@@ -1,6 +1,7 @@
 import { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
+import logger from '@/shared/logger';
 
 interface Props {
   children: ReactNode;
@@ -22,9 +23,37 @@ export default class ErrorBoundary extends Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('WatchDog Error:', error, errorInfo);
+  componentDidMount() {
+    // A React error boundary only catches errors thrown during render/commit of
+    // its descendants. Failures in async code (rejected promises, setTimeout
+    // callbacks, event handlers) escape that path and were previously swallowed
+    // with no trace. Capture them at the window level so they are at least
+    // surfaced through the shared logger for diagnosis. We deliberately log
+    // rather than tripping the fallback UI: a stray async rejection (feature code
+    // already guards its own try/catch) should not blank the entire side panel.
+    window.addEventListener('unhandledrejection', this.handleUnhandledRejection);
+    window.addEventListener('error', this.handleGlobalError);
   }
+
+  componentWillUnmount() {
+    window.removeEventListener('unhandledrejection', this.handleUnhandledRejection);
+    window.removeEventListener('error', this.handleGlobalError);
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    logger.error('WatchDog Error:', error, errorInfo);
+  }
+
+  handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+    const reason = event.reason;
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    logger.error('Unhandled promise rejection', { message: error.message, stack: error.stack });
+  };
+
+  handleGlobalError = (event: ErrorEvent) => {
+    const error = event.error instanceof Error ? event.error : new Error(event.message);
+    logger.error('Uncaught error', { message: error.message, stack: error.stack });
+  };
 
   handleReset = () => {
     this.setState({ hasError: false, error: null });
