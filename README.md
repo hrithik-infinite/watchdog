@@ -246,13 +246,13 @@ src/
 
 ```bash
 npm run dev              # Start dev server with HMR
-npm run build            # Production build
+npm run build            # Production build (type-check + both bundles)
+npm run lint             # Biome check (lint + format + imports), read-only
+npm run fix              # Auto-fix lint/format/import issues
 npm run typecheck        # TypeScript type checking
 npm test                 # Run tests with coverage
-npm run lint             # ESLint check
-npm run lint:fix         # Auto-fix linting issues
-npm run format           # Format code with Prettier
-npm run all              # Run format, lint, build, and test
+npm run test:e2e         # Playwright extension E2E (installs Chromium + builds)
+npm run all              # Full local gate: fix, typecheck, test, build
 ```
 
 ### Contributing
