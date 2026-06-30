@@ -1066,4 +1066,152 @@ describe('Fixes - Fix suggestion generation', () => {
       });
     });
   });
+
+  // Regression: the generators used to do a naive String.replace on raw HTML.
+  // Because String.replace only rewrites the FIRST match, an edit could land
+  // inside a quoted attribute value (a `>`, a `</tag>`, or a repeated word),
+  // producing garbled/invalid markup. These cases break the old naive replace.
+  describe('Robust HTML editing (regression)', () => {
+    it('button-name: a `>` inside an attribute value must not split the tag', () => {
+      // Old bug: el.html.replace('>', ...) hit the `>` inside data-tooltip="3 > 2"
+      // and produced `<button data-tooltip="3  aria-label="..."> 2">...`.
+      const element: ElementInfo = {
+        selector: 'button',
+        html: '<button data-tooltip="3 > 2"></button>',
+      };
+
+      const fix = generateFix('button-name', element);
+
+      expect(fix.code).toBe('<button data-tooltip="3 > 2" aria-label="[Button purpose]"></button>');
+      // The original attribute value survives intact.
+      expect(fix.code).toContain('data-tooltip="3 > 2"');
+    });
+
+    it('link-name: a `</a>` inside an attribute value must not be treated as the closing tag', () => {
+      // Old bug: el.html.replace('</a>', ...) hit the `</a>` inside the href and
+      // corrupted the URL instead of appending text before the real closing tag.
+      const element: ElementInfo = {
+        selector: 'a',
+        html: '<a href="/r?to=</a>"></a>',
+      };
+
+      const fix = generateFix('link-name', element);
+
+      expect(fix.code).toBe('<a href="/r?to=</a>">[Link text]</a>');
+      expect(fix.code).toContain('href="/r?to=</a>"');
+    });
+
+    it('scrollable-region-focusable: a `>` inside an attribute value must not split the tag', () => {
+      const element: ElementInfo = {
+        selector: 'div',
+        html: '<div data-expr="a>b">x</div>',
+      };
+
+      const fix = generateFix('scrollable-region-focusable', element);
+
+      expect(fix.code).toBe(
+        '<div data-expr="a>b" tabindex="0" role="region" aria-label="Scrollable content">x</div>',
+      );
+      expect(fix.code).toContain('data-expr="a>b"');
+    });
+
+    it('object-alt: a `</object>` inside an attribute value must not be treated as the closing tag', () => {
+      const element: ElementInfo = {
+        selector: 'object',
+        html: '<object data="x?=</object>"></object>',
+      };
+
+      const fix = generateFix('object-alt', element);
+
+      expect(fix.code).toBe(
+        '<object data="x?=</object>">Alternative content describing the object</object>',
+      );
+      expect(fix.code).toContain('data="x?=</object>"');
+    });
+
+    it('no-autoplay-audio: a repeated "autoplay" substring in a class must not be mangled', () => {
+      // Old bug: el.html.replace('autoplay', '') removed it from class="autoplay-banner"
+      // (the first match) and left the real boolean attribute in place.
+      const element: ElementInfo = {
+        selector: 'audio',
+        html: '<audio class="autoplay-banner" autoplay></audio>',
+      };
+
+      const fix = generateFix('no-autoplay-audio', element);
+
+      expect(fix.code).toBe('<audio class="autoplay-banner" controls></audio>');
+      // Class name preserved; real autoplay attribute removed.
+      expect(fix.code).toContain('class="autoplay-banner"');
+    });
+
+    it('no-autoplay-audio: still adds controls when there is no "muted" attribute', () => {
+      // Old bug: it relied on replacing "muted" with "controls", so an element
+      // without `muted` never gained controls.
+      const element: ElementInfo = {
+        selector: 'audio',
+        html: '<audio autoplay></audio>',
+      };
+
+      const fix = generateFix('no-autoplay-audio', element);
+
+      expect(fix.code).toContain('controls');
+      expect(fix.code).toBe('<audio controls></audio>');
+    });
+
+    it('tabindex: a `data-tabindex` must not be hit instead of the real tabindex', () => {
+      // Old bug: /tabindex=["']\d+["']/ matched the FIRST occurrence, inside
+      // data-tabindex, leaving the real positive tabindex unchanged.
+      const element: ElementInfo = {
+        selector: 'button',
+        html: '<button data-tabindex="3" tabindex="7">Go</button>',
+      };
+
+      const fix = generateFix('tabindex', element);
+
+      expect(fix.code).toBe('<button data-tabindex="3" tabindex="0">Go</button>');
+      expect(fix.code).toContain('data-tabindex="3"');
+      expect(fix.code).not.toContain('tabindex="7"');
+    });
+
+    it('scope-attr-valid: a `data-scope` must not be rewritten instead of scope', () => {
+      const element: ElementInfo = {
+        selector: 'th',
+        html: '<th data-scope="keep" scope="badvalue">H</th>',
+      };
+
+      const fix = generateFix('scope-attr-valid', element);
+
+      expect(fix.code).toBe('<th data-scope="keep" scope="col">H</th>');
+      expect(fix.code).toContain('data-scope="keep"');
+    });
+
+    it('image-alt: self-closing tags keep the trailing slash valid', () => {
+      const element: ElementInfo = {
+        selector: 'img',
+        html: '<img src="x" />',
+      };
+
+      const fix = generateFix('image-alt', element);
+
+      expect(fix.code).toBe('<img src="x" alt="[Describe what the image shows]" />');
+    });
+
+    it('falls back to an instructional snippet when there is no editable tag', () => {
+      // Empty/garbage HTML can't be safely transformed; emit a clear snippet, not
+      // a broken edit.
+      const element: ElementInfo = {
+        selector: '',
+        html: '',
+      };
+
+      const buttonFix = generateFix('button-name', element);
+      expect(buttonFix.code).toContain('aria-label');
+
+      const linkFix = generateFix('link-name', element);
+      expect(linkFix.code).toContain('[Link text]');
+
+      const objectFix = generateFix('object-alt', element);
+      expect(objectFix.code).toContain('Alternative content');
+    });
+  });
 });

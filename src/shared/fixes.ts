@@ -1,11 +1,98 @@
 import type { ElementInfo, FixSuggestion } from './types';
 import type { RuleId } from './constants';
 
+// ---------------------------------------------------------------------------
+// Robust HTML edit helpers
+//
+// The fix CODE we emit is the user's own markup with a single, targeted edit.
+// Naive String.replace() on raw HTML is fragile: a `>` or a tag name can appear
+// inside an attribute value, and String.replace only rewrites the FIRST match —
+// so the edit can land inside a quoted value and produce garbled, invalid HTML
+// (e.g. `<button data-x="3 > 2">` had its attribute split in two). These helpers
+// find the real structural position with quote awareness and return null when
+// they can't, so callers fall back to an instructional snippet instead of broken
+// markup.
+// ---------------------------------------------------------------------------
+
+// Index of the `>` that terminates the first element's opening tag, skipping any
+// `>` that sits inside a quoted attribute value. Returns -1 if there is no
+// well-formed opening tag.
+function findOpeningTagEnd(html: string): number {
+  const start = html.indexOf('<');
+  if (start === -1) return -1;
+  let quote: '"' | "'" | null = null;
+  for (let i = start + 1; i < html.length; i++) {
+    const ch = html[i];
+    if (quote) {
+      if (ch === quote) quote = null;
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+    } else if (ch === '>') {
+      return i;
+    }
+  }
+  return -1;
+}
+
+// Insert ` attr` into the opening tag, just before its closing `>` (or before the
+// `/` of a self-closing `/>`). Returns null when no opening tag is found so the
+// caller can fall back rather than emit broken HTML.
+function addAttributeToOpeningTag(html: string, attr: string): string | null {
+  const end = findOpeningTagEnd(html);
+  if (end === -1) return null;
+  const selfClose = html[end - 1] === '/';
+  const insertAt = selfClose ? end - 1 : end;
+  const before = html.slice(0, insertAt).replace(/\s+$/, '');
+  const after = html.slice(insertAt);
+  return `${before} ${attr.trim()}${selfClose ? ' ' : ''}${after}`;
+}
+
+// Insert text content immediately before the element's FINAL closing tag. Uses
+// lastIndexOf so a `</tag>` that appears earlier inside an attribute value can't
+// be mistaken for the real closing tag. Returns null if there is no closing tag.
+function addTextBeforeClosingTag(html: string, tagName: string, text: string): string | null {
+  const closing = `</${tagName}>`;
+  const idx = html.lastIndexOf(closing);
+  if (idx === -1) return null;
+  return `${html.slice(0, idx)}${text}${html.slice(idx)}`;
+}
+
+// Remove a boolean attribute (e.g. `autoplay`) from the opening tag without
+// touching the same word when it appears inside another attribute's name or
+// value (e.g. class="autoplay-banner"). The attribute is matched only when it
+// begins at a whitespace boundary and ends at a tag/attribute boundary.
+function removeBooleanAttribute(html: string, attrName: string): string {
+  const end = findOpeningTagEnd(html);
+  const limit = end === -1 ? html.length : end + 1;
+  const head = html.slice(0, limit);
+  const tail = html.slice(limit);
+  const re = new RegExp(`\\s${attrName}(="[^"]*"|='[^']*'|=\\S+)?(?=[\\s/>])`, 'gi');
+  return head.replace(re, '') + tail;
+}
+
+// Ensure a boolean attribute (e.g. `controls`) is present on the opening tag,
+// adding it only when it is not already a standalone attribute.
+function ensureBooleanAttribute(html: string, attrName: string): string {
+  const re = new RegExp(`\\s${attrName}(?=[\\s/>=])`, 'i');
+  if (re.test(html)) return html;
+  return addAttributeToOpeningTag(html, attrName) ?? html;
+}
+
+// Replace the value of a specific attribute, matching the attribute name only at
+// a whitespace/string-start boundary so `data-${name}` or `${name}-foo` can't be
+// hit by mistake. No-op (returns html unchanged) if the attribute is absent.
+function replaceAttributeValue(html: string, attrName: string, newValue: string): string {
+  const re = new RegExp(`(^|\\s)${attrName}=(["'])[^"']*\\2`, 'i');
+  return html.replace(re, `$1${attrName}="${newValue}"`);
+}
+
 // Fix suggestion templates for each rule
 const FIX_TEMPLATES: Record<RuleId, (element: ElementInfo) => FixSuggestion> = {
   'image-alt': (el) => ({
     description: 'Add descriptive alt text that conveys the image content',
-    code: el.html.replace('<img', '<img alt="[Describe what the image shows]"'),
+    code:
+      addAttributeToOpeningTag(el.html, 'alt="[Describe what the image shows]"') ??
+      '<img src="..." alt="[Describe what the image shows]">',
     learnMoreUrl: 'https://webaim.org/techniques/alttext/',
   }),
 
@@ -13,13 +100,17 @@ const FIX_TEMPLATES: Record<RuleId, (element: ElementInfo) => FixSuggestion> = {
     description: 'Add text content or aria-label to the button',
     code: el.html.includes('aria-label')
       ? el.html
-      : el.html.replace('>', ' aria-label="[Button purpose]">'),
+      : (addAttributeToOpeningTag(el.html, 'aria-label="[Button purpose]"') ??
+        '<button aria-label="[Button purpose]"></button>'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/button-name',
   }),
 
   'link-name': (el) => ({
     description: 'Add descriptive text content to the link',
-    code: el.html.includes('aria-label') ? el.html : el.html.replace('</a>', '[Link text]</a>'),
+    code: el.html.includes('aria-label')
+      ? el.html
+      : (addTextBeforeClosingTag(el.html, 'a', '[Link text]') ??
+        '<a href="...">[Link text]</a>'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/link-name',
   }),
 
@@ -36,7 +127,7 @@ const FIX_TEMPLATES: Record<RuleId, (element: ElementInfo) => FixSuggestion> = {
   label: (el) => ({
     description: 'Associate a label with the input using for/id or wrapping',
     code: `<label for="input-id">Label text</label>
-${el.html.replace('<input', '<input id="input-id"')}`,
+${addAttributeToOpeningTag(el.html, 'id="input-id"') ?? el.html}`,
     learnMoreUrl: 'https://webaim.org/techniques/forms/controls',
   }),
 
@@ -99,7 +190,9 @@ ${el.html}
 
   tabindex: (el) => ({
     description: 'Use tabindex="0" or "-1" instead of positive values',
-    code: el.html.replace(/tabindex=["']\d+["']/, 'tabindex="0"'),
+    // Boundary-anchored so a `data-tabindex` (or similar) can't be hit instead of
+    // the real tabindex attribute; quote group preserves the original quote style.
+    code: el.html.replace(/(^|\s)tabindex=(["'])\d+\2/i, '$1tabindex="0"'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/tabindex',
   }),
 
@@ -125,7 +218,9 @@ ${el.html}
 
   'scrollable-region-focusable': (el) => ({
     description: 'Make scrollable regions keyboard accessible with tabindex',
-    code: el.html.replace('>', ' tabindex="0" role="region" aria-label="Scrollable content">'),
+    code:
+      addAttributeToOpeningTag(el.html, 'tabindex="0" role="region" aria-label="Scrollable content"') ??
+      '<div tabindex="0" role="region" aria-label="Scrollable content">...</div>',
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/scrollable-region-focusable',
   }),
 
@@ -164,13 +259,17 @@ ${el.html}
 
   'no-autoplay-audio': (el) => ({
     description: 'Remove autoplay or provide controls to pause audio',
-    code: el.html.replace('autoplay', '').replace('muted', 'controls'),
+    // Drop the real autoplay attribute (not a substring inside class/id) and make
+    // sure controls is present; the old word-replace mangled `class="autoplay-*"`.
+    code: ensureBooleanAttribute(removeBooleanAttribute(el.html, 'autoplay'), 'controls'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/no-autoplay-audio',
   }),
 
   'object-alt': (el) => ({
     description: 'Provide alternative text for object elements',
-    code: el.html.replace('</object>', 'Alternative content describing the object</object>'),
+    code:
+      addTextBeforeClosingTag(el.html, 'object', 'Alternative content describing the object') ??
+      '<object data="...">Alternative content describing the object</object>',
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/object-alt',
   }),
 
@@ -178,7 +277,8 @@ ${el.html}
     description: 'Add accessible name to SVG with role="img"',
     code: el.html.includes('aria-label')
       ? el.html
-      : el.html.replace('<svg', '<svg role="img" aria-label="[Description of SVG]"'),
+      : (addAttributeToOpeningTag(el.html, 'role="img" aria-label="[Description of SVG]"') ??
+        '<svg role="img" aria-label="[Description of SVG]"></svg>'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/svg-img-alt',
   }),
 
@@ -207,7 +307,8 @@ ${el.html}
 
   'scope-attr-valid': (el) => ({
     description: 'Use valid scope values: row, col, rowgroup, colgroup',
-    code: el.html.replace(/scope=["'][^"']*["']/, 'scope="col"'),
+    // Boundary-anchored so a `data-scope` attribute isn't rewritten instead of scope.
+    code: replaceAttributeValue(el.html, 'scope', 'col'),
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/scope-attr-valid',
   }),
 
@@ -264,14 +365,16 @@ ${el.html}
   // Forms
   'input-image-alt': (el) => ({
     description: 'Add alt text to image input buttons',
-    code: el.html.replace('<input', '<input alt="[Button purpose]"'),
+    code:
+      addAttributeToOpeningTag(el.html, 'alt="[Button purpose]"') ??
+      '<input type="image" alt="[Button purpose]">',
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/input-image-alt',
   }),
 
   'select-name': (el) => ({
     description: 'Add an accessible name to the select element',
     code: `<label for="select-id">Label text</label>
-${el.html.replace('<select', '<select id="select-id"')}`,
+${addAttributeToOpeningTag(el.html, 'id="select-id"') ?? el.html}`,
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/select-name',
   }),
 
@@ -279,14 +382,16 @@ ${el.html.replace('<select', '<select id="select-id"')}`,
     description: 'Use valid autocomplete attribute values',
     code: `/* Valid autocomplete values: */
 /* name, email, tel, address-line1, postal-code, etc. */
-${el.html.replace(/autocomplete=["'][^"']*["']/, 'autocomplete="email"')}`,
+${replaceAttributeValue(el.html, 'autocomplete', 'email')}`,
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/autocomplete-valid',
   }),
 
   // Frames
   'frame-title': (el) => ({
     description: 'Add a title attribute to the iframe',
-    code: el.html.replace('<iframe', '<iframe title="[Description of frame content]"'),
+    code:
+      addAttributeToOpeningTag(el.html, 'title="[Description of frame content]"') ??
+      '<iframe title="[Description of frame content]"></iframe>',
     learnMoreUrl: 'https://dequeuniversity.com/rules/axe/4.4/frame-title',
   }),
 
