@@ -1,10 +1,10 @@
 import { RefreshCw, Lightbulb, AlertTriangle } from 'lucide-react';
 import { Button } from '@/sidepanel/components/ui/button';
-import { EyeIcon, CheckCircleIcon, ErrorCircleIcon } from './icons';
+import { CheckCircleIcon, ErrorCircleIcon } from './icons';
 import { getErrorDetails } from '@/shared/errors';
 
 interface EmptyStateProps {
-  type: 'initial' | 'no-issues' | 'error';
+  type: 'no-issues' | 'error';
   error?: string;
   onScan?: () => void;
   // Human-friendly name of the audit that just ran (e.g. "Performance"), used to
@@ -54,34 +54,23 @@ export default function EmptyState({ type, error, onScan, auditLabel }: EmptySta
     );
   }
 
-  if (type === 'no-issues') {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 text-center animate-fade-in bg-background">
-        <CheckCircleIcon />
-        <h2 className="text-h1 text-foreground mt-4 mb-2">No Issues Found!</h2>
-        <p className="text-body text-muted-foreground max-w-xs mb-4">
-          {auditLabel
-            ? `No ${auditLabel.toLowerCase()} problems found on this page. Nice work!`
-            : 'No problems found on this page. Nice work!'}
-        </p>
-        {onScan && (
-          <Button variant="secondary" onClick={onScan} className="rounded-full gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Scan Again
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  // Initial state
+  // no-issues (the only remaining type; the unused 'initial' variant was removed
+  // — the home screen renders AuditSelector, never EmptyState).
   return (
-    <div className="flex flex-col items-center text-center animate-fade-in">
-      <EyeIcon />
-      <h2 className="text-h1 text-foreground mt-2 mb-2">Ready to Scan</h2>
-      <p className="text-body text-muted-foreground max-w-xs">
-        Scan your page to find and fix accessibility issues
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 text-center animate-fade-in bg-background">
+      <CheckCircleIcon />
+      <h2 className="text-h1 text-foreground mt-4 mb-2">No Issues Found!</h2>
+      <p className="text-body text-muted-foreground max-w-xs mb-4">
+        {auditLabel
+          ? `No ${auditLabel.toLowerCase()} problems found on this page. Nice work!`
+          : 'No problems found on this page. Nice work!'}
       </p>
+      {onScan && (
+        <Button variant="secondary" onClick={onScan} className="rounded-full gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Scan Again
+        </Button>
+      )}
     </div>
   );
 }
