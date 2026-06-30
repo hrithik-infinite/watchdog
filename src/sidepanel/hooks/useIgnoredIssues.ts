@@ -54,7 +54,6 @@ export function useIgnoredIssues(currentUrl: string | undefined): UseIgnoredIssu
     // Load-on-mount / URL-change effect that synchronizes with chrome.storage.
     // loadIgnoredIssues sets the loading flag synchronously before its await,
     // which is the intended spinner UX, not a cascading-render bug.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadIgnoredIssues();
   }, [loadIgnoredIssues]);
 

@@ -1,7 +1,9 @@
 {
   "$schema": "https://biomejs.dev/schemas/2.5.1/schema.json",
   "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
-  "files": { "includes": ["**", "!**/dist"] },
+  "files": {
+    "includes": ["**", "!**/dist", "!src/styles/globals.css"]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -57,7 +59,11 @@
       ],
       "linter": {
         "rules": {
-          "correctness": { "noUnusedVariables": "off" },
+          "correctness": {
+            "noUnusedVariables": "off",
+            "noUnusedFunctionParameters": "off",
+            "noUnusedImports": "off"
+          },
           "suspicious": { "noExplicitAny": "off", "noEmptyBlockStatements": "off" }
         }
       }

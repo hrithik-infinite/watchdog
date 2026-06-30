@@ -166,7 +166,7 @@ if (!isExtensionContext) {
   console.log('Running in standalone mode with mock data');
 
   // Create mock chrome object
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: assigning a partial chrome stub onto window for standalone mode
   (window as any).chrome = {
     runtime: {
       id: 'mock-extension-id',
@@ -177,7 +177,7 @@ if (!isExtensionContext) {
     },
     tabs: {
       query: () => Promise.resolve([{ id: 1, url: 'https://example.com' }]),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: mock message payload is intentionally untyped
       sendMessage: (_tabId: number, message: any) => {
         return new Promise((resolve) => {
           // Simulate scan delay

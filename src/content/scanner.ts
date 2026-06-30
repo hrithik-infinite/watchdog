@@ -31,7 +31,7 @@ import { scanSecurity } from './security-scanner';
 import { scanSEO } from './seo-scanner';
 
 // Lazy load axe-core only when needed
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: axe-core is lazily imported; its default export has no usable static type for this singleton
 let axeInstance: any = null;
 
 async function getAxe() {
@@ -74,7 +74,7 @@ function extractWcag(ruleId: string): WCAGCriteria {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: axe violation objects are untyped at this transform boundary
 function transformViolations(violations: any[]): Issue[] {
   const issues: Issue[] = [];
 
