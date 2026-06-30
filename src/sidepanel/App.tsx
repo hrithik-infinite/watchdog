@@ -381,6 +381,7 @@ export default function App() {
                   summary={scanResult.summary}
                   onFilterBySeverity={(severity) => setFilter('severity', severity)}
                   activeSeverity={filters.severity}
+                  auditType={selectedAuditTypes.length === 1 ? selectedAuditTypes[0] : undefined}
                 />
                 <CopyDropdown
                   issues={filteredIssues}

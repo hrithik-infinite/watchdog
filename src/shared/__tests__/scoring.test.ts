@@ -596,4 +596,49 @@ describe('Scoring - Audit scoring logic', () => {
       expect(Math.abs(oneCritical.score - twoSerious.score)).toBeLessThan(5);
     });
   });
+
+  describe('per-audit normalization (correctness-29)', () => {
+    const summary: ScanSummary = {
+      total: 2,
+      bySeverity: { critical: 0, serious: 2, moderate: 0, minor: 0 },
+      byCategory: {
+        images: 0,
+        interactive: 0,
+        forms: 0,
+        color: 0,
+        document: 0,
+        structure: 0,
+        aria: 0,
+        technical: 0,
+      },
+    };
+
+    it('defaults to the audit-agnostic curve when no audit type is given', () => {
+      expect(calculateScoreFromSummary(summary).score).toBe(
+        calculateScoreFromSummary(summary, undefined).score
+      );
+    });
+
+    it('scores a small audit (pwa) lower than the default curve for the same issues', () => {
+      // A couple of issues matter more in a 7-check audit than on the 100 curve.
+      expect(calculateScoreFromSummary(summary, 'pwa').score).toBeLessThan(
+        calculateScoreFromSummary(summary).score
+      );
+    });
+
+    it('leaves accessibility on the original 100 curve', () => {
+      expect(calculateScoreFromSummary(summary, 'accessibility').score).toBe(
+        calculateScoreFromSummary(summary).score
+      );
+    });
+
+    it('still returns 100 for zero issues regardless of audit', () => {
+      const empty: ScanSummary = {
+        ...summary,
+        total: 0,
+        bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+      };
+      expect(calculateScoreFromSummary(empty, 'pwa').score).toBe(100);
+    });
+  });
 });

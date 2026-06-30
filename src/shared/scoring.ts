@@ -4,6 +4,7 @@
  */
 
 import type { Issue, Severity, ScanSummary } from './types';
+import type { AuditType } from './messaging';
 
 // Weight multipliers for each severity level
 const SEVERITY_WEIGHTS: Record<Severity, number> = {
@@ -13,9 +14,28 @@ const SEVERITY_WEIGHTS: Record<Severity, number> = {
   minor: 1,
 };
 
-// Maximum weighted issues before score hits 0
-// This creates a curve rather than linear scoring
-const MAX_WEIGHTED_ISSUES = 100;
+// Weighted-issue count at which the score reaches 0 (defines the log curve).
+// A single fixed value scored every audit on the same curve despite them running
+// very different numbers of checks (accessibility ~39 rules vs PWA ~7), so a
+// couple of issues tanked a small audit while barely denting accessibility. These
+// per-audit ceilings calibrate the curve to each audit's scale (correctness-29).
+//
+// PROVISIONAL: the relative values are a product judgment — validate against real
+// scores and tune. Omitting the audit (e.g. a combined multi-scan, or the
+// per-category breakdown) keeps the original audit-agnostic curve.
+const DEFAULT_MAX_WEIGHTED_ISSUES = 100;
+const MAX_WEIGHTED_BY_AUDIT: Partial<Record<AuditType, number>> = {
+  accessibility: 100,
+  seo: 60,
+  'best-practices': 55,
+  performance: 45,
+  security: 45,
+  pwa: 35,
+};
+
+function maxWeightedFor(auditType?: AuditType): number {
+  return (auditType && MAX_WEIGHTED_BY_AUDIT[auditType]) || DEFAULT_MAX_WEIGHTED_ISSUES;
+}
 
 export interface ScoreResult {
   score: number; // 0-100
@@ -28,7 +48,7 @@ export interface ScoreResult {
  * Calculate score based on issues found
  * Uses a logarithmic scale to prevent immediate 0 scores
  */
-export function calculateScore(issues: Issue[]): ScoreResult {
+export function calculateScore(issues: Issue[], auditType?: AuditType): ScoreResult {
   if (issues.length === 0) {
     return {
       score: 100,
@@ -43,9 +63,9 @@ export function calculateScore(issues: Issue[]): ScoreResult {
     return total + SEVERITY_WEIGHTS[issue.severity];
   }, 0);
 
-  // Use logarithmic scaling for smoother curve
-  // score = 100 * (1 - log(1 + weightedCount) / log(1 + MAX_WEIGHTED_ISSUES))
-  const logScore = 100 * (1 - Math.log(1 + weightedCount) / Math.log(1 + MAX_WEIGHTED_ISSUES));
+  // Use logarithmic scaling for smoother curve, with a per-audit ceiling.
+  const max = maxWeightedFor(auditType);
+  const logScore = 100 * (1 - Math.log(1 + weightedCount) / Math.log(1 + max));
   const score = Math.max(0, Math.min(100, Math.round(logScore)));
 
   return {
@@ -57,7 +77,10 @@ export function calculateScore(issues: Issue[]): ScoreResult {
 /**
  * Calculate score from summary (when full issues aren't available)
  */
-export function calculateScoreFromSummary(summary: ScanSummary): ScoreResult {
+export function calculateScoreFromSummary(
+  summary: ScanSummary,
+  auditType?: AuditType
+): ScoreResult {
   if (summary.total === 0) {
     return {
       score: 100,
@@ -73,7 +96,8 @@ export function calculateScoreFromSummary(summary: ScanSummary): ScoreResult {
     (summary.bySeverity.moderate || 0) * SEVERITY_WEIGHTS.moderate +
     (summary.bySeverity.minor || 0) * SEVERITY_WEIGHTS.minor;
 
-  const logScore = 100 * (1 - Math.log(1 + weightedCount) / Math.log(1 + MAX_WEIGHTED_ISSUES));
+  const max = maxWeightedFor(auditType);
+  const logScore = 100 * (1 - Math.log(1 + weightedCount) / Math.log(1 + max));
   const score = Math.max(0, Math.min(100, Math.round(logScore)));
 
   return {

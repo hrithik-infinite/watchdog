@@ -7,6 +7,7 @@ import {
   TooltipTrigger,
 } from '@/sidepanel/components/ui/tooltip';
 import type { ScanSummary, Severity } from '@/shared/types';
+import type { AuditType } from '@/sidepanel/store';
 import { cn } from '@/sidepanel/lib/utils';
 import { calculateScoreFromSummary } from '@/shared/scoring';
 import { useIsSiteOwner, SEVERITY_PLAIN } from '@/sidepanel/lib/persona';
@@ -16,6 +17,9 @@ interface SummaryProps {
   summary: ScanSummary;
   onFilterBySeverity: (severity: Severity | 'all') => void;
   activeSeverity: Severity | 'all';
+  // The audit this score is for, so the score uses that audit's calibrated curve.
+  // Omitted for a combined multi-scan → the audit-agnostic curve.
+  auditType?: AuditType;
 }
 
 const SEVERITY_CLASSES: Record<Severity, string> = {
@@ -32,9 +36,14 @@ const SEVERITY_LABELS: Record<Severity, string> = {
   minor: 'Minor',
 };
 
-export default function Summary({ summary, onFilterBySeverity, activeSeverity }: SummaryProps) {
+export default function Summary({
+  summary,
+  onFilterBySeverity,
+  activeSeverity,
+  auditType,
+}: SummaryProps) {
   const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
-  const scoreResult = calculateScoreFromSummary(summary);
+  const scoreResult = calculateScoreFromSummary(summary, auditType);
   const isSiteOwner = useIsSiteOwner();
 
   return (
