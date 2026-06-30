@@ -1,11 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   AlertCircle,
+  Braces,
+  Code,
   Download,
-  FileJson,
   FileSpreadsheet,
   FileText,
   Loader2,
+  Printer,
+  Share2,
   X,
 } from 'lucide-react';
 import { useState } from 'react';
@@ -76,18 +79,22 @@ export default function ExportButton({ scanResult }: ExportButtonProps) {
     format: ExportFormat,
     Icon: LucideIcon,
     title: string,
-    description: string
+    description: string,
+    ext?: string
   ) => (
     <DropdownMenuItem
       onClick={() => handleExport(format)}
       disabled={isExporting}
-      className="cursor-pointer"
+      className="cursor-pointer gap-2 py-2"
     >
-      <Icon className="h-4 w-4 mr-2" />
-      <div className="flex flex-col">
+      <span className="inline-flex items-center justify-center h-8 w-8 rounded-lg bg-muted shrink-0">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </span>
+      <div className="flex flex-col flex-1 min-w-0">
         <span className="text-sm font-medium">{title}</span>
         <span className="text-xs text-muted-foreground">{description}</span>
       </div>
+      {ext && <span className="text-mono text-xs text-muted-foreground shrink-0">{ext}</span>}
     </DropdownMenuItem>
   );
 
@@ -109,27 +116,36 @@ export default function ExportButton({ scanResult }: ExportButtonProps) {
             )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuLabel>Export Format</DropdownMenuLabel>
+        <DropdownMenuContent align="end" className="w-72">
+          <DropdownMenuLabel>Export report</DropdownMenuLabel>
           <DropdownMenuSeparator />
           {isSiteOwner ? (
             <>
               {/* Site-owner: lead with the shareable, non-technical formats and
-                  tuck the developer formats under an "Advanced" section. */}
-              {renderFormat('html', FileText, 'Share report', 'Open in any web browser')}
-              {renderFormat('pdf', FileText, 'Printable report', 'Save or print a copy')}
+                  tuck the developer data formats under an "Advanced" section. */}
+              {renderFormat(
+                'html',
+                Share2,
+                'Share report',
+                'A clean summary you can send to your team.'
+              )}
+              {renderFormat(
+                'pdf',
+                Printer,
+                'Printable report',
+                'A formatted PDF to print or save.'
+              )}
               <DropdownMenuSeparator />
               <DropdownMenuLabel>Advanced</DropdownMenuLabel>
-              {renderFormat('json', FileJson, 'JSON', 'For CI/CD pipelines')}
-              {renderFormat('csv', FileSpreadsheet, 'CSV', 'For spreadsheets')}
+              {renderFormat('json', Braces, 'JSON', 'Full axe output + run metadata.', '.json')}
+              {renderFormat('csv', FileSpreadsheet, 'CSV', 'One row per issue × node.', '.csv')}
             </>
           ) : (
             <>
-              {renderFormat('json', FileJson, 'JSON', 'For CI/CD pipelines')}
-              {renderFormat('csv', FileSpreadsheet, 'CSV', 'For spreadsheets')}
-              {renderFormat('html', FileText, 'HTML', 'Shareable report')}
-              <DropdownMenuSeparator />
-              {renderFormat('pdf', FileText, 'PDF', 'Printable report')}
+              {renderFormat('json', Braces, 'JSON', 'Full axe output + run metadata.', '.json')}
+              {renderFormat('csv', FileSpreadsheet, 'CSV', 'One row per issue × node.', '.csv')}
+              {renderFormat('html', Code, 'HTML', 'Self-contained, shareable report.', '.html')}
+              {renderFormat('pdf', FileText, 'PDF', 'Formatted for print / archive.', '.pdf')}
             </>
           )}
         </DropdownMenuContent>
