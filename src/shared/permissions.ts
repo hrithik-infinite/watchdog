@@ -32,12 +32,21 @@ function originPatternForUrl(url: string | undefined): string | null {
  * chrome.scripting.executeScript can inject the scanner, prompting the user with
  * Chrome's native permission dialog the first time that site is scanned.
  *
- * The request is SCOPED to the page's own origin rather than `<all_urls>`, so
- * Chrome's prompt stays narrow — "Read and change your data on example.com" —
- * instead of the alarming all-sites warning, and chrome://extensions lists only
- * the sites the user actually approved. A site already approved short-circuits on
- * permissions.contains() (a prior broad `<all_urls>` grant also satisfies this,
- * so existing users are never re-prompted).
+ * When the page origin is known, the request is SCOPED to it rather than
+ * `<all_urls>`, so Chrome's prompt reads "Read and change your data on
+ * example.com" and chrome://extensions lists only approved sites. A site already
+ * approved short-circuits on permissions.contains() (a prior broad `<all_urls>`
+ * grant also satisfies this, so existing users are never re-prompted).
+ *
+ * CAVEAT: scoping needs `url`. A side panel gets no activeTab grant and the
+ * manifest declares no `tabs` permission, so on a COLD first scan of a not-yet-
+ * granted site Chrome redacts tab.url (undefined) and `originPatternForUrl`
+ * returns null — the request then falls back to the broad `<all_urls>` prompt.
+ * Scoping therefore only kicks in once an origin is resolvable (e.g. a re-scan
+ * after a grant). Delivering the narrow prompt on the very first scan would
+ * require either the `tabs` permission or routing the scan through an
+ * activeTab-granting gesture (toolbar action / command) — a deliberate trade-off,
+ * not yet taken. See the host-permission note in manifest.config.ts.
  *
  * Required because a side panel opened via the action icon does NOT get the
  * `activeTab` grant — Chrome only grants activeTab for action/context-menu/
