@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  sendMessage,
-  sendTabMessage,
+  type ApplyVisionFilterMessage,
   getCurrentTab,
+  type HighlightElementMessage,
   type Message,
   type PingMessage,
   type ScanPageMessage,
-  type HighlightElementMessage,
-  type ApplyVisionFilterMessage,
+  sendMessage,
+  sendTabMessage,
   type ToggleFocusOrderMessage,
   type UpdateSettingsMessage,
 } from '../messaging';
@@ -109,14 +109,6 @@ describe('Messaging - Communication between extension parts', () => {
 
       expect(message.type).toBe('UPDATE_SETTINGS');
       expect(message.payload.wcagLevel).toBe('AA');
-    });
-
-    it('should support OPEN_SIDEPANEL message type', () => {
-      const message: Message = {
-        type: 'OPEN_SIDEPANEL',
-      };
-
-      expect(message.type).toBe('OPEN_SIDEPANEL');
     });
 
     it('should support SCAN_RESULT message type', () => {
@@ -507,10 +499,9 @@ describe('Messaging - Communication between extension parts', () => {
         { type: 'SCAN_PAGE' },
         { type: 'CLEAR_HIGHLIGHTS' },
         { type: 'GET_SETTINGS' },
-        { type: 'OPEN_SIDEPANEL' },
       ];
 
-      expect(messages).toHaveLength(5);
+      expect(messages).toHaveLength(4);
     });
   });
 

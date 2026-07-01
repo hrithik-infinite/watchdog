@@ -2,15 +2,15 @@
  * Hook for managing ignored issues
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import logger from '@/shared/logger';
 import {
-  getIgnoredIssuesForDomain,
-  unignoreIssue,
   clearIgnoredIssuesForDomain,
   generateIssueHash,
+  getIgnoredIssuesForDomain,
   type IgnoredIssue,
+  unignoreIssue,
 } from '@/shared/storage';
-import logger from '@/shared/logger';
 
 interface UseIgnoredIssuesResult {
   ignoredIssues: IgnoredIssue[];
@@ -51,6 +51,9 @@ export function useIgnoredIssues(currentUrl: string | undefined): UseIgnoredIssu
   }, [currentUrl]);
 
   useEffect(() => {
+    // Load-on-mount / URL-change effect that synchronizes with chrome.storage.
+    // loadIgnoredIssues sets the loading flag synchronously before its await,
+    // which is the intended spinner UX, not a cascading-render bug.
     loadIgnoredIssues();
   }, [loadIgnoredIssues]);
 

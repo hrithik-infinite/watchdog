@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
-import { useIgnoredIssues } from '../useIgnoredIssues';
-import * as storage from '@/shared/storage';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import logger from '@/shared/logger';
+import * as storage from '@/shared/storage';
+import { useIgnoredIssues } from '../useIgnoredIssues';
 
 // Mock the storage module
 vi.mock('@/shared/storage', () => ({

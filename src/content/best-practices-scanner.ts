@@ -1,9 +1,9 @@
 import type {
+  Category,
   Issue,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
 } from '@/shared/types';
 
@@ -138,10 +138,18 @@ function detectLibraries(): LibraryInfo[] {
     libraries.push({ name: 'jquery', version: jQuery.fn.jquery, detected: true });
   }
 
-  // Lodash
-  const lodash = win._ as { VERSION?: string } | undefined;
-  if (lodash?.VERSION) {
-    libraries.push({ name: 'lodash', version: lodash.VERSION, detected: true });
+  // Lodash vs Underscore — both expose window._ with a VERSION string, so
+  // distinguish them by a lodash-only method: runInContext exists in lodash but
+  // not underscore. (Without this, underscore was always mislabeled "lodash" and
+  // tagged with lodash CVEs, and the separate underscore branch below was dead.)
+  const underscoreLike = win._ as { VERSION?: string; runInContext?: unknown } | undefined;
+  if (underscoreLike?.VERSION) {
+    const isLodash = typeof underscoreLike.runInContext === 'function';
+    libraries.push({
+      name: isLodash ? 'lodash' : 'underscore',
+      version: underscoreLike.VERSION,
+      detected: true,
+    });
   }
 
   // React
@@ -186,12 +194,6 @@ function detectLibraries(): LibraryInfo[] {
     libraries.push({ name: 'ember', version: Ember.VERSION, detected: true });
   }
 
-  // Underscore
-  const underscore = win._ as { VERSION?: string } | undefined;
-  if (underscore?.VERSION && !lodash?.VERSION) {
-    libraries.push({ name: 'underscore', version: underscore.VERSION, detected: true });
-  }
-
   return libraries;
 }
 
@@ -211,6 +213,28 @@ function compareVersions(version1: string, version2: string): number {
 function checkVulnerableLibraries(): BestPracticeCheck[] {
   const checks: BestPracticeCheck[] = [];
   const libraries = detectLibraries();
+
+  if (libraries.length === 0) {
+    // Detection only sees libraries exposed as window globals. Modern sites bundle
+    // their dependencies (webpack/Vite/Rollup) and expose no globals, so finding
+    // nothing here is NOT a clean bill of health. Make the scope explicit instead
+    // of silently reporting no vulnerabilities.
+    checks.push({
+      id: 'library-scan-scope',
+      name: 'Library Vulnerability Scan',
+      severity: 'minor',
+      passed: false,
+      message: 'Only globally-exposed libraries were scanned for known vulnerabilities',
+      description:
+        'WatchDog detects libraries exposed as window globals (e.g. window.jQuery, window._). None were found, so dependencies bundled by a build tool were not analyzed — a clean result here does not mean the page is free of vulnerable libraries.',
+      element: null,
+      fix: {
+        description: 'Audit bundled dependencies with your package manager.',
+        code: 'npm audit\n# or\nyarn audit\n# or\npnpm audit',
+      },
+    });
+    return checks;
+  }
 
   for (const lib of libraries) {
     const vulns = KNOWN_VULNERABILITIES.filter(
@@ -286,13 +310,97 @@ function checkPasswordPastePrevention(): BestPracticeCheck[] {
   return checks;
 }
 
+// Replaces JS line/block comments and string/template-literal CONTENT with
+// blanks while preserving identifiers and call syntax, so a substring scan for
+// an API call doesn't match a commented-out or quoted mention. A single-pass
+// tokenizer is used (not independent regex passes) because comments can contain
+// quotes and strings can contain `//` (e.g. "https://..."), so stripping one
+// kind before the other corrupts the source and yields false negatives.
+function stripCommentsAndStrings(code: string): string {
+  let result = '';
+  let i = 0;
+  const n = code.length;
+  type State = 'code' | 'line' | 'block' | 'single' | 'double' | 'template';
+  let state: State = 'code';
+
+  while (i < n) {
+    const c = code[i];
+    const next = code[i + 1];
+
+    switch (state) {
+      case 'code':
+        if (c === '/' && next === '/') {
+          state = 'line';
+          i += 2;
+        } else if (c === '/' && next === '*') {
+          state = 'block';
+          i += 2;
+        } else if (c === "'") {
+          state = 'single';
+          i += 1;
+        } else if (c === '"') {
+          state = 'double';
+          i += 1;
+        } else if (c === '`') {
+          state = 'template';
+          i += 1;
+        } else {
+          result += c;
+          i += 1;
+        }
+        break;
+      case 'line':
+        if (c === '\n') {
+          state = 'code';
+          result += c;
+        }
+        i += 1;
+        break;
+      case 'block':
+        if (c === '*' && next === '/') {
+          state = 'code';
+          i += 2;
+        } else {
+          i += 1;
+        }
+        break;
+      case 'single':
+        if (c === '\\') i += 2;
+        else {
+          if (c === "'") state = 'code';
+          i += 1;
+        }
+        break;
+      case 'double':
+        if (c === '\\') i += 2;
+        else {
+          if (c === '"') state = 'code';
+          i += 1;
+        }
+        break;
+      case 'template':
+        if (c === '\\') i += 2;
+        else {
+          if (c === '`') state = 'code';
+          i += 1;
+        }
+        break;
+    }
+  }
+
+  return result;
+}
+
 function checkNotificationOnLoad(): BestPracticeCheck[] {
   const checks: BestPracticeCheck[] = [];
   const scripts = document.querySelectorAll('script');
   let requestsNotification = false;
 
   scripts.forEach((script) => {
-    const content = script.textContent || '';
+    // Strip comments and string/template literals first: the old raw-substring
+    // scan flagged commented-out code and quoted mentions of the API (common in
+    // third-party bundles) as genuine on-load permission requests.
+    const content = stripCommentsAndStrings(script.textContent || '');
     // Check for notification permission request that's not in an event handler
     if (
       content.includes('Notification.requestPermission') &&
@@ -331,15 +439,23 @@ function checkUnsizedImages(): BestPracticeCheck[] {
   let firstUnsized: HTMLImageElement | null = null;
 
   images.forEach((img) => {
-    const hasWidth = img.hasAttribute('width') || img.style.width;
-    const hasHeight = img.hasAttribute('height') || img.style.height;
+    // Only meaningfully-sized, visible images cause noticeable layout shift.
+    if (img.offsetWidth <= 50 || img.offsetHeight <= 50) {
+      return;
+    }
 
-    // Check if image is visible and significant size
-    if (img.offsetWidth > 50 && img.offsetHeight > 50) {
-      if (!hasWidth || !hasHeight) {
-        unsizedCount++;
-        if (!firstUnsized) firstUnsized = img;
-      }
+    const hasWidth = img.hasAttribute('width') || !!img.style.width;
+    const hasHeight = img.hasAttribute('height') || !!img.style.height;
+    // A non-auto CSS aspect-ratio reserves space before the image loads and is
+    // the modern CLS-safe pattern (browsers also synthesize it from width/height
+    // attributes). Honoring it avoids flagging images sized via a stylesheet,
+    // which the attribute/inline-only check used to mis-flag on responsive pages.
+    const aspectRatio = getComputedStyle(img).aspectRatio;
+    const hasAspectRatio = !!aspectRatio && aspectRatio !== 'auto';
+
+    if (!hasAspectRatio && (!hasWidth || !hasHeight)) {
+      unsizedCount++;
+      if (!firstUnsized) firstUnsized = img;
     }
   });
 
@@ -568,39 +684,6 @@ function checkDeprecatedElements(): BestPracticeCheck[] {
   return checks;
 }
 
-function checkConsoleErrors(): BestPracticeCheck {
-  // We can't directly access console errors, but we can check for common error indicators
-  const errorElements = document.querySelectorAll('[onerror]');
-
-  if (errorElements.length > 5) {
-    return {
-      id: 'excessive-error-handlers',
-      name: 'Error Handlers',
-      severity: 'moderate',
-      passed: false,
-      message: `Found ${errorElements.length} inline error handlers`,
-      description:
-        'Excessive inline error handlers may indicate error-prone code. Use centralized error handling.',
-      element: errorElements[0] as HTMLElement,
-      fix: {
-        description: 'Use centralized error handling instead of inline onerror attributes.',
-        code: '// Use a global error handler\nwindow.addEventListener("error", (event) => {\n  console.error("Error:", event.error);\n});',
-      },
-    };
-  }
-
-  return {
-    id: 'error-handlers-ok',
-    name: 'Error Handlers',
-    severity: 'minor',
-    passed: true,
-    message: 'Error handling is reasonable',
-    description: '',
-    element: null,
-    fix: { description: '', code: '' },
-  };
-}
-
 function checkBrokenImages(): BestPracticeCheck[] {
   const checks: BestPracticeCheck[] = [];
   const images = document.querySelectorAll('img');
@@ -608,7 +691,10 @@ function checkBrokenImages(): BestPracticeCheck[] {
   let firstBroken: HTMLImageElement | null = null;
 
   images.forEach((img) => {
-    if (!img.complete || img.naturalHeight === 0) {
+    // A genuinely broken image has finished its load attempt (complete === true)
+    // yet has zero natural size. Images still loading — including not-yet-in-view
+    // loading="lazy" images — report complete === false and are not failures.
+    if (img.complete && img.naturalWidth === 0) {
       brokenCount++;
       if (!firstBroken) firstBroken = img;
     }
@@ -685,13 +771,17 @@ function checkEmptyLinks(): BestPracticeCheck[] {
     const href = link.getAttribute('href') || '';
     const text = link.textContent?.trim() || '';
 
-    if (href === '#' || href === '') {
-      emptyLinks++;
-    } else if (href.startsWith('javascript:')) {
+    if (href.startsWith('javascript:')) {
       jsLinks++;
     }
 
-    if (!text && !link.querySelector('img')) {
+    // A link is empty/invalid if it points nowhere (#/empty href) OR has no
+    // accessible content. Count each such link at most once: the previous code
+    // had two independent `emptyLinks++` branches, so a link that was BOTH
+    // href="#" AND had empty content was double-counted.
+    const hasEmptyHref = href === '#' || href === '';
+    const hasEmptyContent = !text && !link.querySelector('img');
+    if (hasEmptyHref || hasEmptyContent) {
       emptyLinks++;
     }
   });
@@ -803,7 +893,10 @@ function checkGeolocationUsage(): BestPracticeCheck {
   let hasGeolocationRequest = false;
 
   scripts.forEach((script) => {
-    const content = script.textContent || '';
+    // Strip comments and string/template literals so a commented-out or quoted
+    // mention of the geolocation API (e.g. inside a third-party bundle's strings)
+    // isn't mistaken for a genuine on-load request.
+    const content = stripCommentsAndStrings(script.textContent || '');
     if (
       content.includes('navigator.geolocation.getCurrentPosition') &&
       !content.includes('addEventListener')
@@ -942,7 +1035,6 @@ export async function scanBestPractices(): Promise<ScanResult> {
     checkCharset(),
     checkLangAttribute(),
     ...checkDeprecatedElements(),
-    checkConsoleErrors(),
     ...checkBrokenImages(),
     checkDuplicateIds(),
     ...checkEmptyLinks(),

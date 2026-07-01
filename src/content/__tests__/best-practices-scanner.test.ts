@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock performance
 const mockPerformanceNow = vi.fn();
@@ -358,43 +358,56 @@ describe('Best Practices Scanner', () => {
       // Should detect at least one geolocation issue
       expect(Array.isArray(result.issues)).toBe(true);
     });
-  });
 
-  describe('Console errors check', () => {
-    it('should detect excessive error handlers', async () => {
-      const pageWithErrorHandlers = new JSDOM(
-        '<!DOCTYPE html><html><head></head><body>' +
-          '<img onerror="alert(1)">' +
-          '<img onerror="alert(2)">' +
-          '<img onerror="alert(3)">' +
-          '<img onerror="alert(4)">' +
-          '<img onerror="alert(5)">' +
-          '<img onerror="alert(6)">' +
-          '</body></html>'
+    it('should not flag a commented-out geolocation request (correctness-16)', async () => {
+      // Regression: the old raw-substring scan matched the API name inside a
+      // block comment, producing a false positive.
+      const pageWithCommentedGeo = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          '/* navigator.geolocation.getCurrentPosition(success, error); disabled */' +
+          ' const x = 1;' +
+          '</script></body></html>'
       );
-      vi.stubGlobal('document', pageWithErrorHandlers.window.document);
-      vi.stubGlobal('window', pageWithErrorHandlers.window);
+      vi.stubGlobal('document', pageWithCommentedGeo.window.document);
+      vi.stubGlobal('window', pageWithCommentedGeo.window);
 
       const result = await scanBestPractices();
 
-      const errorIssue = result.issues.find((i) => i.ruleId?.includes('error'));
-      expect(errorIssue).toBeDefined();
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeUndefined();
     });
 
-    it('should accept pages with few error handlers', async () => {
-      const pageWithFewHandlers = new JSDOM(
-        '<!DOCTYPE html><html><head></head><body>' +
-          '<img onerror="alert(1)">' +
-          '<img onerror="alert(2)">' +
-          '</body></html>'
+    it('should not flag a string-literal mention of the geolocation API (correctness-16)', async () => {
+      const pageWithStringGeo = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          'const doc = "navigator.geolocation.getCurrentPosition is intrusive on load";' +
+          '</script></body></html>'
       );
-      vi.stubGlobal('document', pageWithFewHandlers.window.document);
-      vi.stubGlobal('window', pageWithFewHandlers.window);
+      vi.stubGlobal('document', pageWithStringGeo.window.document);
+      vi.stubGlobal('window', pageWithStringGeo.window);
 
       const result = await scanBestPractices();
 
-      const errorIssue = result.issues.find((i) => i.ruleId?.includes('excessive-error'));
-      expect(errorIssue).toBeUndefined();
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeUndefined();
+    });
+
+    it('still flags a genuine on-load request when a string contains a // URL (correctness-16)', async () => {
+      // Guards the tokenizer choice: a naive "strip line comments then strings"
+      // pass would treat the // in "https://..." as a comment and swallow the
+      // real call on the same line, hiding a genuine issue (false negative).
+      const pageWithUrlAndGeo = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          'fetch("https://api.example.com/v1"); navigator.geolocation.getCurrentPosition(s, e);' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithUrlAndGeo.window.document);
+      vi.stubGlobal('window', pageWithUrlAndGeo.window);
+
+      const result = await scanBestPractices();
+
+      const geoOnLoadIssue = result.issues.find((i) => i.ruleId === 'geolocation-on-load');
+      expect(geoOnLoadIssue).toBeDefined();
     });
   });
 
@@ -404,6 +417,17 @@ describe('Best Practices Scanner', () => {
 
       const vulnIssues = result.issues.filter((i) => i.ruleId?.includes('vuln-'));
       expect(vulnIssues.length).toBe(0);
+    });
+
+    it('surfaces the global-only scope when no global libraries are present', async () => {
+      // The default empty page exposes no global libraries. The scan must state
+      // its scope rather than silently imply the page is free of vulnerable
+      // dependencies (bundled libraries are invisible to global detection).
+      const result = await scanBestPractices();
+
+      const scope = result.issues.find((i) => i.ruleId === 'library-scan-scope');
+      expect(scope).toBeDefined();
+      expect(scope?.severity).toBe('minor');
     });
 
     it('should have vulnerable library check', async () => {
@@ -482,6 +506,41 @@ describe('Best Practices Scanner', () => {
     });
 
     it('should accept page without notification request', async () => {
+      const result = await scanBestPractices();
+
+      const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
+      expect(notifIssue).toBeUndefined();
+    });
+
+    it('should not flag a commented-out notification request (correctness-16)', async () => {
+      // Regression: the old raw-substring scan matched the API name even inside a
+      // comment, producing a false positive.
+      const pageWithCommentedNotif = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>\n' +
+          '// Notification.requestPermission(); — disabled, too intrusive on load\n' +
+          'console.log("ready");\n' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithCommentedNotif.window.document);
+      vi.stubGlobal('window', pageWithCommentedNotif.window);
+
+      const result = await scanBestPractices();
+
+      const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
+      expect(notifIssue).toBeUndefined();
+    });
+
+    it('should not flag a string-literal mention of the notification API (correctness-16)', async () => {
+      // Regression: a quoted mention (common in third-party bundles/docs strings)
+      // is not a genuine API call and must not be flagged.
+      const pageWithStringNotif = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><script>' +
+          'const help = "Call Notification.requestPermission() after a user gesture";' +
+          '</script></body></html>'
+      );
+      vi.stubGlobal('document', pageWithStringNotif.window.document);
+      vi.stubGlobal('window', pageWithStringNotif.window);
+
       const result = await scanBestPractices();
 
       const notifIssue = result.issues.find((i) => i.ruleId?.includes('notification-on-load'));
@@ -615,6 +674,23 @@ describe('Best Practices Scanner', () => {
 
       // Should not count as empty if there's an image
       expect(Array.isArray(result.issues)).toBe(true);
+    });
+
+    it('counts a link that is both href="#" and empty content only once (correctness-15)', async () => {
+      // Regression: a single <a href="#"></a> is BOTH an empty/invalid href and
+      // empty content. The old code had two independent emptyLinks++ branches, so
+      // it reported "2 link(s)" for one element. It must count exactly once.
+      const pageWithSingleEmptyLink = new JSDOM(
+        '<!DOCTYPE html><html><head></head><body><a href="#"></a></body></html>'
+      );
+      vi.stubGlobal('document', pageWithSingleEmptyLink.window.document);
+      vi.stubGlobal('window', pageWithSingleEmptyLink.window);
+
+      const result = await scanBestPractices();
+
+      const emptyLinkIssue = result.issues.find((i) => i.ruleId === 'empty-links');
+      expect(emptyLinkIssue).toBeDefined();
+      expect(emptyLinkIssue?.message).toContain('1 link(s)');
     });
   });
 
@@ -1036,10 +1112,12 @@ describe('Best Practices Scanner', () => {
         '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
       );
 
-      // Create window with vulnerable Lodash version
+      // Create window with vulnerable Lodash version. Real lodash exposes
+      // runInContext (underscore does not); the scanner uses it to tell them
+      // apart, so a faithful lodash mock must include it.
       const windowWithLodash = Object.create(vulnDOM.window);
       Object.defineProperty(windowWithLodash, '_', {
-        value: { VERSION: '4.17.15' },
+        value: { VERSION: '4.17.15', runInContext: () => ({}) },
         configurable: true,
         writable: true,
       });
@@ -1359,36 +1437,65 @@ describe('Best Practices Scanner', () => {
 
       const result = await scanBestPractices();
 
-      // Underscore detected - scan should complete
+      // Underscore (window._ without runInContext) must not be misattributed as
+      // lodash and tagged with lodash CVEs.
       expect(result).toBeDefined();
       expect(Array.isArray(result.issues)).toBe(true);
+      expect(result.issues.some((i) => i.ruleId?.includes('vuln-lodash'))).toBe(false);
     });
 
-    it('should prefer Lodash over Underscore when both present', async () => {
+    it('does not flag underscore as vulnerable lodash even when version strings overlap', async () => {
       const libDOM = new JSDOM(
         '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body></body></html>'
       );
 
-      // When lodash is present with VERSION property, underscore should be skipped
-      const windowWithBoth = Object.create(libDOM.window);
-      Object.defineProperty(windowWithBoth, '_', {
-        value: { VERSION: '4.17.21' }, // Lodash version format
+      // window._ with a string that matches a KNOWN vulnerable lodash version,
+      // but underscore semantics (no runInContext). The scanner must classify it
+      // as underscore and emit no lodash CVE — the exact misattribution bug.
+      const windowWithUnderscore = Object.create(libDOM.window);
+      Object.defineProperty(windowWithUnderscore, '_', {
+        value: { VERSION: '4.17.15' }, // collides with vulnerable lodash version
         configurable: true,
         writable: true,
       });
-      Object.defineProperty(windowWithBoth, 'document', {
+      Object.defineProperty(windowWithUnderscore, 'document', {
         value: libDOM.window.document,
         configurable: true,
       });
 
-      vi.stubGlobal('window', windowWithBoth);
+      vi.stubGlobal('window', windowWithUnderscore);
       vi.stubGlobal('document', libDOM.window.document);
 
       const result = await scanBestPractices();
 
-      // Lodash detected (underscore is skipped when lodash is present) - scan should complete
-      expect(result).toBeDefined();
-      expect(Array.isArray(result.issues)).toBe(true);
+      expect(result.issues.some((i) => i.ruleId?.includes('vuln-lodash'))).toBe(false);
+    });
+  });
+
+  describe('Image check accuracy', () => {
+    it('counts only finished-loading zero-size images as broken (not loading/lazy ones)', async () => {
+      const imgDOM = new JSDOM(
+        '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head><body><img id="a"><img id="b"><img id="c"></body></html>'
+      );
+      const doc = imgDOM.window.document;
+      const define = (id: string, complete: boolean, naturalWidth: number) => {
+        const el = doc.getElementById(id) as HTMLImageElement;
+        Object.defineProperty(el, 'complete', { value: complete, configurable: true });
+        Object.defineProperty(el, 'naturalWidth', { value: naturalWidth, configurable: true });
+      };
+      define('a', false, 0); // still loading (e.g. loading="lazy") -> not broken
+      define('b', true, 0); // load finished but zero natural size -> broken
+      define('c', true, 300); // loaded with intrinsic size -> fine
+
+      vi.stubGlobal('window', imgDOM.window);
+      vi.stubGlobal('document', doc);
+
+      const result = await scanBestPractices();
+
+      const broken = result.issues.find((i) => i.ruleId === 'broken-images');
+      expect(broken).toBeDefined();
+      // Exactly one image (b) is broken; the still-loading "a" must not be counted.
+      expect(broken?.message).toContain('1 image');
     });
   });
 });

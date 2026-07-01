@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Use fake timers to speed up tests (performance scanner has 1s delay)
 vi.useFakeTimers();
@@ -41,12 +41,14 @@ interface ObserverData {
   layoutShift: unknown[];
   event: unknown[];
   longtask: unknown[];
+  lcp: unknown[];
 }
 
 let observerData: ObserverData = {
   layoutShift: [],
   event: [],
   longtask: [],
+  lcp: [],
 };
 
 // Create a mock PerformanceObserver that invokes callbacks
@@ -66,6 +68,8 @@ class MockPerformanceObserver {
       entries = observerData.event;
     } else if (options.type === 'longtask') {
       entries = observerData.longtask;
+    } else if (options.type === 'largest-contentful-paint') {
+      entries = observerData.lcp;
     }
 
     // Invoke callback with entries if there are any
@@ -108,6 +112,7 @@ function setObserverData(data: Partial<ObserverData>) {
     layoutShift: data.layoutShift || [],
     event: data.event || [],
     longtask: data.longtask || [],
+    lcp: data.lcp || [],
   };
 }
 
@@ -304,45 +309,53 @@ describe('Performance Scanner', () => {
   });
 
   describe('LCP (Largest Contentful Paint) metrics', () => {
-    it('should detect LCP when available', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'largest-contentful-paint') {
-          return [{ startTime: 2000 }, { startTime: 2500 }];
-        }
-        return [];
-      });
+    it('should detect a poor LCP from the buffered observer', async () => {
+      // 5000ms > the 4000ms "poor" threshold, so it must surface as an issue.
+      setObserverData({ lcp: [{ startTime: 5000 }] });
 
       const result = await runScanWithTimers();
 
       const lcpIssues = result.issues.filter((i) =>
         i.message?.includes('Largest Contentful Paint')
       );
-      expect(lcpIssues.length).toBeGreaterThanOrEqual(0);
+      expect(lcpIssues.length).toBeGreaterThan(0);
+      expect(lcpIssues[0].message).toContain('5000ms');
     });
 
-    it('should use last LCP entry', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'largest-contentful-paint') {
-          return [
-            { startTime: 3000 },
-            { startTime: 2000 },
-            { startTime: 3500 }, // This should be used
-          ];
-        }
-        return [];
-      });
+    it('should use the last (final) LCP candidate', async () => {
+      // Candidates are monotonic; the final entry (4500ms) is authoritative.
+      setObserverData({ lcp: [{ startTime: 3000 }, { startTime: 4000 }, { startTime: 4500 }] });
 
       const result = await runScanWithTimers();
 
-      expect(Array.isArray(result.issues)).toBe(true);
+      const lcpIssues = result.issues.filter((i) =>
+        i.message?.includes('Largest Contentful Paint')
+      );
+      expect(lcpIssues.length).toBeGreaterThan(0);
+      expect(lcpIssues[0].message).toContain('4500ms');
+    });
+
+    it('should not surface a good LCP as an issue', async () => {
+      // 2000ms ≤ the 2500ms "good" threshold — no issue expected.
+      setObserverData({ lcp: [{ startTime: 2000 }] });
+
+      const result = await runScanWithTimers();
+
+      const lcpIssues = result.issues.filter((i) =>
+        i.message?.includes('Largest Contentful Paint')
+      );
+      expect(lcpIssues).toHaveLength(0);
     });
 
     it('should handle missing LCP', async () => {
-      mockGetEntriesByType.mockReturnValue([]);
+      setObserverData({ lcp: [] });
 
       const result = await runScanWithTimers();
 
-      expect(Array.isArray(result.issues)).toBe(true);
+      const lcpIssues = result.issues.filter((i) =>
+        i.message?.includes('Largest Contentful Paint')
+      );
+      expect(lcpIssues).toHaveLength(0);
     });
   });
 
@@ -703,25 +716,12 @@ describe('Performance Scanner', () => {
   });
 
   describe('INP (Interaction to Next Paint) metrics', () => {
-    it('should measure INP with buffered event entries', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'event') {
-          return [
-            {
-              name: 'click',
-              duration: 100,
-              interactionId: 1,
-              target: undefined,
-            },
-            {
-              name: 'click',
-              duration: 150,
-              interactionId: 2,
-              target: undefined,
-            },
-          ];
-        }
-        return [];
+    it('should measure INP from buffered event entries', async () => {
+      setObserverData({
+        event: [
+          { name: 'click', duration: 100, interactionId: 1, target: undefined },
+          { name: 'click', duration: 150, interactionId: 2, target: undefined },
+        ],
       });
 
       const result = await runScanWithTimers();
@@ -730,68 +730,44 @@ describe('Performance Scanner', () => {
     });
 
     it('should handle INP with no interactions', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'event') {
-          return [];
-        }
-        return [];
-      });
+      setObserverData({ event: [] });
 
       const result = await runScanWithTimers();
 
       expect(Array.isArray(result.issues)).toBe(true);
     });
 
-    it('should track worst interaction by duration', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'event') {
-          return [
-            { name: 'click', duration: 50, interactionId: 1, target: undefined },
-            { name: 'keydown', duration: 200, interactionId: 2, target: undefined }, // Worst
-          ];
-        }
-        return [];
+    it('should surface the worst interaction when INP is poor', async () => {
+      // 600ms > the 500ms "poor" threshold, and the worst of the two wins.
+      setObserverData({
+        event: [
+          { name: 'click', duration: 50, interactionId: 1, target: undefined },
+          { name: 'keydown', duration: 600, interactionId: 2, target: undefined },
+        ],
       });
 
       const result = await runScanWithTimers();
 
-      expect(Array.isArray(result.issues)).toBe(true);
+      const inpIssue = result.issues.find((i) => i.ruleId === 'performance-inp');
+      expect(inpIssue).toBeDefined();
+      expect(inpIssue?.message).toContain('600ms');
+      expect(inpIssue?.element.failureSummary).toContain('keydown');
     });
 
     it('should handle INP without interactionId', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'event') {
-          return [
-            { name: 'click', duration: 100, interactionId: 0, target: undefined }, // Invalid
-          ];
-        }
-        return [];
+      setObserverData({
+        event: [{ name: 'click', duration: 100, interactionId: 0, target: undefined }], // Invalid
       });
 
       const result = await runScanWithTimers();
 
-      expect(Array.isArray(result.issues)).toBe(true);
-    });
-
-    it('should handle event timing errors gracefully', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'event') {
-          throw new Error('event timing not supported');
-        }
-        return [];
-      });
-
-      const result = await runScanWithTimers();
-
-      expect(Array.isArray(result.issues)).toBe(true);
+      const inpIssue = result.issues.find((i) => i.ruleId === 'performance-inp');
+      expect(inpIssue).toBeUndefined();
     });
 
     it('should handle PerformanceObserver errors for event', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'event') {
-          return [{ name: 'click', duration: 100, interactionId: 1 }];
-        }
-        return [];
+      setObserverData({
+        event: [{ name: 'click', duration: 100, interactionId: 1, target: undefined }],
       });
 
       // Mock PerformanceObserver to throw on observe
@@ -917,6 +893,76 @@ describe('Performance Scanner', () => {
     });
   });
 
+  describe('Buffered entries counted once (CLS/TBT double-count regression)', () => {
+    // A single observer with `buffered: true` reports every entry already
+    // recorded before observe() PLUS new ones — exactly once. These tests put the
+    // SAME entries in both getEntriesByType (the removed manual pre-read) and the
+    // observer callback, proving the scanner no longer sums them twice. On the
+    // pre-fix code each entry was counted twice, doubling CLS/TBT.
+    function stubObserver(forType: string, entries: unknown[]) {
+      const original = window.PerformanceObserver;
+      vi.stubGlobal(
+        'PerformanceObserver',
+        class {
+          private cb: (list: { getEntries: () => unknown[] }) => void;
+          constructor(cb: (list: { getEntries: () => unknown[] }) => void) {
+            this.cb = cb;
+          }
+          observe(options: { type: string }) {
+            if (options.type === forType) this.cb({ getEntries: () => entries });
+          }
+          disconnect() {}
+        } as any
+      );
+      return () => {
+        if (original) vi.stubGlobal('PerformanceObserver', original);
+      };
+    }
+
+    it('counts each layout-shift once: two good shifts (sum 0.08) stay "good", no CLS issue', async () => {
+      const shifts = [
+        { value: 0.05, hadRecentInput: false, sources: [] },
+        { value: 0.03, hadRecentInput: false, sources: [] },
+      ];
+      mockGetEntriesByType.mockImplementation((type) => (type === 'layout-shift' ? shifts : []));
+      const restore = stubObserver('layout-shift', shifts);
+
+      const result = await runScanWithTimers();
+
+      // Single count: 0.08 ≤ 0.1 → "good" → no issue. Double count → 0.16 → issue.
+      expect(result.issues.some((i) => i.ruleId === 'performance-cls')).toBe(false);
+      restore();
+    });
+
+    it('counts each long task once: blocking 150ms stays "good", no TBT issue', async () => {
+      const tasks = [
+        { duration: 150, startTime: 0, attribution: [] }, // blocking 100ms
+        { duration: 100, startTime: 200, attribution: [] }, // blocking 50ms
+      ];
+      mockGetEntriesByType.mockImplementation((type) => (type === 'longtask' ? tasks : []));
+      const restore = stubObserver('longtask', tasks);
+
+      const result = await runScanWithTimers();
+
+      // Single count: 150ms ≤ 200 → "good" → no issue. Double count → 300ms → issue.
+      expect(result.issues.some((i) => i.ruleId === 'performance-tbt')).toBe(false);
+      restore();
+    });
+
+    it('still emits a CLS issue when real shifts exceed the good threshold', async () => {
+      const shifts = [{ value: 0.18, hadRecentInput: false, sources: [] }];
+      mockGetEntriesByType.mockReturnValue([]);
+      const restore = stubObserver('layout-shift', shifts);
+
+      const result = await runScanWithTimers();
+
+      const cls = result.issues.find((i) => i.ruleId === 'performance-cls');
+      expect(cls).toBeDefined();
+      expect(cls?.description).toContain('0.180');
+      restore();
+    });
+  });
+
   describe('getSelector edge cases', () => {
     it('should use element ID for selector', async () => {
       const mockElement = {
@@ -995,12 +1041,7 @@ describe('Performance Scanner', () => {
         }
         return [];
       });
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'largest-contentful-paint') {
-          return [{ startTime: 2000 }]; // Good LCP
-        }
-        return [];
-      });
+      setObserverData({ lcp: [{ startTime: 2000 }] }); // Good LCP
 
       const result = await runScanWithTimers();
 
@@ -1127,12 +1168,7 @@ describe('Performance Scanner', () => {
     });
 
     it('should generate LCP-specific fix description for poor LCP', async () => {
-      mockGetEntriesByType.mockImplementation((type) => {
-        if (type === 'largest-contentful-paint') {
-          return [{ startTime: 5000 }]; // Poor LCP
-        }
-        return [];
-      });
+      setObserverData({ lcp: [{ startTime: 5000 }] }); // Poor LCP
 
       const result = await runScanWithTimers();
 
@@ -1592,7 +1628,7 @@ describe('Performance Scanner', () => {
 
   describe('getElementHtml edge cases', () => {
     it('should truncate very long HTML', async () => {
-      const longHTML = '<div class="' + 'x'.repeat(300) + '">Content</div>';
+      const longHTML = `<div class="${'x'.repeat(300)}">Content</div>`;
       const mockQuerySelector = vi.fn().mockReturnValue({
         outerHTML: longHTML,
       });
@@ -2331,7 +2367,7 @@ describe('Performance Scanner', () => {
 
   describe('Helper Functions Coverage', () => {
     it('should truncate long HTML in getElementHtml', async () => {
-      const longHtml = '<div class="' + 'x'.repeat(300) + '">Content</div>';
+      const longHtml = `<div class="${'x'.repeat(300)}">Content</div>`;
       mockQuerySelector.mockReturnValue({ outerHTML: longHtml });
 
       const mockElement = { id: 'long-el', tagName: 'DIV', className: '', parentElement: null };
@@ -2618,6 +2654,166 @@ describe('Performance Scanner', () => {
         (i: { ruleId: string }) => i.ruleId === 'performance-tbt'
       );
       expect(tbtIssues.length).toBe(0);
+    });
+  });
+
+  describe('Navigation Timing Level 2 (correctness-20)', () => {
+    // Regression: the scanner read the deprecated performance.timing /
+    // navigationStart directly. It now prefers a PerformanceNavigationTiming
+    // entry from getEntriesByType('navigation') and only falls back to
+    // performance.timing when no navigation entry exists.
+    it('prefers the navigation entry over the deprecated performance.timing', async () => {
+      // performance.timing reports a GOOD TTFB (1800 - 1300 = 500ms). The
+      // navigation entry reports a POOR one (4000 - 1300 = 2700ms). The poor
+      // reading must win, which is only possible if the navigation entry is used.
+      const navEntry = {
+        entryType: 'navigation',
+        startTime: 0,
+        requestStart: 1300,
+        responseStart: 4000, // TTFB = 2700ms (poor)
+        domContentLoadedEventStart: 100,
+        domContentLoadedEventEnd: 150, // DCL = 50ms (good)
+        loadEventEnd: 1500, // Page load = 1500ms (good)
+      };
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'navigation' ? [navEntry] : []
+      );
+
+      const result = await runScanWithTimers();
+
+      const ttfb = result.issues.find((i) => i.message?.includes('Time to First Byte'));
+      expect(ttfb).toBeDefined();
+      expect(ttfb?.severity).toMatch(/serious|moderate/);
+    });
+
+    it('computes Page Load Time from loadEventEnd relative to the entry startTime', async () => {
+      // Navigation Level 2 marks are relative to startTime (0), so page load is
+      // loadEventEnd - startTime. A 5000ms load must surface a poor page-load issue.
+      const navEntry = {
+        entryType: 'navigation',
+        startTime: 0,
+        requestStart: 1300,
+        responseStart: 1500, // good TTFB
+        domContentLoadedEventStart: 100,
+        domContentLoadedEventEnd: 150,
+        loadEventEnd: 5000, // page load = 5000ms (poor)
+      };
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'navigation' ? [navEntry] : []
+      );
+
+      const result = await runScanWithTimers();
+
+      const plt = result.issues.find((i) => i.message?.includes('Page Load Time'));
+      expect(plt).toBeDefined();
+    });
+
+    it('falls back to performance.timing when no navigation entry exists', async () => {
+      // No navigation entry → deprecated fallback path. Poor TTFB from timing
+      // (4000 - 1300 = 2700ms) must still be reported.
+      mockPerformanceAPI.timing.responseStart = 4000;
+      mockPerformanceAPI.timing.requestStart = 1300;
+      mockGetEntriesByType.mockReturnValue([]); // no 'navigation' entry
+
+      const result = await runScanWithTimers();
+
+      const ttfb = result.issues.find((i) => i.message?.includes('Time to First Byte'));
+      expect(ttfb).toBeDefined();
+
+      mockPerformanceAPI.timing.responseStart = 1800;
+    });
+  });
+
+  describe('Cross-origin / cached resource sizes (correctness-21)', () => {
+    // Regression: sizes were read as `transferSize || 0`, so cross-origin
+    // (no Timing-Allow-Origin) and cached resources counted as 0 bytes and
+    // undercounted page weight. The scanner now falls back to the body sizes.
+    it('falls back to encodedBodySize when transferSize is 0', async () => {
+      const resources = [
+        // transferSize 0 (opaque/cached) but a real 2MB body.
+        {
+          transferSize: 0,
+          encodedBodySize: 2_000_000,
+          decodedBodySize: 2_500_000,
+          initiatorType: 'img',
+        },
+      ];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      // On the buggy `transferSize || 0` path these would both be absent.
+      expect(result.issues.some((i) => i.message?.includes('Image Size'))).toBe(true);
+      expect(result.issues.some((i) => i.message?.includes('Total Resource Size'))).toBe(true);
+    });
+
+    it('falls back to decodedBodySize when transferSize and encodedBodySize are 0', async () => {
+      const resources = [
+        {
+          transferSize: 0,
+          encodedBodySize: 0,
+          decodedBodySize: 1_500_000,
+          initiatorType: 'script',
+        },
+      ];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      expect(result.issues.some((i) => i.message?.includes('JavaScript Size'))).toBe(true);
+    });
+
+    it('counts each resource once (transferSize is not added to body sizes)', async () => {
+      // 2,000,000 bytes ≈ 1953KB. Summing transferSize AND encodedBodySize would
+      // report ~3906KB instead. The message carries the rounded KB value.
+      const resources = [
+        { transferSize: 2_000_000, encodedBodySize: 2_000_000, initiatorType: 'other' },
+      ];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      const totalSize = result.issues.find((i) => i.message?.includes('Total Resource Size'));
+      expect(totalSize).toBeDefined();
+      expect(totalSize?.message).toContain('1953');
+      expect(totalSize?.message).not.toContain('3906');
+    });
+
+    it('does not report a size metric when no size is known (no misleading 0 bytes)', async () => {
+      const resources = [{ transferSize: 0, initiatorType: 'script' }];
+      mockGetEntriesByType.mockImplementation((type: string) =>
+        type === 'resource' ? resources : []
+      );
+
+      const result = await runScanWithTimers();
+
+      expect(result.issues.some((i) => i.message?.includes('Total Resource Size'))).toBe(false);
+    });
+  });
+
+  describe('Observer settle window (perf-rel-4)', () => {
+    it('resolves within the observer settle window without ~500ms of dead time', async () => {
+      // Observers settle at 500ms. The buggy code then waited a fixed 1000ms
+      // before resolving — ~500ms of dead time. Advancing only 600ms must now be
+      // enough to fully resolve the scan; on the old code it would still be pending.
+      mockGetEntriesByType.mockReturnValue([]);
+
+      const scanPromise = scanPerformance();
+      let resolved = false;
+      void scanPromise.then(() => {
+        resolved = true;
+      });
+
+      await vi.advanceTimersByTimeAsync(600);
+
+      expect(resolved).toBe(true);
+      await scanPromise; // cleanup
     });
   });
 });

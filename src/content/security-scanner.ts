@@ -1,9 +1,9 @@
 import type {
+  Category,
   Issue,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
 } from '@/shared/types';
 
@@ -67,6 +67,25 @@ const SECURITY_HEADERS = [
   },
 ];
 
+// CSP and Referrer-Policy can be delivered via <meta http-equiv> in addition to
+// HTTP response headers, and browsers honor those. The other security headers
+// (HSTS, X-Frame-Options, X-Content-Type-Options) are ignored when set via meta,
+// so they remain header-only.
+const META_DELIVERABLE = new Set(['Content-Security-Policy', 'Referrer-Policy']);
+
+function hasMetaHttpEquiv(name: string): boolean {
+  const metas = document.querySelectorAll('meta[http-equiv]');
+  for (const meta of metas) {
+    if (
+      meta.getAttribute('http-equiv')?.toLowerCase() === name.toLowerCase() &&
+      (meta.getAttribute('content') || '').trim() !== ''
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function checkSecurityHeaders(): Promise<SecurityCheck[]> {
   const checks: SecurityCheck[] = [];
 
@@ -78,6 +97,12 @@ async function checkSecurityHeaders(): Promise<SecurityCheck[]> {
       const headerValue = response.headers.get(header.name);
 
       if (!headerValue) {
+        // A meta-deliverable policy present via <meta http-equiv> is honored by
+        // the browser, so its absence from the response headers is not a finding.
+        if (META_DELIVERABLE.has(header.name) && hasMetaHttpEquiv(header.name)) {
+          continue;
+        }
+
         checks.push({
           id: `header-${header.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
           name: header.name,
@@ -182,22 +207,40 @@ function checkMixedContent(): SecurityCheck {
   };
 }
 
+// Cookie names that typically carry session/auth material and should normally be
+// HttpOnly. HttpOnly cookies are invisible to document.cookie, so this check can
+// only flag a *readable* cookie whose name looks sensitive — it cannot, and must
+// not claim to, audit cookies that are already correctly protected. The previous
+// version flagged any non-empty document.cookie, firing on nearly every site
+// (analytics, theme, consent cookies are legitimately readable).
+const SENSITIVE_COOKIE_NAME =
+  /(^|[._-])(sess(ion)?(id)?|sid|auth|token|jwt|phpsessid|jsessionid|aspnet[._-]?sessionid|connect\.sid)([._-]|$)/i;
+
 function checkCookies(): SecurityCheck[] {
   const checks: SecurityCheck[] = [];
-  const cookies = document.cookie;
 
-  if (cookies) {
-    // Check if cookies are accessible via JavaScript (no HttpOnly)
+  if (!document.cookie) {
+    return checks;
+  }
+
+  const readableNames = document.cookie
+    .split(';')
+    .map((c) => c.split('=')[0]?.trim())
+    .filter((name): name is string => !!name);
+
+  const sensitive = readableNames.filter((name) => SENSITIVE_COOKIE_NAME.test(name));
+
+  if (sensitive.length > 0) {
     checks.push({
       id: 'cookies-accessible',
       name: 'Cookie Security',
       severity: 'moderate',
       passed: false,
-      message: 'Cookies are accessible via JavaScript',
+      message: `Session/auth cookie readable by JavaScript: ${sensitive.join(', ')}`,
       description:
-        'Cookies should have HttpOnly flag to prevent XSS attacks from stealing session data.',
+        'A cookie whose name indicates session or authentication data is readable by JavaScript, meaning it lacks the HttpOnly flag and could be stolen via XSS. (Cookies that already set HttpOnly are not visible to this check.)',
       fix: {
-        description: 'Set HttpOnly and Secure flags on cookies from the server.',
+        description: 'Set the HttpOnly and Secure flags on session/auth cookies from the server.',
         code: 'Set-Cookie: sessionId=abc123; HttpOnly; Secure; SameSite=Strict',
       },
     });
@@ -352,7 +395,11 @@ function checkExternalLinks(): SecurityCheck {
 
   externalLinks.forEach((link) => {
     const rel = link.getAttribute('rel') || '';
-    if (!rel.includes('noopener') || !rel.includes('noreferrer')) {
+    // A target="_blank" link is safe from reverse tabnabbing if it has either
+    // noopener or noreferrer (noreferrer implies noopener in modern browsers).
+    // The old `||` flagged links that already had one of them; only flag links
+    // that are missing BOTH.
+    if (!rel.includes('noopener') && !rel.includes('noreferrer')) {
       unsafeLinks++;
     }
   });

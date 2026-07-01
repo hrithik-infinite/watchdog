@@ -1,11 +1,14 @@
+import { Ban, ChevronLeft, ChevronRight, Code, Eye, Glasses } from 'lucide-react';
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Info, Eye, Ban } from 'lucide-react';
-import { Button } from '@/sidepanel/components/ui/button';
+import type { Issue, Severity } from '@/shared/types';
 import { Badge } from '@/sidepanel/components/ui/badge';
-import { Card, CardContent } from '@/sidepanel/components/ui/card';
+import { Button } from '@/sidepanel/components/ui/button';
+import { usePageOverlays } from '@/sidepanel/hooks/usePageOverlays';
+import { describeElement } from '@/sidepanel/lib/element-descriptor';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
+import { isWcagIssue, STANDARD_LABELS } from '@/sidepanel/lib/standards';
 import CodeBlock from './CodeBlock';
 import IgnoreIssueModal from './IgnoreIssueModal';
-import type { Issue, Severity } from '@/shared/types';
 
 interface IssueDetailProps {
   issue: Issue;
@@ -50,25 +53,32 @@ export default function IssueDetail({
   hasNext,
   canHighlight = false,
 }: IssueDetailProps) {
+  const isSiteOwner = useIsSiteOwner();
+  const { visionMode, setVisionMode, overlayError } = usePageOverlays();
   const [showIgnoreModal, setShowIgnoreModal] = useState(false);
+
+  // Deep-link the colorblind simulator from color-contrast issues (ux-public-10):
+  // the most direct way to *see* why low contrast matters. Toggles a colorblind
+  // mode on the live page.
+  const isColorIssue = issue.ruleId === 'color-contrast' || issue.category === 'color';
+  const isPreviewingCVD = visionMode !== 'none' && !visionMode.startsWith('blur');
+  const togglePreview = () => setVisionMode(isPreviewingCVD ? 'none' : 'deuteranopia');
+  // Site owners see the element described in plain language with the raw markup
+  // collapsed behind this toggle; developers keep the code visible by default.
+  const [showCode, setShowCode] = useState(false);
 
   return (
     <div className="flex flex-col h-full animate-slide-in bg-background">
-      {/* Header with prominent back button */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-card/30">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onBack}
-          className="gap-1.5 text-primary border-primary/30 hover:bg-primary/10 font-medium"
-        >
+      {/* Header with back button */}
+      <div className="grid grid-cols-[auto_1fr_auto] items-center px-4 py-3 border-b border-border bg-card">
+        <Button variant="outline" size="sm" onClick={onBack} className="gap-1.5 font-medium">
           <ChevronLeft className="h-4 w-4" />
           <span className="text-sm">Back</span>
         </Button>
-        <div className="flex-1" />
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm text-muted-foreground tabular-nums text-center">
           Issue {currentIndex + 1} of {totalCount}
         </span>
+        <span className="w-9" />
       </div>
 
       {/* Content */}
@@ -81,48 +91,117 @@ export default function IssueDetail({
           </Badge>
         </div>
 
-        {/* WCAG Info */}
-        <Card className="bg-wcag-bg border-wcag-border">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Info className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary-light">WCAG Info</span>
+        {/* Why this matters (ux-public-3): the plain-language consequence, led
+            above the technical description so non-developers get the stakes
+            first. Omitted when the scanner supplied no copy for this rule. */}
+        {issue.whyItMatters && (
+          <div className="rounded-xl border border-border bg-muted p-3">
+            <p className="text-caption uppercase text-muted-foreground mb-1">WHY THIS MATTERS</p>
+            <p className="text-sm text-foreground">{issue.whyItMatters}</p>
+          </div>
+        )}
+
+        {/* Standard info: WCAG criterion for accessibility, a neutral label
+            (e.g. "Performance metric") for the other audits. */}
+        <div className="bg-muted border border-border rounded-xl p-3">
+          <p className="text-caption uppercase text-muted-foreground mb-1">STANDARD</p>
+          {isWcagIssue(issue.standard) ? (
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-foreground font-medium">WCAG {issue.wcag.id}</span>
+              <Badge variant="outline">Level {issue.wcag.level}</Badge>
             </div>
-            <p className="text-foreground font-medium mb-1">
-              WCAG {issue.wcag.id} (Level {issue.wcag.level})
+          ) : (
+            <p className="text-foreground font-medium mb-1">{STANDARD_LABELS[issue.standard!]}</p>
+          )}
+          <p className="text-sm text-muted-foreground">{issue.description}</p>
+          {/* Developer axe provenance: the raw impact + rule tags, for triage
+              and search. */}
+          {!isSiteOwner && issue.impact && (
+            <p className="text-mono text-xs text-muted-foreground mt-2 break-words">
+              axe-core · impact: {issue.impact}
+              {issue.tags && issue.tags.length > 0 ? ` · ${issue.tags.join(', ')}` : ''}
             </p>
-            <p className="text-sm text-muted-foreground">{issue.description}</p>
-          </CardContent>
-        </Card>
+          )}
+        </div>
 
         {/* Current Element */}
         <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-h3 text-foreground">Current Element</h3>
-            <div className="flex items-center gap-2">
-              {canHighlight && (
-                <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
-                  <Eye className="h-4 w-4" />
-                  Highlight
-                </Button>
-              )}
+          <p className="text-caption uppercase text-muted-foreground mb-2">CURRENT ELEMENT</p>
+          {/* Actions wrap onto their own line(s) — at 360px a single row of
+              "Preview color blindness" + "Highlight" + "Hide" overflowed. */}
+          <div className="flex flex-wrap items-center gap-2 mb-2">
+            {isColorIssue && canHighlight && (
               <Button
-                variant="outline"
+                variant="secondary"
                 size="sm"
-                onClick={() => setShowIgnoreModal(true)}
+                onClick={togglePreview}
+                aria-pressed={isPreviewingCVD}
+                className="gap-1.5"
+              >
+                <Glasses className="h-4 w-4" />
+                {isPreviewingCVD ? 'Stop preview' : 'Preview color blindness'}
+              </Button>
+            )}
+            {canHighlight && (
+              <Button variant="secondary" size="sm" onClick={onHighlight} className="gap-1.5">
+                <Eye className="h-4 w-4" />
+                Highlight
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowIgnoreModal(true)}
+              className="gap-1.5 text-muted-foreground hover:text-foreground"
+            >
+              <Ban className="h-4 w-4" />
+              {isSiteOwner ? 'Mark as known' : 'Hide'}
+            </Button>
+          </div>
+          {/* Preview can fail (permission declined / no scannable page) — the
+              toggle rolls back, so this says why instead of failing silently. */}
+          {overlayError && (
+            <p role="alert" className="text-sm text-warning mb-2">
+              {overlayError}
+            </p>
+          )}
+          {isSiteOwner ? (
+            <>
+              <p className="text-body text-foreground mb-2">
+                {describeElement(issue.element.html)}
+              </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCode((v) => !v)}
+                aria-expanded={showCode}
                 className="gap-1.5 text-muted-foreground hover:text-foreground"
               >
-                <Ban className="h-4 w-4" />
-                Mark Known
+                <Code className="h-4 w-4" />
+                {showCode ? 'Hide code' : 'Show code'}
               </Button>
-            </div>
-          </div>
-          <CodeBlock code={issue.element.html} />
+              {showCode && (
+                <div className="mt-2">
+                  <CodeBlock code={issue.element.html} />
+                </div>
+              )}
+            </>
+          ) : (
+            <CodeBlock code={issue.element.html} />
+          )}
+          {/* Measured contrast for developers: the exact fg/bg axe sampled and
+              the failing ratio — enough to verify without leaving the panel. */}
+          {!isSiteOwner && issue.contrast && (
+            <p className="text-mono text-xs text-muted-foreground mt-2">
+              fg {issue.contrast.fg} · bg {issue.contrast.bg} · ratio{' '}
+              {issue.contrast.ratio.toFixed(1)}:1
+            </p>
+          )}
         </div>
 
         {/* How to Fix */}
         <div>
-          <h3 className="text-h3 text-foreground mb-2">How to Fix</h3>
+          <h3 className="text-h3 text-foreground mb-2">How to fix</h3>
           <p className="text-body text-muted-foreground mb-2">{issue.fix.description}</p>
         </div>
 

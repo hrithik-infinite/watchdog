@@ -1,32 +1,35 @@
+import type { AuditType } from '@/shared/messaging';
 import type {
+  Category,
   Issue,
+  IssueStandard,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
 } from '@/shared/types';
-import type { AuditType } from '@/shared/messaging';
+
+// Maps each implemented audit to the standard its issues belong to, so scanPage
+// can tag results centrally (see below) without editing every scanner.
+const AUDIT_STANDARD: Partial<Record<AuditType, IssueStandard>> = {
+  accessibility: 'wcag',
+  performance: 'performance',
+  seo: 'seo',
+  security: 'security',
+  'best-practices': 'best-practice',
+  pwa: 'pwa',
+};
+
+import axe from 'axe-core';
 import { MVP_RULES, RULE_CATEGORIES, SEVERITY_MAP, WCAG_CRITERIA } from '@/shared/constants';
 import { generateFix } from '@/shared/fixes';
-import { scanPerformance } from './performance-scanner';
-import { scanSEO } from './seo-scanner';
-import { scanSecurity } from './security-scanner';
-import { scanBestPractices } from './best-practices-scanner';
-import { scanPWA } from './pwa-scanner';
 import logger from '@/shared/logger';
-
-// Lazy load axe-core only when needed
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let axeInstance: any = null;
-
-async function getAxe() {
-  if (!axeInstance) {
-    const module = await import('axe-core');
-    axeInstance = module.default;
-  }
-  return axeInstance;
-}
+import { WHY_IT_MATTERS } from '@/shared/why-it-matters';
+import { scanBestPractices } from './best-practices-scanner';
+import { scanPerformance } from './performance-scanner';
+import { scanPWA } from './pwa-scanner';
+import { scanSecurity } from './security-scanner';
+import { scanSEO } from './seo-scanner';
 
 let idCounter = 0;
 
@@ -60,11 +63,16 @@ function extractWcag(ruleId: string): WCAGCriteria {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: axe violation objects are untyped at this transform boundary
 function transformViolations(violations: any[]): Issue[] {
   const issues: Issue[] = [];
 
   for (const violation of violations) {
+    // Developer metadata shared by every node of this rule.
+    const ruleNodeCount = violation.nodes.length;
+    const tags = Array.isArray(violation.tags) ? (violation.tags as string[]) : undefined;
+    const impact = violation.impact ?? undefined;
+
     for (const node of violation.nodes) {
       const selector = Array.isArray(node.target[0])
         ? (node.target[0] as string[]).join(' ')
@@ -76,6 +84,22 @@ function transformViolations(violations: any[]): Issue[] {
         failureSummary: node.failureSummary,
       };
 
+      // Measured contrast (color-contrast rule) from the node's check data — the
+      // raw fg/bg colors and ratio axe computed, used by the developer detail
+      // view and the diff-style fix.
+      // biome-ignore lint/suspicious/noExplicitAny: axe check objects are untyped here
+      const contrastData = ((node.any ?? []) as any[])
+        .map((c) => c?.data)
+        .find((d) => d && typeof d.contrastRatio === 'number');
+      const contrast = contrastData
+        ? {
+            fg: String(contrastData.fgColor),
+            bg: String(contrastData.bgColor),
+            ratio: Number(contrastData.contrastRatio),
+            required: Number(contrastData.expectedContrastRatio ?? 4.5),
+          }
+        : undefined;
+
       issues.push({
         id: generateId(),
         ruleId: violation.id,
@@ -86,7 +110,11 @@ function transformViolations(violations: any[]): Issue[] {
         helpUrl: violation.helpUrl,
         wcag: extractWcag(violation.id),
         element,
-        fix: generateFix(violation.id, element),
+        fix: generateFix(violation.id, element, contrast),
+        impact,
+        tags,
+        ruleNodeCount,
+        contrast,
       });
     }
   }
@@ -128,10 +156,6 @@ function generateSummary(issues: Issue[]): ScanSummary {
 async function scanAccessibility(): Promise<ScanResult> {
   logger.info('Starting accessibility scan');
   const startTime = performance.now();
-
-  // Lazy load axe-core
-  logger.debug('Loading axe-core');
-  const axe = await getAxe();
 
   // Configure axe to only run our 15 rules
   logger.debug('Running axe scan', { ruleCount: MVP_RULES.length });
@@ -190,13 +214,23 @@ export async function scanPage(auditType: AuditType): Promise<ScanResult> {
       case 'pwa':
         result = await scanPWA();
         break;
-      case 'mobile':
-      case 'links':
-      case 'i18n':
-      case 'privacy':
-        throw new Error(`${auditType} audit is not yet implemented`);
       default:
         throw new Error(`Unknown audit type: ${auditType}`);
+    }
+
+    // Tag every issue with the standard/audit it came from so display code can
+    // label non-accessibility issues correctly instead of calling them "WCAG",
+    // and attach a plain-language "why this matters" line (without clobbering one
+    // a scanner already supplied) so Site-owner mode can explain the stakes.
+    const standard = AUDIT_STANDARD[auditType];
+    if (standard) {
+      const tag = (issue: Issue): Issue => ({
+        ...issue,
+        standard,
+        whyItMatters: WHY_IT_MATTERS[issue.ruleId] ?? issue.whyItMatters,
+      });
+      result.issues = result.issues.map(tag);
+      result.incomplete = result.incomplete.map(tag);
     }
 
     logger.info('Scan finished', {

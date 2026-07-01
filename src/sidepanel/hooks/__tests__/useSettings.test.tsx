@@ -1,9 +1,9 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useSettings } from '../useSettings';
-import { useScanStore } from '@/sidepanel/store';
+import { act, renderHook } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
 import type { Settings } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
+import { useSettings } from '../useSettings';
 
 // Mock Chrome runtime
 vi.stubGlobal('chrome', {
@@ -13,12 +13,25 @@ vi.stubGlobal('chrome', {
 });
 
 const mockSettings: Settings = {
+  persona: 'site-owner',
+  hasSeenOnboarding: true,
   wcagLevel: 'AA',
   showIncomplete: false,
   autoHighlight: true,
   visionMode: 'none',
   showFocusOrder: false,
 };
+
+// Mounting useSettings kicks off an async load effect (useSettings.ts): it awaits
+// chrome.runtime.sendMessage({GET_SETTINGS}), then runs a store update + setLoaded.
+// Those settle in later microtasks, so a bare renderHook leaves them to land after
+// the test ends — tripping "not wrapped in act". Flushing the mount promise inside
+// act() keeps those updates batched within the test.
+async function mountSettings() {
+  const utils = renderHook(() => useSettings());
+  await act(async () => {});
+  return utils;
+}
 
 describe('useSettings Hook', () => {
   beforeEach(() => {
@@ -31,16 +44,16 @@ describe('useSettings Hook', () => {
   });
 
   describe('Hook initialization', () => {
-    it('should return settings and updateSettings function', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should return settings and updateSettings function', async () => {
+      const { result } = await mountSettings();
 
       expect(result.current).toHaveProperty('settings');
       expect(result.current).toHaveProperty('updateSettings');
       expect(typeof result.current.updateSettings).toBe('function');
     });
 
-    it('should initialize with default settings', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should initialize with default settings', async () => {
+      const { result } = await mountSettings();
 
       expect(result.current.settings).toBeDefined();
       expect(result.current.settings.wcagLevel).toBeDefined();
@@ -48,8 +61,8 @@ describe('useSettings Hook', () => {
       expect(result.current.settings.visionMode).toBeDefined();
     });
 
-    it('should have all required settings properties', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should have all required settings properties', async () => {
+      const { result } = await mountSettings();
 
       expect(result.current.settings).toHaveProperty('wcagLevel');
       expect(result.current.settings).toHaveProperty('showIncomplete');
@@ -60,8 +73,8 @@ describe('useSettings Hook', () => {
   });
 
   describe('Loading settings from storage', () => {
-    it('should load settings from Chrome storage on mount', () => {
-      renderHook(() => useSettings());
+    it('should load settings from Chrome storage on mount', async () => {
+      await mountSettings();
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         type: 'GET_SETTINGS',
@@ -70,6 +83,8 @@ describe('useSettings Hook', () => {
 
     it('should update store with loaded settings', async () => {
       const customSettings: Settings = {
+        persona: 'developer',
+        hasSeenOnboarding: true,
         wcagLevel: 'AAA',
         showIncomplete: true,
         autoHighlight: false,
@@ -82,10 +97,8 @@ describe('useSettings Hook', () => {
         settings: customSettings,
       });
 
-      const { result } = renderHook(() => useSettings());
-
-      // Wait for effect to complete
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      // mountSettings flushes the load effect (store update) inside act.
+      const { result } = await mountSettings();
 
       expect(result.current.settings).toBeDefined();
     });
@@ -95,9 +108,7 @@ describe('useSettings Hook', () => {
         success: false,
       });
 
-      const { result } = renderHook(() => useSettings());
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      const { result } = await mountSettings();
 
       expect(result.current.settings).toBeDefined();
     });
@@ -107,9 +118,7 @@ describe('useSettings Hook', () => {
 
       (chrome.runtime.sendMessage as any).mockRejectedValue(new Error('Storage error'));
 
-      renderHook(() => useSettings());
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await mountSettings();
 
       expect(errorSpy).toHaveBeenCalled();
       errorSpy.mockRestore();
@@ -246,26 +255,26 @@ describe('useSettings Hook', () => {
   });
 
   describe('Settings values validation', () => {
-    it('should have valid WCAG level', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should have valid WCAG level', async () => {
+      const { result } = await mountSettings();
 
       expect(['A', 'AA', 'AAA']).toContain(result.current.settings.wcagLevel);
     });
 
-    it('should have boolean showIncomplete', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should have boolean showIncomplete', async () => {
+      const { result } = await mountSettings();
 
       expect(typeof result.current.settings.showIncomplete).toBe('boolean');
     });
 
-    it('should have boolean autoHighlight', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should have boolean autoHighlight', async () => {
+      const { result } = await mountSettings();
 
       expect(typeof result.current.settings.autoHighlight).toBe('boolean');
     });
 
-    it('should have valid vision mode', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should have valid vision mode', async () => {
+      const { result } = await mountSettings();
 
       const validModes = [
         'none',
@@ -281,8 +290,8 @@ describe('useSettings Hook', () => {
       expect(validModes).toContain(result.current.settings.visionMode);
     });
 
-    it('should have boolean showFocusOrder', () => {
-      const { result } = renderHook(() => useSettings());
+    it('should have boolean showFocusOrder', async () => {
+      const { result } = await mountSettings();
 
       expect(typeof result.current.settings.showFocusOrder).toBe('boolean');
     });
@@ -330,8 +339,8 @@ describe('useSettings Hook', () => {
   });
 
   describe('Chrome message handling', () => {
-    it('should send GET_SETTINGS message on mount', () => {
-      renderHook(() => useSettings());
+    it('should send GET_SETTINGS message on mount', async () => {
+      await mountSettings();
 
       expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
         type: 'GET_SETTINGS',
@@ -358,6 +367,8 @@ describe('useSettings Hook', () => {
 
     it('should handle successful response from GET_SETTINGS', async () => {
       const testSettings: Settings = {
+        persona: 'developer',
+        hasSeenOnboarding: true,
         wcagLevel: 'A',
         showIncomplete: true,
         autoHighlight: false,
@@ -370,9 +381,7 @@ describe('useSettings Hook', () => {
         settings: testSettings,
       });
 
-      const { result } = renderHook(() => useSettings());
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      const { result } = await mountSettings();
 
       expect(result.current.settings).toBeDefined();
     });
@@ -382,9 +391,7 @@ describe('useSettings Hook', () => {
         success: false,
       });
 
-      const { result } = renderHook(() => useSettings());
-
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      const { result } = await mountSettings();
 
       // Should still return valid settings
       expect(result.current.settings).toBeDefined();

@@ -1,9 +1,9 @@
 import type {
+  Category,
   Issue,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
 } from '@/shared/types';
 
@@ -49,7 +49,9 @@ function checkTitle(): SEOCheck {
     };
   }
 
-  if (titleLength < 30 || titleLength > 60) {
+  // Lower bound must match the "50-60" range claimed by the message/description/fix below.
+  // Previously this was `< 30`, so titles of 30-49 chars passed silently despite being flagged as too short by the user-facing copy.
+  if (titleLength < 50 || titleLength > 60) {
     return {
       id: 'title-length',
       name: 'Page Title Length',
@@ -100,7 +102,9 @@ function checkMetaDescription(): SEOCheck {
     };
   }
 
-  if (contentLength < 120 || contentLength > 160) {
+  // Lower bound must match the "150-160" range claimed by the message/description/fix below.
+  // Previously this was `< 120`, so descriptions of 120-149 chars passed silently despite being flagged as too short by the user-facing copy.
+  if (contentLength < 150 || contentLength > 160) {
     return {
       id: 'meta-description-length',
       name: 'Meta Description Length',

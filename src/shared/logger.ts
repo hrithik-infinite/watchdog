@@ -4,7 +4,6 @@
  */
 
 const isDev = import.meta.env.DEV;
-// const isDev = true;
 
 type LogLevel = 'log' | 'info' | 'warn' | 'error' | 'debug';
 

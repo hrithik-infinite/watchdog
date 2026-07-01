@@ -8,25 +8,53 @@ export default defineConfig({
     globals: true,
     environment: 'happy-dom',
     setupFiles: ['./src/test/setup.ts'],
+    // Only the Vitest unit suite. The Playwright E2E specs live in e2e/*.spec.ts
+    // and import @playwright/test — Vitest's default glob would otherwise try to
+    // run them and crash. Keeping this to `*.test.*` under src cleanly separates
+    // the two runners.
+    include: ['src/**/*.test.{ts,tsx}'],
+    // App logging is gated on import.meta.env.DEV, which Vitest sets to true — so
+    // every scanner/hook/background test spews dev logs that drown the real signal
+    // (React act() warnings, deprecations). Drop anything carrying the app's
+    // `WatchDog` marker: the `[WatchDog]` logger (src/shared/logger.ts) AND the
+    // handful of raw `console.*('WatchDog: …')` calls in the content/background
+    // code. We can't flip DEV off globally (logger.test asserts it logs in dev),
+    // and this leaves genuine third-party warnings intact. Spied-console
+    // assertions are unaffected — onConsoleLog only controls what the reporter
+    // prints, not what tests observe via vi.spyOn.
+    onConsoleLog(log) {
+      if (log.includes('WatchDog')) return false;
+    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       reportsDirectory: './coverage',
-      include: [
-        'src/content/**/*.{ts,tsx}',
-        'src/sidepanel/hooks/**/*.{ts,tsx}',
-        'src/shared/**/*.{ts,tsx}',
-      ],
+      // Count the whole source tree, not just a curated subset — otherwise the
+      // background worker, the side-panel components and lib/export.ts never
+      // entered the denominator and coverage looked healthier than it was.
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'node_modules/',
         'src/test/',
+        'src/**/mock-chrome.ts',
+        'src/sidepanel/main.tsx',
         '**/*.config.*',
         '**/*.d.ts',
         '**/types.ts',
         '**/__tests__/**',
         'dist/',
       ],
-      all: false,
+      // Regression gate: `npm test` (run with --coverage, and so CI) fails if
+      // coverage drops below these floors. Set ~1-2% under the current honest
+      // baseline (stmts 91.5 / branch 85.0 / funcs 90.4 / lines 92.1) so a real
+      // drop is caught without breaking on normal fluctuation. Raise as coverage
+      // improves; never lower to make a red build pass.
+      thresholds: {
+        statements: 90,
+        branches: 83,
+        functions: 88,
+        lines: 90,
+      },
     },
   },
   resolve: {

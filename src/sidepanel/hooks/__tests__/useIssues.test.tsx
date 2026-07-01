@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
-import { useIssues } from '../useIssues';
-import { useScanStore } from '@/sidepanel/store';
+import { act, renderHook } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Issue, ScanResult } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
+import { useIssues } from '../useIssues';
 
 const mockIssues: Issue[] = [
   {
@@ -107,7 +107,14 @@ describe('useIssues Hook', () => {
       scanResult: mockResult,
       selectedIssueId: null,
       filters: { severity: 'all', category: 'all', searchQuery: '' },
+      // Reset the debounced mirror so a flushed search doesn't leak between tests.
+      debouncedSearchQuery: '',
     });
+  });
+
+  afterEach(() => {
+    // Defensive: never leave fake timers installed for the next test.
+    vi.useRealTimers();
   });
 
   describe('Hook initialization', () => {
@@ -166,16 +173,52 @@ describe('useIssues Hook', () => {
       expect(result.current.filteredIssues[0].category).toBe('images');
     });
 
-    it('should filter issues by search query', () => {
-      const { result, rerender } = renderHook(() => useIssues());
+    it('should filter issues by search query (after the debounce settles)', () => {
+      // Search is debounced (perf-rel-7): fake-fake only the timer fns so React's
+      // scheduler keeps working, then flush the debounce before asserting.
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const { result, rerender } = renderHook(() => useIssues());
 
-      act(() => {
-        result.current.setFilter('searchQuery', 'button');
-      });
+        act(() => {
+          result.current.setFilter('searchQuery', 'button');
+        });
+        act(() => {
+          vi.runAllTimers();
+        });
 
-      rerender();
-      expect(result.current.filteredIssues).toHaveLength(1);
-      expect(result.current.filteredIssues[0].ruleId).toBe('button-name');
+        rerender();
+        expect(result.current.filteredIssues).toHaveLength(1);
+        expect(result.current.filteredIssues[0].ruleId).toBe('button-name');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('debounces search filtering: the list only updates after the delay (perf-rel-7)', () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      try {
+        const { result, rerender } = renderHook(() => useIssues());
+        expect(result.current.filteredIssues).toHaveLength(3);
+
+        act(() => {
+          result.current.setFilter('searchQuery', 'button');
+        });
+        rerender();
+        // The bound search value reflects the keystroke immediately (responsive)...
+        expect(result.current.filters.searchQuery).toBe('button');
+        // ...but the filtered list is unchanged until the debounce timer fires.
+        expect(result.current.filteredIssues).toHaveLength(3);
+
+        act(() => {
+          vi.runAllTimers();
+        });
+        rerender();
+        expect(result.current.filteredIssues).toHaveLength(1);
+        expect(result.current.filteredIssues[0].ruleId).toBe('button-name');
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should apply multiple filters', () => {

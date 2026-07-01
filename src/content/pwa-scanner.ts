@@ -1,9 +1,9 @@
 import type {
+  Category,
   Issue,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
 } from '@/shared/types';
 
@@ -94,6 +94,15 @@ function checkManifestLink(): PWACheck {
     description: '',
     fix: { description: '', code: '' },
   };
+}
+
+// A manifest `sizes` value can list several space-separated WxH tokens
+// (e.g. "192x192 512x512"), so compare each token exactly. The previous
+// `size.includes('192')` substring check let unrelated values such as
+// "1192x1192" or "1920x1080" falsely satisfy the 192/512 requirement.
+function iconSizeTokenMatches(token: string, target: number): boolean {
+  const [width, height] = token.toLowerCase().split('x');
+  return Number(width) === target && Number(height) === target;
 }
 
 function checkManifestContent(manifest: ManifestData | null): PWACheck[] {
@@ -217,9 +226,12 @@ function checkManifestContent(manifest: ManifestData | null): PWACheck[] {
     });
   } else {
     // Check for required icon sizes
-    const iconSizes = manifest.icons.map((icon) => icon.sizes).filter(Boolean);
-    const has192 = iconSizes.some((size) => size?.includes('192'));
-    const has512 = iconSizes.some((size) => size?.includes('512'));
+    const iconSizeTokens = manifest.icons
+      .map((icon) => icon.sizes)
+      .filter((sizes): sizes is string => Boolean(sizes))
+      .flatMap((sizes) => sizes.trim().split(/\s+/));
+    const has192 = iconSizeTokens.some((token) => iconSizeTokenMatches(token, 192));
+    const has512 = iconSizeTokens.some((token) => iconSizeTokenMatches(token, 512));
 
     if (!has192 || !has512) {
       checks.push({
@@ -506,14 +518,36 @@ export async function scanPWA(): Promise<ScanResult> {
 
   // Fetch and validate manifest
   let manifest: ManifestData | null = null;
+  const manifestChecks: PWACheck[] = [manifestLinkCheck];
   if (manifestLinkCheck.passed) {
     manifest = await fetchManifest();
+    if (manifest) {
+      manifestChecks.push(...checkManifestContent(manifest));
+    } else {
+      // The <link rel="manifest"> exists but the manifest could not be fetched or
+      // parsed (404, network/CORS error, or invalid JSON). Without a valid
+      // manifest the app is NOT installable, so surface a failure instead of
+      // silently skipping every content check and grading the page installable.
+      manifestChecks.push({
+        id: 'manifest-unreachable',
+        name: 'Web App Manifest',
+        severity: 'critical',
+        passed: false,
+        message: 'Web app manifest is linked but could not be loaded or parsed',
+        description:
+          'The linked manifest returned an error, was blocked, or was not valid JSON. Browsers cannot install the app without a valid manifest.',
+        fix: {
+          description:
+            'Ensure the manifest URL resolves with HTTP 200, is served as JSON, and contains valid JSON.',
+          code: '<link rel="manifest" href="/manifest.json">\n<!-- /manifest.json must return HTTP 200 with valid JSON -->',
+        },
+      });
+    }
   }
 
   // Run all PWA checks
   const allChecks: PWACheck[] = [
-    manifestLinkCheck,
-    ...checkManifestContent(manifest),
+    ...manifestChecks,
     await checkServiceWorker(),
     checkHTTPS(),
     checkViewportMeta(),

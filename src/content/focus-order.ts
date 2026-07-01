@@ -6,8 +6,73 @@
 const BADGE_CLASS = 'watchdog-focus-badge';
 const CONTAINER_ID = 'watchdog-focus-order-container';
 
-// Store event listeners for cleanup using WeakMap
-const eventListenerMap = new WeakMap<HTMLElement, () => void>();
+// childList + subtree only (no attribute observation): repositioning a badge
+// writes to its inline style, and observing style on the subtree would make
+// every scroll-driven reposition re-trigger a full re-render — defeating the
+// rAF throttle below. Element add/remove is the case we need to stay in sync.
+const OBSERVER_OPTIONS: MutationObserverInit = { childList: true, subtree: true };
+
+// Original inline outline styles captured when we highlight an element, so hiding
+// the visualization restores the page's own outline instead of clobbering it
+// to empty (correctness-23).
+interface HighlightRecord {
+  element: HTMLElement;
+  outline: string;
+  outlineOffset: string;
+}
+
+let highlightedElements: HighlightRecord[] = [];
+let renderedElements: Element[] = [];
+let activeContainer: HTMLDivElement | null = null;
+let rafId: number | null = null;
+// Stored so the exact same handler reference is passed to removeEventListener.
+let scheduleReposition: (() => void) | null = null;
+let domObserver: MutationObserver | null = null;
+
+/**
+ * Resolve an element's tabindex as a finite integer, defaulting to 0.
+ * A non-numeric tabindex (e.g. tabindex="abc") yields NaN from parseInt, which
+ * would otherwise leak into the sort comparator and corrupt ordering — treat it
+ * as the implicit 0 the browser uses for such values (correctness-24).
+ */
+function getTabIndex(element: Element): number {
+  const raw = element.getAttribute('tabindex');
+  if (raw === null) return 0;
+  const parsed = parseInt(raw, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+/**
+ * Whether an element is actually visible to (and reachable by) the user.
+ * Hidden elements still match the focusable selectors but must not get a badge
+ * (correctness-24): display:none / visibility:hidden / the hidden attribute,
+ * anything inside an aria-hidden subtree, and boxes that render nothing.
+ */
+function isElementVisible(element: Element): boolean {
+  const htmlEl = element as HTMLElement;
+
+  // Removed from the accessibility tree → not a real tab stop for AT users.
+  if (htmlEl.closest('[aria-hidden="true"]')) return false;
+
+  if (htmlEl.hidden) return false;
+
+  const style = window.getComputedStyle(htmlEl);
+  if (
+    style.display === 'none' ||
+    style.visibility === 'hidden' ||
+    style.visibility === 'collapse'
+  ) {
+    return false;
+  }
+
+  // Zero-size / un-rendered boxes (display:none ancestors, detached subtrees,
+  // collapsed boxes) produce no client rects. getClientRects() is used rather
+  // than getBoundingClientRect() because layout-less environments still report
+  // a rect for attached visible nodes, so genuinely visible elements survive.
+  if (htmlEl.getClientRects().length === 0) return false;
+
+  return true;
+}
 
 /**
  * Get all focusable elements in the DOM in tab order
@@ -23,12 +88,12 @@ function getFocusableElements(): Element[] {
     '[contenteditable="true"]',
   ].join(', ');
 
-  const elements = Array.from(document.querySelectorAll(selector));
+  const elements = Array.from(document.querySelectorAll(selector)).filter(isElementVisible);
 
   // Sort by tabindex if present
   return elements.sort((a, b) => {
-    const aIndex = parseInt(a.getAttribute('tabindex') || '0');
-    const bIndex = parseInt(b.getAttribute('tabindex') || '0');
+    const aIndex = getTabIndex(a);
+    const bIndex = getTabIndex(b);
 
     // Elements with tabindex > 0 come first
     if (aIndex > 0 && bIndex > 0) return aIndex - bIndex;
@@ -82,21 +147,63 @@ function positionBadge(badge: HTMLElement, element: Element): void {
 }
 
 /**
- * Highlight the target element
+ * Highlight the target element, remembering its original inline outline first.
  */
-function highlightElement(element: Element): void {
-  const el = element as HTMLElement;
-  el.style.outline = '2px solid #2563EB';
-  el.style.outlineOffset = '2px';
+function applyHighlight(element: HTMLElement): void {
+  highlightedElements.push({
+    element,
+    outline: element.style.outline,
+    outlineOffset: element.style.outlineOffset,
+  });
+  element.style.outline = '2px solid #2563EB';
+  element.style.outlineOffset = '2px';
 }
 
 /**
- * Remove highlight from element
+ * Restore every highlighted element's original inline outline (correctness-23).
  */
-function removeHighlight(element: Element): void {
-  const el = element as HTMLElement;
-  el.style.outline = '';
-  el.style.outlineOffset = '';
+function restoreHighlights(): void {
+  highlightedElements.forEach(({ element, outline, outlineOffset }) => {
+    element.style.outline = outline;
+    element.style.outlineOffset = outlineOffset;
+  });
+  highlightedElements = [];
+}
+
+/**
+ * (Re)build the badges and highlights for the current focusable set into the
+ * active container. Used on show and whenever the DOM changes while shown.
+ */
+function renderFocusOrder(): void {
+  if (!activeContainer) return;
+
+  // Drop the previous render and restore any outlines we'd applied, so removed
+  // elements get cleaned up and indices stay correct.
+  activeContainer.replaceChildren();
+  restoreHighlights();
+
+  const focusableElements = getFocusableElements();
+  focusableElements.forEach((element, index) => {
+    const badge = createBadge(index + 1);
+    positionBadge(badge, element);
+    activeContainer!.appendChild(badge);
+    applyHighlight(element as HTMLElement);
+  });
+  renderedElements = focusableElements;
+}
+
+/**
+ * Reposition existing badges without rebuilding them.
+ */
+function repositionBadges(): void {
+  if (!activeContainer) return;
+  const badges = activeContainer.querySelectorAll(`.${BADGE_CLASS}`);
+  renderedElements.forEach((element, index) => {
+    const badge = badges[index] as HTMLElement | undefined;
+    if (badge) {
+      positionBadge(badge, element);
+    }
+  });
 }
 
 /**
@@ -106,12 +213,10 @@ export function showFocusOrder(): void {
   // Clean up any existing visualization
   hideFocusOrder();
 
-  const focusableElements = getFocusableElements();
-
   // Create container for all badges
-  const container = document.createElement('div');
-  container.id = CONTAINER_ID;
-  container.style.cssText = `
+  activeContainer = document.createElement('div');
+  activeContainer.id = CONTAINER_ID;
+  activeContainer.style.cssText = `
     position: absolute;
     top: 0;
     left: 0;
@@ -120,59 +225,66 @@ export function showFocusOrder(): void {
     pointer-events: none;
     z-index: 2147483645;
   `;
-  document.body.appendChild(container);
+  document.body.appendChild(activeContainer);
 
-  // Create and position badges
-  focusableElements.forEach((element, index) => {
-    const badge = createBadge(index + 1);
-    positionBadge(badge, element);
-    container.appendChild(badge);
+  // Create and position badges + highlights for the current focusable set.
+  renderFocusOrder();
 
-    // Highlight element
-    highlightElement(element);
-  });
-
-  // Update badge positions on scroll and resize
-  const updatePositions = () => {
-    const badges = container.querySelectorAll(`.${BADGE_CLASS}`);
-    focusableElements.forEach((element, index) => {
-      const badge = badges[index] as HTMLElement;
-      if (badge) {
-        positionBadge(badge, element);
-      }
+  // Update badge positions on scroll and resize, throttled to one DOM write per
+  // animation frame so rapid scroll events don't thrash layout (perf-rel-2).
+  scheduleReposition = () => {
+    if (rafId !== null) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      repositionBadges();
     });
   };
 
-  window.addEventListener('scroll', updatePositions, true);
-  window.addEventListener('resize', updatePositions);
+  window.addEventListener('scroll', scheduleReposition, true);
+  window.addEventListener('resize', scheduleReposition);
 
-  // Store event listeners for cleanup
-  eventListenerMap.set(container, updatePositions);
+  // Keep badges in sync as the page mutates while the overlay is shown
+  // (correctness-24). Disconnect during our own re-render so the badge/outline
+  // writes don't re-trigger the observer.
+  domObserver = new MutationObserver(() => {
+    if (!activeContainer) return;
+    domObserver?.disconnect();
+    renderFocusOrder();
+    domObserver?.observe(document.body, OBSERVER_OPTIONS);
+  });
+  domObserver.observe(document.body, OBSERVER_OPTIONS);
 }
 
 /**
  * Hide focus order visualization
  */
 export function hideFocusOrder(): void {
+  // Stop watching the DOM first so teardown mutations don't queue a re-render.
+  if (domObserver) {
+    domObserver.disconnect();
+    domObserver = null;
+  }
+
+  if (scheduleReposition) {
+    window.removeEventListener('scroll', scheduleReposition, true);
+    window.removeEventListener('resize', scheduleReposition);
+    scheduleReposition = null;
+  }
+
+  if (rafId !== null) {
+    cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  // Restore original outlines on every element we touched (correctness-23).
+  restoreHighlights();
+  renderedElements = [];
+
   const container = document.getElementById(CONTAINER_ID);
   if (container) {
-    // Remove event listeners
-    const updatePositions = eventListenerMap.get(container);
-    if (updatePositions) {
-      window.removeEventListener('scroll', updatePositions, true);
-      window.removeEventListener('resize', updatePositions);
-      eventListenerMap.delete(container);
-    }
-
-    // Remove highlights from all focusable elements
-    const focusableElements = getFocusableElements();
-    focusableElements.forEach((element) => {
-      removeHighlight(element);
-    });
-
-    // Remove container
     container.remove();
   }
+  activeContainer = null;
 }
 
 /**

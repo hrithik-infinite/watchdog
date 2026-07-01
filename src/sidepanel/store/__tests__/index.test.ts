@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { useScanStore } from '../index';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_SETTINGS } from '@/shared/constants';
-import type { ScanResult, Issue } from '@/shared/types';
+import type { Issue, ScanResult } from '@/shared/types';
+import { useScanStore } from '../index';
 
 describe('Scan Store (Zustand)', () => {
   beforeEach(() => {
@@ -11,6 +11,9 @@ describe('Scan Store (Zustand)', () => {
       scanResult: null,
       error: null,
       filters: { severity: 'all', category: 'all', searchQuery: '' },
+      // Reset the debounced mirror too so a flushed search from a prior test
+      // can't leak into the next one (perf-rel-7).
+      debouncedSearchQuery: '',
       selectedIssueId: null,
       view: 'list',
       settings: DEFAULT_SETTINGS,
@@ -90,7 +93,7 @@ describe('Scan Store (Zustand)', () => {
       expect(useScanStore.getState().scanResult).toEqual(mockResult);
     });
 
-    it('should clear error when setting result', () => {
+    it('does not clear the error when setting a result (error is owned independently)', () => {
       const { setError, setScanResult } = useScanStore.getState();
 
       setError('Previous error');
@@ -119,7 +122,9 @@ describe('Scan Store (Zustand)', () => {
       };
 
       setScanResult(mockResult);
-      expect(useScanStore.getState().error).toBe(null);
+      // setScanResult must NOT wipe the error: a failed scan sets the error and
+      // then clears the stale result, and that must not erase the message.
+      expect(useScanStore.getState().error).toBe('Previous error');
     });
 
     it('should reset selected issue when setting new result', () => {
@@ -474,6 +479,66 @@ describe('Scan Store (Zustand)', () => {
       expect(filtered).toHaveLength(3);
     });
 
+    const emptySummary = {
+      total: 0,
+      bySeverity: { critical: 0, serious: 0, moderate: 0, minor: 0 },
+      byCategory: {
+        images: 0,
+        interactive: 0,
+        forms: 0,
+        color: 0,
+        document: 0,
+        structure: 0,
+        aria: 0,
+        technical: 0,
+      },
+    };
+
+    it('hides accessibility issues above the selected WCAG conformance level', () => {
+      const { updateSettings, setScanResult, getFilteredIssues } = useScanStore.getState();
+      const aaaIssue: Issue = {
+        ...mockIssues[0],
+        id: 'aaa-issue',
+        wcag: { id: '1.4.6', level: 'AAA', name: 'Contrast (Enhanced)', description: 'x' },
+      };
+      setScanResult({
+        url: 'https://example.com',
+        timestamp: 0,
+        duration: 0,
+        issues: [...mockIssues, aaaIssue],
+        incomplete: [],
+        summary: emptySummary,
+      });
+
+      updateSettings({ wcagLevel: 'AA' });
+      expect(getFilteredIssues().some((i) => i.id === 'aaa-issue')).toBe(false);
+
+      updateSettings({ wcagLevel: 'AAA' });
+      expect(getFilteredIssues().some((i) => i.id === 'aaa-issue')).toBe(true);
+    });
+
+    it('does not apply the WCAG level filter to non-accessibility issues', () => {
+      const { updateSettings, setScanResult, getFilteredIssues } = useScanStore.getState();
+      const perfIssue: Issue = {
+        ...mockIssues[0],
+        id: 'perf-issue',
+        standard: 'performance',
+        wcag: { id: 'n/a', level: 'AAA', name: 'x', description: 'x' },
+      };
+      setScanResult({
+        url: 'https://example.com',
+        timestamp: 0,
+        duration: 0,
+        issues: [perfIssue],
+        incomplete: [],
+        summary: emptySummary,
+      });
+
+      updateSettings({ wcagLevel: 'A' }); // strictest WCAG filter
+      // A Performance issue isn't WCAG-graded, so it passes through regardless.
+      expect(getFilteredIssues().some((i) => i.id === 'perf-issue')).toBe(true);
+    });
+
     it('should filter by severity', () => {
       const { setFilter, getFilteredIssues } = useScanStore.getState();
 
@@ -494,24 +559,40 @@ describe('Scan Store (Zustand)', () => {
       expect(filtered[0].category).toBe('images');
     });
 
+    // Search is now debounced (perf-rel-7): setFilter('searchQuery', …) updates
+    // filters.searchQuery immediately for the input binding, but getFilteredIssues
+    // doesn't apply it until the debounce timer fires. These tests advance fake
+    // timers to flush the debounce before asserting.
     it('should filter by search query in message', () => {
-      const { setFilter, getFilteredIssues } = useScanStore.getState();
+      vi.useFakeTimers();
+      try {
+        const { setFilter, getFilteredIssues } = useScanStore.getState();
 
-      setFilter('searchQuery', 'alt');
-      const filtered = getFilteredIssues();
+        setFilter('searchQuery', 'alt');
+        vi.runAllTimers();
+        const filtered = getFilteredIssues();
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].message).toContain('alt');
+        expect(filtered).toHaveLength(1);
+        expect(filtered[0].message).toContain('alt');
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should filter by search query in rule ID', () => {
-      const { setFilter, getFilteredIssues } = useScanStore.getState();
+      vi.useFakeTimers();
+      try {
+        const { setFilter, getFilteredIssues } = useScanStore.getState();
 
-      setFilter('searchQuery', 'button');
-      const filtered = getFilteredIssues();
+        setFilter('searchQuery', 'button');
+        vi.runAllTimers();
+        const filtered = getFilteredIssues();
 
-      expect(filtered).toHaveLength(1);
-      expect(filtered[0].ruleId).toContain('button');
+        expect(filtered).toHaveLength(1);
+        expect(filtered[0].ruleId).toContain('button');
+      } finally {
+        vi.useRealTimers();
+      }
     });
 
     it('should apply multiple filters', () => {
@@ -537,12 +618,179 @@ describe('Scan Store (Zustand)', () => {
     });
 
     it('should be case insensitive for search', () => {
+      vi.useFakeTimers();
+      try {
+        const { setFilter, getFilteredIssues } = useScanStore.getState();
+
+        setFilter('searchQuery', 'ALT');
+        vi.runAllTimers();
+        const filtered = getFilteredIssues();
+
+        expect(filtered).toHaveLength(1);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
+  // Regression: getFilteredIssues used to re-run the full filter+sort on every
+  // call/render, and the search filter ran on every keystroke (perf-rel-7). It is
+  // now memoized on its inputs (stable reference when unchanged) and the search
+  // query is debounced before it feeds filtering.
+  describe('getFilteredIssues memoization + search debounce (perf-rel-7)', () => {
+    const summary = {
+      total: 3,
+      bySeverity: { critical: 1, serious: 1, moderate: 1, minor: 0 },
+      byCategory: {
+        images: 1,
+        interactive: 1,
+        forms: 1,
+        color: 0,
+        document: 0,
+        structure: 0,
+        aria: 0,
+        technical: 0,
+      },
+    };
+
+    beforeEach(() => {
+      const mockIssues: Issue[] = [
+        {
+          id: 'issue-1',
+          ruleId: 'image-alt',
+          severity: 'critical',
+          category: 'images',
+          message: 'Image missing alt text',
+          description: 'Images must have alt text',
+          helpUrl: 'https://example.com',
+          wcag: { id: '1.1.1', level: 'A', name: 'Test', description: 'Test' },
+          element: { selector: 'img', html: '<img>' },
+          fix: { description: 'Add alt', code: '', learnMoreUrl: '' },
+        },
+        {
+          id: 'issue-2',
+          ruleId: 'button-name',
+          severity: 'serious',
+          category: 'interactive',
+          message: 'Button without name',
+          description: 'Buttons must have accessible names',
+          helpUrl: 'https://example.com',
+          wcag: { id: '4.1.2', level: 'A', name: 'Test', description: 'Test' },
+          element: { selector: 'button', html: '<button></button>' },
+          fix: { description: 'Add name', code: '', learnMoreUrl: '' },
+        },
+        {
+          id: 'issue-3',
+          ruleId: 'label',
+          severity: 'moderate',
+          category: 'forms',
+          message: 'Input missing label',
+          description: 'Inputs must have labels',
+          helpUrl: 'https://example.com',
+          wcag: { id: '1.3.1', level: 'A', name: 'Test', description: 'Test' },
+          element: { selector: 'input', html: '<input>' },
+          fix: { description: 'Add label', code: '', learnMoreUrl: '' },
+        },
+      ];
+
+      useScanStore.setState({
+        scanResult: {
+          url: 'https://example.com',
+          timestamp: Date.now(),
+          duration: 100,
+          issues: mockIssues,
+          incomplete: [],
+          summary,
+        },
+        filters: { severity: 'all', category: 'all', searchQuery: '' },
+        debouncedSearchQuery: '',
+      });
+    });
+
+    afterEach(() => {
+      // Defensive: ensure no test leaves fake timers installed for the next one.
+      vi.useRealTimers();
+    });
+
+    it('returns the same array reference when inputs are unchanged (memoized)', () => {
+      const { getFilteredIssues } = useScanStore.getState();
+
+      const first = getFilteredIssues();
+      const second = getFilteredIssues();
+
+      // Memoized: identical inputs yield the SAME reference, so the filter+sort
+      // isn't re-run and downstream memoized consumers don't re-render.
+      expect(second).toBe(first);
+    });
+
+    it('recomputes (new reference) when a filter input changes', () => {
+      const { getFilteredIssues, setFilter } = useScanStore.getState();
+
+      const before = getFilteredIssues();
+      setFilter('severity', 'critical'); // non-search filters apply immediately
+      const after = getFilteredIssues();
+
+      // Cache must invalidate when an input changes — otherwise filters would
+      // silently stop taking effect.
+      expect(after).not.toBe(before);
+      expect(after).toHaveLength(1);
+      expect(after[0].severity).toBe('critical');
+    });
+
+    it('recomputes when the underlying scan result changes', () => {
+      const { getFilteredIssues } = useScanStore.getState();
+      const before = getFilteredIssues();
+
+      useScanStore.setState({
+        scanResult: {
+          url: 'https://example.com',
+          timestamp: Date.now(),
+          duration: 100,
+          issues: [],
+          incomplete: [],
+          summary,
+        },
+      });
+      const after = getFilteredIssues();
+
+      expect(after).not.toBe(before);
+      expect(after).toHaveLength(0);
+    });
+
+    it('delays search filtering until the debounce timer fires', () => {
+      vi.useFakeTimers();
+
       const { setFilter, getFilteredIssues } = useScanStore.getState();
+      expect(getFilteredIssues()).toHaveLength(3);
 
-      setFilter('searchQuery', 'ALT');
+      setFilter('searchQuery', 'button');
+      // filters.searchQuery updates synchronously so the input stays responsive...
+      expect(useScanStore.getState().filters.searchQuery).toBe('button');
+      // ...but filtering is debounced, so the list is unchanged until the timer fires.
+      expect(getFilteredIssues()).toHaveLength(3);
+
+      vi.runAllTimers();
       const filtered = getFilteredIssues();
-
       expect(filtered).toHaveLength(1);
+      expect(filtered[0].ruleId).toBe('button-name');
+    });
+
+    it('coalesces rapid keystrokes into a single filter run for the final query', () => {
+      vi.useFakeTimers();
+
+      const { setFilter, getFilteredIssues } = useScanStore.getState();
+      setFilter('searchQuery', 'b');
+      vi.advanceTimersByTime(50); // shorter than the debounce window
+      setFilter('searchQuery', 'button'); // resets the pending timer
+      vi.advanceTimersByTime(50);
+
+      // The window hasn't elapsed since the last keystroke — nothing applied yet.
+      expect(getFilteredIssues()).toHaveLength(3);
+
+      vi.runAllTimers();
+      const filtered = getFilteredIssues();
+      expect(filtered).toHaveLength(1);
+      expect(filtered[0].ruleId).toBe('button-name');
     });
   });
 

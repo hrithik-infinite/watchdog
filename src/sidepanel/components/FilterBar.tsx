@@ -1,6 +1,7 @@
-import { Search, X, Ban, Eye, EyeOff } from 'lucide-react';
-import { Input } from '@/sidepanel/components/ui/input';
+import { Ban, Eye, EyeOff, Search, X } from 'lucide-react';
+import type { Category, Severity } from '@/shared/types';
 import { Button } from '@/sidepanel/components/ui/button';
+import { Input } from '@/sidepanel/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -9,7 +10,7 @@ import {
   SelectValue,
 } from '@/sidepanel/components/ui/select';
 import { cn } from '@/sidepanel/lib/utils';
-import type { Category, Severity } from '@/shared/types';
+import { useScanStore } from '@/sidepanel/store';
 
 interface FilterBarProps {
   severityFilter: Severity | 'all';
@@ -22,13 +23,6 @@ interface FilterBarProps {
   onSearchChange: (query: string) => void;
   onHideIgnoredChange: (hide: boolean) => void;
 }
-
-const SEVERITY_LABELS: Record<Severity, string> = {
-  critical: 'Critical',
-  serious: 'Serious',
-  moderate: 'Moderate',
-  minor: 'Minor',
-};
 
 const CATEGORY_LABELS: Record<Category, string> = {
   images: 'Images',
@@ -52,7 +46,10 @@ export default function FilterBar({
   onSearchChange,
   onHideIgnoredChange,
 }: FilterBarProps) {
-  const severities: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
+  // Read the current scan so the Category filter only offers categories that
+  // actually occur in the results (ux-public-14).
+  const scanResult = useScanStore((s) => s.scanResult);
+
   const categories: Category[] = [
     'images',
     'interactive',
@@ -63,6 +60,14 @@ export default function FilterBar({
     'aria',
     'technical',
   ];
+
+  // Categories present in the current results. With no scan we fall back to the
+  // full list so the control still renders sensibly (e.g. before a scan runs).
+  const presentCategories = scanResult
+    ? categories.filter((category) => (scanResult.summary.byCategory[category] ?? 0) > 0)
+    : categories;
+  // Nothing to filter when 0 or 1 category is present — hide the whole control.
+  const showCategoryFilter = presentCategories.length > 1;
 
   const hasActiveFilters =
     severityFilter !== 'all' || categoryFilter !== 'all' || searchQuery.trim() !== '';
@@ -80,6 +85,7 @@ export default function FilterBar({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           type="text"
+          aria-label="Search issues"
           placeholder="Search issues..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
@@ -87,67 +93,65 @@ export default function FilterBar({
         />
       </div>
 
-      {/* Filters */}
-      <div className="flex gap-3 items-end">
-        <div className="flex-1">
-          <label className="block text-caption text-muted-foreground mb-1">Severity</label>
-          <Select value={severityFilter} onValueChange={onSeverityChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Severities" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Severities</SelectItem>
-              {severities.map((severity) => (
-                <SelectItem key={severity} value={severity}>
-                  {SEVERITY_LABELS[severity]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Filters. Severity is filtered from the Summary chips above the list, so
+          it is intentionally NOT duplicated here — this row is category + a
+          clear-all affordance. */}
+      {(showCategoryFilter || hasActiveFilters) && (
+        <div className="flex gap-3 items-end">
+          {/* Category filter is hidden when there is nothing meaningful to filter
+              by (0 or 1 category present in the results). */}
+          {showCategoryFilter && (
+            <div className="flex-1">
+              <label
+                htmlFor="category-filter"
+                className="block text-caption text-muted-foreground mb-1"
+              >
+                Category
+              </label>
+              <Select value={categoryFilter} onValueChange={onCategoryChange}>
+                <SelectTrigger id="category-filter">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {presentCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {CATEGORY_LABELS[category]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-        <div className="flex-1">
-          <label className="block text-caption text-muted-foreground mb-1">Category</label>
-          <Select value={categoryFilter} onValueChange={onCategoryChange}>
-            <SelectTrigger>
-              <SelectValue placeholder="All Categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {categories.map((category) => (
-                <SelectItem key={category} value={category}>
-                  {CATEGORY_LABELS[category]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearAllFilters}
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              aria-label="Clear all filters"
+            >
+              <X className="h-4 w-4" />
+              Clear
+            </Button>
+          )}
         </div>
-
-        {/* Clear Filters Button */}
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearAllFilters}
-            className="gap-2 text-muted-foreground hover:text-foreground"
-            aria-label="Clear all filters"
-          >
-            <X className="h-4 w-4" />
-            Clear
-          </Button>
-        )}
-      </div>
+      )}
 
       {/* Known Issues Toggle */}
       {ignoredCount > 0 && (
         <div className="flex items-center justify-between py-1">
           <button
+            type="button"
             onClick={() => onHideIgnoredChange(!hideIgnored)}
+            aria-pressed={hideIgnored}
             className={cn(
               'flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium transition-colors',
               hideIgnored
-                ? 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                : 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                ? 'text-muted-foreground hover:text-foreground hover:bg-accent'
+                : 'text-warning bg-warning/10 hover:bg-warning/20'
             )}
           >
             <Ban className="h-3.5 w-3.5" />

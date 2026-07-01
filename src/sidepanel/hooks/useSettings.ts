@@ -1,10 +1,14 @@
-import { useCallback, useEffect } from 'react';
-import { useScanStore } from '../store';
-import type { Settings } from '@/shared/types';
+import { useCallback, useEffect, useState } from 'react';
 import logger from '@/shared/logger';
+import type { Settings } from '@/shared/types';
+import { useScanStore } from '../store';
 
 export function useSettings() {
   const { settings, updateSettings } = useScanStore();
+  // Whether the initial load from storage has resolved. Gates first-run UI (the
+  // onboarding tour) so returning users — whose stored `hasSeenOnboarding` is
+  // true — don't see it flash before storage loads.
+  const [loaded, setLoaded] = useState(false);
 
   // Load settings from storage on mount
   useEffect(() => {
@@ -17,7 +21,8 @@ export function useSettings() {
           updateSettings(response.settings);
         }
       })
-      .catch((err) => logger.error('Failed to load settings', { error: err }));
+      .catch((err) => logger.error('Failed to load settings', { error: err }))
+      .finally(() => setLoaded(true));
   }, [updateSettings]);
 
   // Save settings to storage
@@ -40,6 +45,7 @@ export function useSettings() {
 
   return {
     settings,
+    loaded,
     updateSettings: saveSettings,
   };
 }

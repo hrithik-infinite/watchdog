@@ -1,61 +1,92 @@
-@import 'tailwindcss';
+@import "tailwindcss";
+
+/* ============================================================================
+   WatchDog — "Graphite" design tokens (refined dark)
+   ----------------------------------------------------------------------------
+   ONE canonical value set. The product audits accessibility, so every
+   text-on-surface pair here is chosen to clear WCAG AA (4.5:1) on the surface
+   it's used on, and the accent is spent ONLY on interactive/active/focus state
+   — never as ambient decoration.
+
+   Legacy token names (bg-dark, bg-card, text-secondary, primary-light, …) are
+   kept as ALIASES that resolve to the canonical values below, so existing
+   utility classes keep working while the value-drift between the old
+   Apple-hex and shadcn-HSL systems is eliminated. Component-level name cleanup
+   happens in later passes.
+   ============================================================================ */
 
 @theme {
-  /* Primary Blues */
-  --color-primary: #007aff;
-  --color-primary-dark: #0056b3;
-  --color-primary-light: #66b2ff;
+  /* — Canonical neutrals (graphite) — */
+  --color-background: #0f0f11; /* app base            */
+  --color-foreground: #f4f4f6; /* primary text 15.6:1 */
+  --color-card: #1b1b1f; /* raised surface      */
+  --color-card-foreground: #f4f4f6;
+  --color-popover: #232329; /* overlay surface     */
+  --color-popover-foreground: #f4f4f6;
+  --color-muted: #232329; /* inset / quiet fill  */
+  --color-muted-foreground: #acadb5; /* secondary text 7.7:1 on card */
+  --color-secondary: #232329;
+  --color-secondary-foreground: #f4f4f6;
+  --color-accent: #2a2a31; /* hover surface       */
+  --color-accent-foreground: #f4f4f6;
+  --color-border: #2c2c34; /* hairline border     */
+  --color-input: #16161a; /* control field bg    */
 
-  /* Secondary Greys */
-  --color-bg-dark: #1c1c1e;
-  --color-bg-card: #2c2c2e;
-  --color-bg-elevated: #3a3a3c;
-  --color-text-secondary: #8e8e93;
-  --color-text-tertiary: #e5e5ea;
+  /* — Single accent (blue) — used only for action / active / focus — */
+  --color-primary: #3d9bff; /* 6.0:1 as text on card        */
+  --color-primary-foreground: #08111f; /* ink on accent fills 6.8:1 */
+  --color-ring: #3d9bff; /* focus indicator              */
 
-  /* Semantic Colors */
-  --color-critical: #ff3b30;
-  --color-serious: #ff9500;
-  --color-moderate: #ffcc00;
-  --color-minor: #00c7be;
+  /* — Severity ramp (red → orange → gold → blue-grey) —
+     Used as SOLID color for chip text + left accents on a /15 tint.
+     All clear AA as text on the card surface (#1b1b1f). */
+  --color-critical: #ff6b6b; /* 6.2:1  */
+  --color-serious: #ffa94d; /* 9.0:1  */
+  --color-moderate: #ffd43b; /* 12.0:1 */
+  --color-minor: #9fb4c9; /* 7.6:1  */
 
-  /* WCAG Info */
-  --color-wcag-bg: #0a2540;
-  --color-wcag-border: #1e4976;
+  /* Darker severity variants for the rare solid-fill-with-white-text case */
+  --color-critical-solid: #c8102e;
+  --color-serious-solid: #9a4a00;
 
-  /* shadcn/ui colors for Tailwind v4 */
-  --color-background: hsl(240 6% 12%);
-  --color-foreground: hsl(0 0% 100%);
-  --color-card: hsl(240 4% 18%);
-  --color-card-foreground: hsl(0 0% 100%);
-  --color-popover: hsl(240 4% 18%);
-  --color-popover-foreground: hsl(0 0% 100%);
-  --color-primary-foreground: hsl(0 0% 100%);
-  --color-secondary: hsl(240 3% 23%);
-  --color-secondary-foreground: hsl(0 0% 100%);
-  --color-muted: hsl(240 4% 18%);
-  --color-muted-foreground: hsl(240 2% 57%);
-  --color-accent: hsl(240 3% 23%);
-  --color-accent-foreground: hsl(0 0% 100%);
-  --color-destructive: hsl(4 90% 58%);
-  --color-destructive-foreground: hsl(0 0% 100%);
-  --color-border: hsl(240 3% 23%);
-  --color-input: hsl(240 3% 23%);
-  --color-ring: hsl(211 100% 50%);
+  /* — Other semantics — */
+  --color-destructive: #e5484d;
+  --color-destructive-foreground: #ffffff;
+  --color-success: #3dd68c;
+  --color-warning: #ffb454;
 
-  /* Chart colors */
-  --color-chart-1: hsl(211 100% 50%);
-  --color-chart-2: hsl(173 80% 40%);
-  --color-chart-3: hsl(45 100% 50%);
-  --color-chart-4: hsl(32 100% 50%);
-  --color-chart-5: hsl(4 90% 58%);
+  /* — Calm info panel (WCAG criterion callouts) — */
+  --color-wcag-bg: #12243b;
+  --color-wcag-border: #27486f;
 
-  /* Radius */
+  /* — Score-gauge / chart ramp (accent + severity, coherent) — */
+  --color-chart-1: #3d9bff;
+  --color-chart-2: #3dd68c;
+  --color-chart-3: #ffd43b;
+  --color-chart-4: #ffa94d;
+  --color-chart-5: #ff6b6b;
+
+  /* ── Legacy aliases → canonical values (kill drift, keep utilities) ── */
+  --color-bg-dark: #0f0f11; /* = background */
+  --color-bg-card: #1b1b1f; /* = card      */
+  --color-bg-elevated: #232329; /* = popover   */
+  --color-text-secondary: #acadb5; /* = muted-foreground */
+  --color-text-tertiary: #f4f4f6; /* = foreground       */
+  --color-primary-dark: #2f7be0; /* deeper accent for fill hover */
+  --color-primary-light: #8fc2ff; /* lighter accent for code/links on dark */
+
+  /* — Radius by role: controls = lg (8px), containers = xl (12px),
+       pills (full) reserved for status badges only. — */
   --radius: 0.5rem;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: calc(var(--radius) - 4px); /* 4px */
+  --radius-md: calc(var(--radius) - 2px); /* 6px */
+  --radius-lg: var(--radius); /* 8px  — controls */
+  --radius-xl: calc(var(--radius) + 4px); /* 12px — containers */
+
+  /* — Neutral elevation ladder (no colored glow) — */
+  --shadow-elev-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-elev-2: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --shadow-elev-overlay: 0 12px 32px rgba(0, 0, 0, 0.55);
 }
 
 @layer base {
@@ -71,103 +102,101 @@
   }
 
   body {
-    font-family:
-      'Inter',
-      -apple-system,
-      BlinkMacSystemFont,
-      'Segoe UI',
-      system-ui,
-      sans-serif;
+    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-size: 14px;
     line-height: 1.5;
-    /* Enhanced grain texture for depth */
-    background-image:
-      radial-gradient(circle at 20% 50%, rgba(0, 122, 255, 0.04) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(0, 199, 190, 0.03) 0%, transparent 50%),
-      repeating-linear-gradient(
-        0deg,
-        rgba(255, 255, 255, 0.01) 0px,
-        transparent 1px,
-        transparent 2px
-      );
+  }
+
+  /* Numbers are always tabular so counts/scores don't jitter. */
+  :where(.tabular) {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
-  /* Typography - Technical Precision Design System */
+  /* ── Typography — tuned for a 360px panel. 12px is the hard floor for
+        any real text; mono is reserved for genuine codes. ── */
   .text-h1 {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 24px;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 22px;
     font-weight: 700;
     line-height: 1.2;
-    letter-spacing: -0.03em;
+    letter-spacing: -0.02em;
   }
 
   .text-h2 {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 20px;
-    font-weight: 600;
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 17px;
+    font-weight: 650;
     line-height: 1.3;
-    letter-spacing: -0.02em;
-  }
-
-  .text-h3 {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 16px;
-    font-weight: 600;
-    line-height: 1.4;
     letter-spacing: -0.01em;
   }
 
-  .text-body {
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 14px;
-    font-weight: 400;
-    line-height: 1.6;
+  .text-h3 {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
   }
 
+  .text-body {
+    font-family: "Inter", system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 400;
+    line-height: 1.5;
+  }
+
+  /* Small label text. Does NOT force uppercase — callers opt in via
+     `.text-caption.uppercase` (which also gets the wider tracking). */
   .text-caption {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
     font-size: 12px;
     font-weight: 500;
     line-height: 1.4;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
   }
 
+  .text-caption.uppercase {
+    letter-spacing: 0.05em;
+  }
+
+  /* Monospace reserved for codes/selectors. Neutral foreground (set by the
+     text-color utility on the element), letter-spacing 0 so glyphs align. */
   .text-mono {
-    font-family: 'JetBrains Mono', monospace;
+    font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
     font-weight: 400;
-    letter-spacing: -0.02em;
+    letter-spacing: 0;
+    font-variant-numeric: tabular-nums;
   }
 
-  /* Custom scrollbar */
+  /* ── Scrollbar ── */
   ::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
+    height: 8px;
   }
 
   ::-webkit-scrollbar-track {
-    background: var(--color-bg-dark);
+    background: transparent;
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--color-bg-elevated);
-    border-radius: 3px;
+    background: var(--color-border);
+    border-radius: 4px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--color-text-secondary);
+    background: var(--color-muted-foreground);
   }
 
-  /* Animations - Technical Precision */
+  /* ── Motion — restraint-first, because the product audits motion.
+        Only honest, short, non-looping transitions survive. ── */
   @keyframes fadeIn {
     from {
       opacity: 0;
-      transform: translateY(8px);
+      transform: translateY(4px);
     }
     to {
       opacity: 1;
@@ -178,7 +207,7 @@
   @keyframes slideIn {
     from {
       opacity: 0;
-      transform: translateX(-12px);
+      transform: translateX(-8px);
     }
     to {
       opacity: 1;
@@ -192,150 +221,58 @@
       opacity: 1;
     }
     50% {
-      opacity: 0.5;
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -100% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  @keyframes scan {
-    0% {
-      transform: translateY(-100%);
-      opacity: 0;
-    }
-    50% {
-      opacity: 0.3;
-    }
-    100% {
-      transform: translateY(100%);
-      opacity: 0;
-    }
-  }
-
-  @keyframes scan-vertical {
-    0% {
-      top: -10%;
-      opacity: 0;
-    }
-    10% {
-      opacity: 1;
-    }
-    90% {
-      opacity: 1;
-    }
-    100% {
-      top: 110%;
-      opacity: 0;
-    }
-  }
-
-  @keyframes cardPop {
-    0% {
-      transform: scale(0.95);
-      opacity: 0;
-    }
-    50% {
-      transform: scale(1.02);
-    }
-    100% {
-      transform: scale(1);
-      opacity: 1;
-    }
-  }
-
-  @keyframes ripple {
-    0% {
-      transform: scale(0);
-      opacity: 0.5;
-    }
-    100% {
-      transform: scale(4);
-      opacity: 0;
+      opacity: 0.55;
     }
   }
 
   .animate-fade-in {
-    animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: fadeIn 0.18s ease-out;
   }
 
   .animate-slide-in {
-    animation: slideIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    animation: slideIn 0.18s ease-out;
   }
 
   .animate-pulse-slow {
     animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
-  /* Staggered animation delays for lists */
-  .animate-fade-in:nth-child(1) {
-    animation-delay: 0ms;
-  }
-  .animate-fade-in:nth-child(2) {
-    animation-delay: 50ms;
-  }
-  .animate-fade-in:nth-child(3) {
-    animation-delay: 100ms;
-  }
-  .animate-fade-in:nth-child(4) {
-    animation-delay: 150ms;
-  }
-  .animate-fade-in:nth-child(5) {
-    animation-delay: 200ms;
-  }
-  .animate-fade-in:nth-child(n + 6) {
-    animation-delay: 250ms;
-  }
-
-  /* Focus styles for accessibility */
+  /* ── One focus system: a 2px solid accent outline, applied everywhere.
+        Clears SC 1.4.11 (accent vs surface ≈ 6:1, well above 3:1). ── */
   *:focus-visible {
-    outline: 2px solid var(--color-primary);
+    outline: 2px solid var(--color-ring);
     outline-offset: 2px;
+    border-radius: 2px;
   }
 
-  /* Smooth transitions */
+  /* Explicit transitions only — never `transition: all`. */
   button,
   a,
   input,
-  select {
-    transition: all 0.15s ease;
+  select,
+  [role="button"],
+  [role="checkbox"] {
+    transition:
+      color 0.12s ease,
+      background-color 0.12s ease,
+      border-color 0.12s ease,
+      box-shadow 0.12s ease;
   }
+}
 
-  /* Severity badge colors */
-  .badge-critical {
-    background-color: var(--color-critical);
-    color: white;
-  }
-
-  .badge-serious {
-    background-color: var(--color-serious);
-    color: white;
-  }
-
-  .badge-moderate {
-    background-color: var(--color-moderate);
-    color: #1c1c1e;
-  }
-
-  .badge-minor {
-    background-color: var(--color-minor);
-    color: #1c1c1e;
-  }
-
-  /* Card glow effect */
-  .card-glow {
-    border-color: rgba(0, 122, 255, 0.2);
-    box-shadow: 0 0 20px rgba(0, 122, 255, 0.1);
-  }
-
-  .card-glow:hover {
-    border-color: rgba(0, 122, 255, 0.3);
-    box-shadow: 0 0 25px rgba(0, 122, 255, 0.15);
+/* Accessibility: respect the user's reduced-motion preference.
+   Neutralizes all motion globally so an a11y tool isn't itself a motion
+   offender. Kept outside @layer and uses !important to override Tailwind
+   animation/transition utilities regardless of cascade order. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
   }
 }

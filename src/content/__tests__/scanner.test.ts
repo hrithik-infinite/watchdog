@@ -1,8 +1,10 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Issue } from '@/shared/types';
 
-// Mock axe-core before importing scanner
-const mockAxeRun = vi.fn();
+// Mock axe-core before importing scanner. scanner.ts imports axe-core
+// statically, so the mock factory runs at module load (before plain top-level
+// consts are initialized) — define the spy via vi.hoisted so it's available.
+const { mockAxeRun } = vi.hoisted(() => ({ mockAxeRun: vi.fn() }));
 
 vi.mock('axe-core', () => ({
   default: {
@@ -58,12 +60,13 @@ vi.stubGlobal('performance', {
   now: mockPerformanceNow,
 });
 
-import { scanPage } from '../scanner';
-import { scanPerformance } from '../performance-scanner';
-import { scanSEO } from '../seo-scanner';
-import { scanSecurity } from '../security-scanner';
+import { WHY_IT_MATTERS } from '@/shared/why-it-matters';
 import { scanBestPractices } from '../best-practices-scanner';
+import { scanPerformance } from '../performance-scanner';
 import { scanPWA } from '../pwa-scanner';
+import { scanPage } from '../scanner';
+import { scanSecurity } from '../security-scanner';
+import { scanSEO } from '../seo-scanner';
 
 describe('Scanner - scanPage', () => {
   beforeEach(() => {
@@ -405,6 +408,73 @@ describe('Scanner - scanPage', () => {
       expect(result.issues[0].id).not.toBe(result.issues[1].id);
       expect(result.issues[0].id).toMatch(/^issue-/);
       expect(result.issues[1].id).toMatch(/^issue-/);
+    });
+  });
+
+  describe('whyItMatters tagging', () => {
+    it('attaches the plain-language whyItMatters line for a known ruleId', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'image-alt',
+            impact: 'critical',
+            help: 'Images must have alt text',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['img.hero'], html: '<img class="hero">', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage('accessibility');
+
+      expect(result.issues[0].whyItMatters).toBe(
+        "People using a screen reader can't tell what these images show."
+      );
+      expect(result.issues[0].whyItMatters).toBe(WHY_IT_MATTERS['image-alt']);
+    });
+
+    it('also tags incomplete issues with whyItMatters', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [],
+        incomplete: [
+          {
+            id: 'color-contrast',
+            impact: 'serious',
+            help: 'Color contrast may be insufficient',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [
+              { target: ['p.text'], html: '<p class="text">Text</p>', failureSummary: 'test' },
+            ],
+          },
+        ],
+      });
+
+      const result = await scanPage('accessibility');
+
+      expect(result.incomplete[0].whyItMatters).toBe(WHY_IT_MATTERS['color-contrast']);
+    });
+
+    it('leaves whyItMatters undefined for an unmapped ruleId', async () => {
+      mockAxeRun.mockResolvedValue({
+        violations: [
+          {
+            id: 'unknown-rule-xyz',
+            impact: 'minor',
+            help: 'Unknown issue',
+            description: 'Description',
+            helpUrl: 'https://example.com/help',
+            nodes: [{ target: ['selector'], html: '<div>', failureSummary: 'test' }],
+          },
+        ],
+        incomplete: [],
+      });
+
+      const result = await scanPage('accessibility');
+
+      expect(result.issues[0].whyItMatters).toBeUndefined();
     });
   });
 
@@ -818,20 +888,18 @@ describe('Scanner - scanPage', () => {
       expect(result).toEqual(mockResult);
     });
 
-    it('should throw error for mobile audit type', async () => {
-      await expect(scanPage('mobile')).rejects.toThrow('mobile audit is not yet implemented');
-    });
-
-    it('should throw error for links audit type', async () => {
-      await expect(scanPage('links')).rejects.toThrow('links audit is not yet implemented');
-    });
-
-    it('should throw error for i18n audit type', async () => {
-      await expect(scanPage('i18n')).rejects.toThrow('i18n audit is not yet implemented');
-    });
-
-    it('should throw error for privacy audit type', async () => {
-      await expect(scanPage('privacy')).rejects.toThrow('privacy audit is not yet implemented');
+    // The mobile/links/i18n/privacy stub audit types were removed (deadcode-1);
+    // any unrecognized audit type now rejects with the generic "Unknown" error
+    // from the switch default.
+    it.each([
+      'mobile',
+      'links',
+      'i18n',
+      'privacy',
+    ])('rejects the removed %s audit type as unknown', async (auditType) => {
+      await expect(scanPage(auditType as never)).rejects.toThrow(
+        `Unknown audit type: ${auditType}`
+      );
     });
 
     it('should throw error for unknown audit type', async () => {

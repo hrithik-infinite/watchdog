@@ -1,9 +1,9 @@
 import type {
+  Category,
   Issue,
   ScanResult,
   ScanSummary,
   Severity,
-  Category,
   WCAGCriteria,
 } from '@/shared/types';
 
@@ -12,6 +12,13 @@ let idCounter = 0;
 function generateId(): string {
   return `perf-issue-${Date.now()}-${++idCounter}`;
 }
+
+// How long each CLS/INP/TBT PerformanceObserver stays attached to capture late
+// entries. scanPerformance waits this SAME window before reading the
+// navigation/resource metrics — and no longer, because the observers have
+// already settled by then. A prior version waited a fixed 1000ms there while the
+// observers settled at 500ms, burning ~500ms of pure dead time on every scan.
+const OBSERVER_SETTLE_MS = 500;
 
 interface PerformanceMetric {
   name: string;
@@ -125,28 +132,12 @@ async function measureCLS(): Promise<CLSResult> {
       return;
     }
 
-    // First, check for buffered layout-shift entries
-    const bufferedEntries = performance.getEntriesByType('layout-shift') as LayoutShiftEntry[];
-
-    for (const entry of bufferedEntries) {
-      // Only count shifts without recent user input
-      if (!entry.hadRecentInput) {
-        clsValue += entry.value;
-
-        // Track which elements are causing shifts
-        if (entry.sources) {
-          for (const source of entry.sources) {
-            if (source.node && source.node instanceof Element) {
-              const selector = getSelector(source.node);
-              const currentShift = shiftingElements.get(selector) || 0;
-              shiftingElements.set(selector, currentShift + entry.value);
-            }
-          }
-        }
-      }
-    }
-
-    // Also observe for any new shifts during measurement period
+    // Collect layout-shift entries with a single buffered observer. Passing
+    // `buffered: true` delivers every shift already recorded before this call
+    // PLUS any new shift during the measurement window — each entry exactly
+    // once. (A prior version pre-read getEntriesByType('layout-shift') and THEN
+    // re-observed with buffered:true, counting every buffered shift twice and
+    // roughly doubling CLS — enough to flip a "good" page to "needs improvement".)
     let observer: PerformanceObserver | null = null;
 
     try {
@@ -190,7 +181,7 @@ async function measureCLS(): Promise<CLSResult> {
         rating: getRating(clsValue, THRESHOLDS.CLS),
         shiftingElements: shiftingElementsArray,
       });
-    }, 500); // Wait 500ms for additional shifts
+    }, OBSERVER_SETTLE_MS); // Wait for any additional shifts to settle
   });
 }
 
@@ -209,29 +200,13 @@ async function measureINP(): Promise<INPResult> {
       return;
     }
 
-    // Get buffered event timing entries
-    try {
-      const entries = performance.getEntriesByType('event') as PerformanceEventTiming[];
-
-      for (const entry of entries) {
-        if (entry.interactionId && entry.interactionId > 0) {
-          const duration = entry.duration;
-          const existing = interactions.get(entry.interactionId);
-
-          if (!existing || duration > existing.duration) {
-            interactions.set(entry.interactionId, {
-              duration,
-              type: entry.name,
-              target: entry.target ? getSelector(entry.target) : 'unknown',
-            });
-          }
-        }
-      }
-    } catch {
-      // event timing not supported
-    }
-
-    // Also observe for new interactions
+    // Collect interactions with a single buffered observer. `buffered: true`
+    // replays every Event Timing entry already recorded before this call PLUS
+    // any new interaction during the window — each exactly once. (A prior version
+    // also pre-read performance.getEntriesByType('event'); that double-read the
+    // buffer AND is deprecated — Chrome logs "Deprecated API for given entry
+    // type" because the observer-only CWV entry types must come through
+    // PerformanceObserver, never getEntriesByType. See measureCLS.)
     let observer: PerformanceObserver | null = null;
 
     try {
@@ -292,7 +267,7 @@ async function measureINP(): Promise<INPResult> {
         rating: getRating(inpValue, THRESHOLDS.INP),
         worstInteraction,
       });
-    }, 500);
+    }, OBSERVER_SETTLE_MS);
   });
 }
 
@@ -312,25 +287,11 @@ async function measureTBT(): Promise<TBTResult> {
       return;
     }
 
-    // Get buffered long task entries
-    try {
-      const entries = performance.getEntriesByType('longtask') as LongTaskEntry[];
-
-      for (const entry of entries) {
-        const blockingTime = Math.max(0, entry.duration - 50); // Blocking = duration - 50ms
-        totalBlockingTime += blockingTime;
-
-        longTasks.push({
-          duration: entry.duration,
-          blockingTime,
-          startTime: entry.startTime,
-        });
-      }
-    } catch {
-      // longtask not supported
-    }
-
-    // Also observe for new long tasks
+    // Collect long tasks with a single buffered observer (see measureCLS): one
+    // observer with `buffered: true` reports every long task — already-recorded
+    // and new — exactly once. A prior version pre-read
+    // getEntriesByType('longtask') and ALSO re-observed buffered, double-counting
+    // blocking time and duplicating entries in the longTasks list.
     let observer: PerformanceObserver | null = null;
 
     try {
@@ -366,7 +327,62 @@ async function measureTBT(): Promise<TBTResult> {
         rating: getRating(totalBlockingTime, THRESHOLDS.TBT),
         longTasks: longTasks.slice(0, 5), // Top 5 worst long tasks
       });
-    }, 500);
+    }, OBSERVER_SETTLE_MS);
+  });
+}
+
+// Measure Largest Contentful Paint (LCP) with a buffered observer. LCP is an
+// observer-only Core Web Vital: performance.getEntriesByType('largest-contentful-
+// paint') is deprecated (Chrome logs "Deprecated API for given entry type") and
+// only reads whatever happens to be buffered at call time. The buffered observer
+// replays every LCP candidate already recorded PLUS any new candidate during the
+// settle window; candidates are monotonic, so the last one delivered is final.
+async function measureLCP(): Promise<PerformanceMetric | null> {
+  return new Promise((resolve) => {
+    if (!('PerformanceObserver' in window)) {
+      resolve(null);
+      return;
+    }
+
+    let lcpValue = 0;
+    let observer: PerformanceObserver | null = null;
+
+    try {
+      observer = new PerformanceObserver((list) => {
+        const entries = list.getEntries();
+        // Each candidate supersedes the previous one; the last entry wins.
+        const last = entries[entries.length - 1];
+        if (last) {
+          lcpValue = last.startTime;
+        }
+      });
+
+      observer.observe({ type: 'largest-contentful-paint', buffered: true });
+    } catch {
+      // LCP timing not supported
+    }
+
+    setTimeout(() => {
+      if (observer) {
+        observer.disconnect();
+      }
+
+      // Guard against a missing/NaN startTime (e.g. an entry with no timing):
+      // `!(x > 0)` rejects undefined, NaN, 0 and negatives, so we never emit a
+      // metric whose value would later break .toFixed() in metricsToIssues.
+      if (!(lcpValue > 0)) {
+        resolve(null);
+        return;
+      }
+
+      resolve({
+        name: 'LCP (Largest Contentful Paint)',
+        value: lcpValue,
+        rating: getRating(lcpValue, THRESHOLDS.LCP),
+        threshold: THRESHOLDS.LCP,
+        unit: 'ms',
+      });
+    }, OBSERVER_SETTLE_MS);
   });
 }
 
@@ -402,18 +418,59 @@ function mapRatingToSeverity(rating: 'good' | 'needs-improvement' | 'poor'): Sev
   }
 }
 
-// Get performance metrics using Navigation Timing API
+// Read a PerformanceNavigationTiming entry (Navigation Timing Level 2). Returns
+// null when the engine doesn't expose one, so callers can fall back.
+function getNavigationEntry(): PerformanceNavigationTiming | null {
+  if (!performance || typeof performance.getEntriesByType !== 'function') {
+    return null;
+  }
+  const entries = performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+  return entries.length > 0 ? entries[0] : null;
+}
+
+// Get performance metrics using the Navigation Timing API
 function getNavigationMetrics(): PerformanceMetric[] {
   const metrics: PerformanceMetric[] = [];
 
-  if (!performance || !performance.timing) {
+  if (!performance) {
     return metrics;
   }
 
-  const timing = performance.timing;
+  // Prefer Navigation Timing Level 2 (PerformanceNavigationTiming): its marks are
+  // relative to the entry's own startTime (0). The buggy version read the
+  // deprecated performance.timing / navigationStart directly — those are
+  // epoch-based, removed from the spec, and read 0 in some bfcache restores. We
+  // keep performance.timing only as a graceful fallback for old engines.
+  const nav = getNavigationEntry();
+
+  let responseStart: number;
+  let requestStart: number;
+  let domContentLoadedEventStart: number;
+  let domContentLoadedEventEnd: number;
+  let loadEventEnd: number;
+  let navStart: number;
+
+  if (nav) {
+    responseStart = nav.responseStart;
+    requestStart = nav.requestStart;
+    domContentLoadedEventStart = nav.domContentLoadedEventStart;
+    domContentLoadedEventEnd = nav.domContentLoadedEventEnd;
+    loadEventEnd = nav.loadEventEnd;
+    navStart = nav.startTime; // 0 by definition; the other marks are relative to it
+  } else if (performance.timing) {
+    const timing = performance.timing;
+    responseStart = timing.responseStart;
+    requestStart = timing.requestStart;
+    domContentLoadedEventStart = timing.domContentLoadedEventStart;
+    domContentLoadedEventEnd = timing.domContentLoadedEventEnd;
+    loadEventEnd = timing.loadEventEnd;
+    navStart = timing.navigationStart;
+  } else {
+    return metrics;
+  }
 
   // Time to First Byte (TTFB)
-  const ttfb = timing.responseStart - timing.requestStart;
+  const ttfb = responseStart - requestStart;
   if (ttfb > 0) {
     metrics.push({
       name: 'TTFB (Time to First Byte)',
@@ -437,21 +494,12 @@ function getNavigationMetrics(): PerformanceMetric[] {
     });
   }
 
-  // Largest Contentful Paint
-  const lcpEntries = performance.getEntriesByType('largest-contentful-paint');
-  if (lcpEntries.length > 0) {
-    const lcp = lcpEntries[lcpEntries.length - 1].startTime;
-    metrics.push({
-      name: 'LCP (Largest Contentful Paint)',
-      value: lcp,
-      rating: getRating(lcp, THRESHOLDS.LCP),
-      threshold: THRESHOLDS.LCP,
-      unit: 'ms',
-    });
-  }
+  // LCP is measured separately via a buffered observer (measureLCP) and merged
+  // into this list by scanPerformance — getEntriesByType('largest-contentful-
+  // paint') is deprecated and only reads what is buffered at call time.
 
   // DOM Content Loaded
-  const domContentLoaded = timing.domContentLoadedEventEnd - timing.domContentLoadedEventStart;
+  const domContentLoaded = domContentLoadedEventEnd - domContentLoadedEventStart;
   if (domContentLoaded > 0) {
     metrics.push({
       name: 'DOM Content Loaded',
@@ -464,7 +512,7 @@ function getNavigationMetrics(): PerformanceMetric[] {
   }
 
   // Page Load Time
-  const pageLoadTime = timing.loadEventEnd - timing.navigationStart;
+  const pageLoadTime = loadEventEnd - navStart;
   if (pageLoadTime > 0) {
     metrics.push({
       name: 'Page Load Time',
@@ -476,6 +524,28 @@ function getNavigationMetrics(): PerformanceMetric[] {
   }
 
   return metrics;
+}
+
+// Best-effort byte size for a resource. transferSize is the over-the-wire size
+// (headers + compressed body) but is 0 for cross-origin/opaque responses without
+// a Timing-Allow-Origin header, and 0 for cache hits. The buggy version used
+// `transferSize || 0`, so those resources counted as 0 bytes and undercounted
+// real page weight. Fall back to the body-size fields (populated for
+// same-origin, CORS+TAO, and cached resources). Each resource contributes
+// exactly one of these values — never summed together — so nothing is
+// double-counted; a truly unknown size stays 0 rather than reporting a
+// misleading figure.
+function getResourceSize(resource: PerformanceResourceTiming): number {
+  if (resource.transferSize && resource.transferSize > 0) {
+    return resource.transferSize;
+  }
+  if (resource.encodedBodySize && resource.encodedBodySize > 0) {
+    return resource.encodedBodySize;
+  }
+  if (resource.decodedBodySize && resource.decodedBodySize > 0) {
+    return resource.decodedBodySize;
+  }
+  return 0;
 }
 
 // Get resource performance metrics
@@ -490,7 +560,7 @@ function getResourceMetrics(): PerformanceMetric[] {
   let scriptSize = 0;
 
   for (const resource of resources) {
-    const size = resource.transferSize || 0;
+    const size = getResourceSize(resource);
     totalSize += size;
 
     if (resource.initiatorType === 'img') {
@@ -648,7 +718,7 @@ function getElementHtml(selector: string): string {
       const html = element.outerHTML;
       // Truncate if too long
       if (html.length > 200) {
-        return html.substring(0, 200) + '...>';
+        return `${html.substring(0, 200)}...>`;
       }
       return html;
     }
@@ -1006,17 +1076,31 @@ export async function scanPerformance(): Promise<ScanResult> {
   const clsPromise = measureCLS();
   const inpPromise = measureINP();
   const tbtPromise = measureTBT();
+  const lcpPromise = measureLCP();
 
-  // Wait a bit to ensure metrics are collected
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  // Give the CLS/INP/TBT/LCP observers exactly their settle window to capture
+  // late entries, then read navigation/resource metrics. The previous fixed
+  // 1000ms wait left ~500ms of dead time after the observers had already settled.
+  await new Promise((resolve) => setTimeout(resolve, OBSERVER_SETTLE_MS));
 
-  // Collect all metrics
+  // Collect synchronous navigation/resource metrics
   const navigationMetrics = getNavigationMetrics();
   const resourceMetrics = getResourceMetrics();
-  const allMetrics = [...navigationMetrics, ...resourceMetrics];
 
   // Wait for Core Web Vitals measurements to complete
-  const [clsResult, inpResult, tbtResult] = await Promise.all([clsPromise, inpPromise, tbtPromise]);
+  const [clsResult, inpResult, tbtResult, lcpMetric] = await Promise.all([
+    clsPromise,
+    inpPromise,
+    tbtPromise,
+    lcpPromise,
+  ]);
+
+  // LCP rejoins the timing metrics list (it used to be read inline in
+  // getNavigationMetrics via the now-deprecated getEntriesByType).
+  const allMetrics = [...navigationMetrics, ...resourceMetrics];
+  if (lcpMetric) {
+    allMetrics.push(lcpMetric);
+  }
 
   // Convert metrics to issues
   const metricIssues = metricsToIssues(allMetrics);

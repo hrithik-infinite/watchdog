@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { generateFix } from '../fixes';
+import { describe, expect, it } from 'vitest';
+import { contrastRatioBetween, generateFix, suggestAccessibleColor } from '../fixes';
 import type { ElementInfo } from '../types';
 
 describe('Fixes - Fix suggestion generation', () => {
@@ -1064,6 +1064,228 @@ describe('Fixes - Fix suggestion generation', () => {
         const fix = generateFix(rule, mockElement);
         expect(fix.learnMoreUrl).toMatch(/^https?:\/\/.*dequeuniversity|webaim|web\.dev/);
       });
+    });
+  });
+
+  // Regression: the generators used to do a naive String.replace on raw HTML.
+  // Because String.replace only rewrites the FIRST match, an edit could land
+  // inside a quoted attribute value (a `>`, a `</tag>`, or a repeated word),
+  // producing garbled/invalid markup. These cases break the old naive replace.
+  describe('Robust HTML editing (regression)', () => {
+    it('button-name: a `>` inside an attribute value must not split the tag', () => {
+      // Old bug: el.html.replace('>', ...) hit the `>` inside data-tooltip="3 > 2"
+      // and produced `<button data-tooltip="3  aria-label="..."> 2">...`.
+      const element: ElementInfo = {
+        selector: 'button',
+        html: '<button data-tooltip="3 > 2"></button>',
+      };
+
+      const fix = generateFix('button-name', element);
+
+      expect(fix.code).toBe('<button data-tooltip="3 > 2" aria-label="[Button purpose]"></button>');
+      // The original attribute value survives intact.
+      expect(fix.code).toContain('data-tooltip="3 > 2"');
+    });
+
+    it('link-name: a `</a>` inside an attribute value must not be treated as the closing tag', () => {
+      // Old bug: el.html.replace('</a>', ...) hit the `</a>` inside the href and
+      // corrupted the URL instead of appending text before the real closing tag.
+      const element: ElementInfo = {
+        selector: 'a',
+        html: '<a href="/r?to=</a>"></a>',
+      };
+
+      const fix = generateFix('link-name', element);
+
+      expect(fix.code).toBe('<a href="/r?to=</a>">[Link text]</a>');
+      expect(fix.code).toContain('href="/r?to=</a>"');
+    });
+
+    it('scrollable-region-focusable: a `>` inside an attribute value must not split the tag', () => {
+      const element: ElementInfo = {
+        selector: 'div',
+        html: '<div data-expr="a>b">x</div>',
+      };
+
+      const fix = generateFix('scrollable-region-focusable', element);
+
+      expect(fix.code).toBe(
+        '<div data-expr="a>b" tabindex="0" role="region" aria-label="Scrollable content">x</div>'
+      );
+      expect(fix.code).toContain('data-expr="a>b"');
+    });
+
+    it('object-alt: a `</object>` inside an attribute value must not be treated as the closing tag', () => {
+      const element: ElementInfo = {
+        selector: 'object',
+        html: '<object data="x?=</object>"></object>',
+      };
+
+      const fix = generateFix('object-alt', element);
+
+      expect(fix.code).toBe(
+        '<object data="x?=</object>">Alternative content describing the object</object>'
+      );
+      expect(fix.code).toContain('data="x?=</object>"');
+    });
+
+    it('no-autoplay-audio: a repeated "autoplay" substring in a class must not be mangled', () => {
+      // Old bug: el.html.replace('autoplay', '') removed it from class="autoplay-banner"
+      // (the first match) and left the real boolean attribute in place.
+      const element: ElementInfo = {
+        selector: 'audio',
+        html: '<audio class="autoplay-banner" autoplay></audio>',
+      };
+
+      const fix = generateFix('no-autoplay-audio', element);
+
+      expect(fix.code).toBe('<audio class="autoplay-banner" controls></audio>');
+      // Class name preserved; real autoplay attribute removed.
+      expect(fix.code).toContain('class="autoplay-banner"');
+    });
+
+    it('no-autoplay-audio: still adds controls when there is no "muted" attribute', () => {
+      // Old bug: it relied on replacing "muted" with "controls", so an element
+      // without `muted` never gained controls.
+      const element: ElementInfo = {
+        selector: 'audio',
+        html: '<audio autoplay></audio>',
+      };
+
+      const fix = generateFix('no-autoplay-audio', element);
+
+      expect(fix.code).toContain('controls');
+      expect(fix.code).toBe('<audio controls></audio>');
+    });
+
+    it('tabindex: a `data-tabindex` must not be hit instead of the real tabindex', () => {
+      // Old bug: /tabindex=["']\d+["']/ matched the FIRST occurrence, inside
+      // data-tabindex, leaving the real positive tabindex unchanged.
+      const element: ElementInfo = {
+        selector: 'button',
+        html: '<button data-tabindex="3" tabindex="7">Go</button>',
+      };
+
+      const fix = generateFix('tabindex', element);
+
+      expect(fix.code).toBe('<button data-tabindex="3" tabindex="0">Go</button>');
+      expect(fix.code).toContain('data-tabindex="3"');
+      expect(fix.code).not.toContain('tabindex="7"');
+    });
+
+    it('scope-attr-valid: a `data-scope` must not be rewritten instead of scope', () => {
+      const element: ElementInfo = {
+        selector: 'th',
+        html: '<th data-scope="keep" scope="badvalue">H</th>',
+      };
+
+      const fix = generateFix('scope-attr-valid', element);
+
+      expect(fix.code).toBe('<th data-scope="keep" scope="col">H</th>');
+      expect(fix.code).toContain('data-scope="keep"');
+    });
+
+    it('image-alt: self-closing tags keep the trailing slash valid', () => {
+      const element: ElementInfo = {
+        selector: 'img',
+        html: '<img src="x" />',
+      };
+
+      const fix = generateFix('image-alt', element);
+
+      expect(fix.code).toBe('<img src="x" alt="[Describe what the image shows]" />');
+    });
+
+    it('falls back to an instructional snippet when there is no editable tag', () => {
+      // Empty/garbage HTML can't be safely transformed; emit a clear snippet, not
+      // a broken edit.
+      const element: ElementInfo = {
+        selector: '',
+        html: '',
+      };
+
+      const buttonFix = generateFix('button-name', element);
+      expect(buttonFix.code).toContain('aria-label');
+
+      const linkFix = generateFix('link-name', element);
+      expect(linkFix.code).toContain('[Link text]');
+
+      const objectFix = generateFix('object-alt', element);
+      expect(objectFix.code).toContain('Alternative content');
+    });
+  });
+});
+
+describe('Color-contrast math + computed diff fix', () => {
+  describe('contrastRatioBetween', () => {
+    it('computes the known black-on-white maximum (21:1)', () => {
+      expect(contrastRatioBetween('#000000', '#ffffff')).toBeCloseTo(21, 0);
+    });
+
+    it('returns 1:1 for identical colors', () => {
+      expect(contrastRatioBetween('#777777', '#777777')).toBeCloseTo(1, 5);
+    });
+
+    it('parses rgb() syntax as well as hex', () => {
+      expect(contrastRatioBetween('rgb(0, 0, 0)', 'rgb(255,255,255)')).toBeCloseTo(21, 0);
+    });
+
+    it('expands 3-digit hex', () => {
+      expect(contrastRatioBetween('#000', '#fff')).toBeCloseTo(21, 0);
+    });
+
+    it('returns null when a color cannot be parsed', () => {
+      expect(contrastRatioBetween('not-a-color', '#fff')).toBeNull();
+    });
+  });
+
+  describe('suggestAccessibleColor', () => {
+    it('returns a color that meets the required ratio against a dark background', () => {
+      const bg = '#16161a';
+      const suggested = suggestAccessibleColor('#8a8a8a', bg, 4.5);
+      expect(suggested).toMatch(/^#[0-9a-f]{6}$/);
+      expect(contrastRatioBetween(suggested as string, bg) as number).toBeGreaterThanOrEqual(4.5);
+    });
+
+    it('lightens the foreground toward white on a dark background', () => {
+      const suggested = suggestAccessibleColor('#555555', '#000000', 4.5) as string;
+      // every channel moves up toward white
+      expect(Number.parseInt(suggested.slice(1, 3), 16)).toBeGreaterThan(0x55);
+    });
+
+    it('darkens the foreground toward black on a light background', () => {
+      const suggested = suggestAccessibleColor('#aaaaaa', '#ffffff', 4.5) as string;
+      expect(Number.parseInt(suggested.slice(1, 3), 16)).toBeLessThan(0xaa);
+    });
+
+    it('keeps a color that already passes', () => {
+      expect(suggestAccessibleColor('#ffffff', '#000000', 4.5)).toBe('#ffffff');
+    });
+
+    it('returns null when either color is unparseable', () => {
+      expect(suggestAccessibleColor('garbage', '#000000', 4.5)).toBeNull();
+    });
+  });
+
+  describe('generateFix with measured contrast', () => {
+    const el: ElementInfo = { selector: 'p.muted', html: '<p class="muted">x</p>' };
+
+    it('emits a -/+ color diff and a ratio in the description', () => {
+      // #999999 on #ffffff is ~2.85:1 — genuinely below AA.
+      const fix = generateFix('color-contrast', el, {
+        fg: '#999999',
+        bg: '#ffffff',
+        ratio: 2.85,
+        required: 4.5,
+      });
+      expect(fix.code).toContain('- color: #999999;');
+      expect(fix.code).toMatch(/\+ color: #[0-9a-f]{6};/);
+      expect(fix.description).toContain('4.5:1');
+    });
+
+    it('falls back to the instructional template when no contrast data is supplied', () => {
+      const fix = generateFix('color-contrast', el);
+      expect(fix.code).toContain('Suggested fixes');
     });
   });
 });

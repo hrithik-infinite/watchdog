@@ -3,7 +3,7 @@
 > Instant accessibility audits with visual highlighting - A browser extension that helps developers identify and fix accessibility issues.
 
 [![License](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](package.json)
 
 ---
 
@@ -58,7 +58,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/watchdog.git
+git clone https://github.com/hrithik-infinite/watchdog.git
 cd watchdog
 
 # Install dependencies
@@ -85,7 +85,7 @@ npm run all
 
 1. **Open the Extension**
    - Click the WatchDog icon in your Chrome toolbar
-   - Or use keyboard shortcut (if configured)
+   - Or set a keyboard shortcut at `chrome://extensions/shortcuts` (WatchDog registers an "Activate the extension" command)
 
 2. **Select Audit Type**
    - Choose from Accessibility, Performance, SEO, Security, Best Practices, or PWA
@@ -191,13 +191,16 @@ All rules map to specific WCAG 2.1 criteria (Level A or AA).
 
 ## Permissions Explained
 
-WatchDog requires the following permissions:
+WatchDog requests the following four permissions:
 
 - **activeTab** - Access the current tab to scan for accessibility issues
-- **storage** - Save your settings and preferences
+- **storage** - Save your settings, preferences, and the list of issues you choose to ignore
 - **sidePanel** - Display the results panel alongside web pages
+- **scripting** - Inject the scanner and overlay code into the active tab **on demand** — only when you scan a page or toggle a vision/focus overlay
 
-**Privacy Note:** WatchDog processes everything locally in your browser. No data is sent to external servers. See [PRIVACY.md](PRIVACY.md) for details.
+**No "all sites" warning:** WatchDog has **no static content script and no broad host permissions**, so it loads nothing on the pages you browse and Chrome does **not** show the "Read and change all your data on all websites" warning. The scanner is injected into a single tab only when you act on it (scan, or turn on a page overlay), under the `activeTab` grant, to read the DOM and draw highlights — page content is never transmitted anywhere. If you switch tabs with the panel open, scanning the new tab may ask you to click the WatchDog toolbar icon first to grant access to that tab.
+
+**Privacy Note:** WatchDog processes everything locally in your browser and sends nothing to third-party servers. Some audits make _same-origin_ requests to the page you are scanning (the Security audit issues a `HEAD` request to read response headers; the PWA audit fetches the page's own web app manifest). See [PRIVACY.md](PRIVACY.md) for details.
 
 ---
 
@@ -243,13 +246,13 @@ src/
 
 ```bash
 npm run dev              # Start dev server with HMR
-npm run build            # Production build
+npm run build            # Production build (type-check + both bundles)
+npm run lint             # Biome check (lint + format + imports), read-only
+npm run fix              # Auto-fix lint/format/import issues
 npm run typecheck        # TypeScript type checking
 npm test                 # Run tests with coverage
-npm run lint             # ESLint check
-npm run lint:fix         # Auto-fix linting issues
-npm run format           # Format code with Prettier
-npm run all              # Run format, lint, build, and test
+npm run test:e2e         # Playwright extension E2E (installs Chromium + builds)
+npm run all              # Full local gate: fix, typecheck, test, build
 ```
 
 ### Contributing
@@ -351,7 +354,7 @@ ISC License - See [LICENSE](LICENSE) file for details.
 
 ## Support
 
-- **Issues:** [GitHub Issues](https://github.com/your-username/watchdog/issues)
+- **Issues:** [GitHub Issues](https://github.com/hrithik-infinite/watchdog/issues)
 - **Documentation:** [docs/](docs/)
 - **Privacy Policy:** [PRIVACY.md](PRIVACY.md)
 

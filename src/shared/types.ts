@@ -37,6 +37,12 @@ export interface WCAGCriteria {
   description: string;
 }
 
+// Which audit / standard an issue belongs to. Drives how it is labelled in the
+// UI and exports: only `wcag` issues are genuine WCAG/accessibility findings —
+// the other scanners reuse the `wcag` field with placeholder values, so display
+// code must key off `standard` to avoid calling e.g. a Performance issue "WCAG".
+export type IssueStandard = 'wcag' | 'performance' | 'seo' | 'security' | 'best-practice' | 'pwa';
+
 // Individual accessibility issue
 export interface Issue {
   id: string;
@@ -47,8 +53,28 @@ export interface Issue {
   description: string;
   helpUrl: string;
   wcag: WCAGCriteria;
+  // Optional for backward compatibility; set centrally in scanPage(). Absent is
+  // treated as 'wcag' (the original accessibility-only behaviour).
+  standard?: IssueStandard;
+  // Optional plain-language consequence of the issue, in human/business terms
+  // ("Visitors using a screen reader can't tell what this button does"). Set
+  // centrally in scanPage() from a ruleId→copy map; rendered above the technical
+  // description for the Site-owner audience. Absent → nothing extra is shown.
+  whyItMatters?: string;
   element: ElementInfo;
   fix: FixSuggestion;
+  // ── Developer-facing axe metadata (optional) ──
+  // Populated for accessibility scans from the underlying axe violation. Absent
+  // for the synthetic non-a11y scanners and older/imported reports, so display
+  // code must treat each as optional.
+  // Raw axe impact word (critical|serious|moderate|minor) before severity mapping.
+  impact?: string;
+  // axe rule tags, e.g. ['cat.color','wcag2aa','wcag143'].
+  tags?: string[];
+  // How many elements this rule flagged on the page (violation.nodes.length).
+  ruleNodeCount?: number;
+  // Measured color contrast for color-contrast issues, straight from axe.
+  contrast?: { fg: string; bg: string; ratio: number; required: number };
 }
 
 // Summary of scan results
@@ -79,8 +105,21 @@ export type VisionMode =
   | 'blur-medium'
   | 'blur-high';
 
+// Audience persona. Drives whether the UI presents plain language or full
+// technical detail (issue cards, audit labels, exports, ignore flow). New
+// installs default to 'site-owner' (see DEFAULT_SETTINGS); the first-run tour
+// and Settings both let a user switch. 'developer' preserves the original
+// developer-facing presentation.
+export type Persona = 'developer' | 'site-owner';
+
 // Settings configuration
 export interface Settings {
+  // Audience persona — the spine of the Site-owner repositioning.
+  persona: Persona;
+  // First-run tour gate. False until the user completes (or skips) onboarding;
+  // absent in records saved before this field existed, so it defaults to false
+  // and existing users see the tour once.
+  hasSeenOnboarding: boolean;
   wcagLevel: WCAGLevel;
   showIncomplete: boolean;
   autoHighlight: boolean;

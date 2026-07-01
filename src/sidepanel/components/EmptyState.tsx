@@ -1,15 +1,19 @@
-import { RefreshCw, Lightbulb, AlertTriangle } from 'lucide-react';
-import { Button } from '@/sidepanel/components/ui/button';
-import { EyeIcon, CheckCircleIcon, ErrorCircleIcon } from './icons';
+import { AlertTriangle, Lightbulb, RefreshCw } from 'lucide-react';
 import { getErrorDetails } from '@/shared/errors';
+import { Button } from '@/sidepanel/components/ui/button';
+import { CheckCircleIcon, ErrorCircleIcon } from './icons';
 
 interface EmptyStateProps {
-  type: 'initial' | 'no-issues' | 'error';
+  type: 'no-issues' | 'error';
   error?: string;
   onScan?: () => void;
+  // Human-friendly name of the audit that just ran (e.g. "Performance"), used to
+  // make the success message accurate instead of always claiming accessibility.
+  // Omitted → generic "No problems found" copy.
+  auditLabel?: string;
 }
 
-export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
+export default function EmptyState({ type, error, onScan, auditLabel }: EmptyStateProps) {
   if (type === 'error') {
     const errorDetails = getErrorDetails(error || '');
 
@@ -19,7 +23,7 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
 
         {/* Error Code Badge */}
         <div className="mt-4 mb-2">
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-destructive/10 text-destructive text-xs font-mono">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-destructive/30 bg-destructive/15 text-destructive text-xs font-mono">
             <AlertTriangle className="h-3 w-3" />
             {errorDetails.code}
           </span>
@@ -32,15 +36,15 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
         <p className="text-body text-muted-foreground max-w-xs mb-3">{errorDetails.message}</p>
 
         {/* Suggestion Box */}
-        <div className="flex items-start gap-2 bg-primary/5 border border-primary/20 rounded-lg p-3 mb-4 max-w-xs">
+        <div className="flex items-start gap-2 bg-muted border border-border rounded-xl p-3 mb-4 max-w-xs">
           <Lightbulb className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-foreground/80 text-left">{errorDetails.suggestion}</p>
+          <p className="text-xs text-foreground text-left">{errorDetails.suggestion}</p>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-3">
           {onScan && (
-            <Button onClick={onScan} className="rounded-full gap-2">
+            <Button onClick={onScan} className="gap-2">
               <RefreshCw className="h-4 w-4" />
               Try Again
             </Button>
@@ -50,32 +54,23 @@ export default function EmptyState({ type, error, onScan }: EmptyStateProps) {
     );
   }
 
-  if (type === 'no-issues') {
-    return (
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 text-center animate-fade-in bg-background">
-        <CheckCircleIcon />
-        <h2 className="text-h1 text-foreground mt-4 mb-2">No Issues Found!</h2>
-        <p className="text-body text-muted-foreground max-w-xs mb-4">
-          This page passed all accessibility checks. Great job!
-        </p>
-        {onScan && (
-          <Button variant="secondary" onClick={onScan} className="rounded-full gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Scan Again
-          </Button>
-        )}
-      </div>
-    );
-  }
-
-  // Initial state
+  // no-issues (the only remaining type; the unused 'initial' variant was removed
+  // — the home screen renders AuditSelector, never EmptyState).
   return (
-    <div className="flex flex-col items-center text-center animate-fade-in">
-      <EyeIcon />
-      <h2 className="text-h1 text-foreground mt-2 mb-2">Ready to Scan</h2>
-      <p className="text-body text-muted-foreground max-w-xs">
-        Scan your page to find and fix accessibility issues
+    <div className="flex-1 flex flex-col items-center justify-center px-6 py-4 text-center animate-fade-in bg-background">
+      <CheckCircleIcon />
+      <h2 className="text-h1 text-foreground mt-4 mb-2">No Issues Found!</h2>
+      <p className="text-body text-muted-foreground max-w-xs mb-4">
+        {auditLabel
+          ? `No ${auditLabel.toLowerCase()} problems found on this page. Nice work!`
+          : 'No problems found on this page. Nice work!'}
       </p>
+      {onScan && (
+        <Button variant="secondary" onClick={onScan} className="gap-2">
+          <RefreshCw className="h-4 w-4" />
+          Scan Again
+        </Button>
+      )}
     </div>
   );
 }

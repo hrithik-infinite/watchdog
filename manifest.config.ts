@@ -13,6 +13,20 @@ export default defineManifest({
   version_name: version,
   description,
 
+  // chrome.sidePanel.open() — used by the action.onClicked handler to open the
+  // panel — requires Chrome 116+. Declaring the floor hides the listing from older
+  // Chrome (where opening the panel would throw) instead of shipping a dead
+  // install. scripting/activeTab/storage are all older, so 116 is the binding
+  // minimum.
+  minimum_chrome_version: '116',
+
+  // No host permissions — declared OR optional. The extension never requests
+  // access to "all your data on all websites". Instead, clicking the toolbar icon
+  // (chrome.action.onClicked, see src/background/index.ts) grants Chrome's
+  // temporary `activeTab` access to just that one tab, which is all the background
+  // needs to inject the scanner there. Access lasts until the tab navigates and is
+  // scoped to the single page the user acted on — so the install prompt shows no
+  // host warning and the user is never prompted to grant a broad host permission.
   permissions: ['activeTab', 'storage', 'sidePanel', 'scripting'],
 
   action: {
@@ -24,6 +38,14 @@ export default defineManifest({
     },
   },
 
+  commands: {
+    _execute_action: {},
+  },
+
+  content_security_policy: {
+    extension_pages: "script-src 'self'; object-src 'self'",
+  },
+
   side_panel: {
     default_path: 'src/sidepanel/index.html',
   },
@@ -33,14 +55,14 @@ export default defineManifest({
     type: 'module',
   },
 
-  content_scripts: [
-    {
-      matches: ['<all_urls>'],
-      js: ['src/content/index.ts'],
-      css: ['src/content/styles.css'],
-      run_at: 'document_idle',
-    },
-  ],
+  // No declarative content script. The scanner is injected on demand into the
+  // armed tab via chrome.scripting.executeScript (the self-contained IIFE bundle
+  // built by vite.content.config.ts) from the background service worker. This is
+  // deliberate: a static `<all_urls>` content script is the only thing that would
+  // trigger Chrome's "read and change all your data on all websites" install
+  // warning, so dropping it keeps the install prompt clean. Host access for the
+  // on-demand injection comes from the `activeTab` grant the toolbar-icon click
+  // hands to the background — no host permission is ever requested.
 
   icons: {
     '16': 'icons/icon-16.png',
@@ -48,11 +70,4 @@ export default defineManifest({
     '48': 'icons/icon-48.png',
     '128': 'icons/icon-128.png',
   },
-
-  web_accessible_resources: [
-    {
-      resources: ['src/content/styles.css'],
-      matches: ['<all_urls>'],
-    },
-  ],
 });

@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { ERROR_CODES, ErrorDetails, getErrorDetails, formatError } from '../errors';
+import { describe, expect, it } from 'vitest';
+import { ERROR_CODES, type ErrorDetails, formatError, getErrorDetails } from '../errors';
 
 describe('Errors - Custom error classes and error details', () => {
   describe('ERROR_CODES constants', () => {
@@ -389,6 +389,12 @@ describe('Errors - Custom error classes and error details', () => {
         { input: 'TIMEOUT', code: 'E004' },
         { input: 'NETWORK', code: 'E008' },
         { input: 'Refresh the page', code: 'E003' },
+        // Injection failure (inject.ts) → E003 via "refresh the page".
+        {
+          input:
+            'WatchDog could not load the scanner on this page. Refresh the page and scan again.',
+          code: 'E003',
+        },
       ];
 
       patterns.forEach(({ input, code }) => {

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Message } from '@/shared/messaging';
 
 // Mock dependencies
@@ -45,9 +45,17 @@ const mockWindow = {
     }
     eventListeners.get(event)!.push(handler);
   }),
+  removeEventListener: vi.fn(),
   location: {
     href: 'https://example.com',
   },
+};
+
+// Controllable history so the SPA-navigation hooks (correctness-22) can be
+// exercised; the source patches history.pushState/replaceState in place.
+const mockHistory = {
+  pushState: vi.fn(),
+  replaceState: vi.fn(),
 };
 
 const mockConsole = {
@@ -57,6 +65,7 @@ const mockConsole = {
 
 vi.stubGlobal('chrome', mockChrome);
 vi.stubGlobal('window', mockWindow);
+vi.stubGlobal('history', mockHistory);
 vi.stubGlobal('console', mockConsole);
 
 describe('Content Script - index.ts', () => {
@@ -71,6 +80,12 @@ describe('Content Script - index.ts', () => {
     vi.stubGlobal('chrome', mockChrome);
     vi.stubGlobal('window', mockWindow);
     vi.stubGlobal('console', mockConsole);
+
+    // Fresh history methods so each import patches a clean original (no stacking
+    // of the pushState/replaceState wrappers across re-imports).
+    mockHistory.pushState = vi.fn();
+    mockHistory.replaceState = vi.fn();
+    vi.stubGlobal('history', mockHistory);
 
     // Import to set up listeners
     await import('../index');
@@ -431,8 +446,93 @@ describe('Content Script - index.ts', () => {
   });
 
   describe('Console logging', () => {
-    it('should log when script loads', async () => {
-      expect(console.log).toHaveBeenCalledWith('WatchDog content script loaded');
+    // perf-rel-12: the raw `console.log('WatchDog content script loaded')` used
+    // to ship on every on-demand injection. It has been removed, so the content
+    // script no longer logs on load.
+    it('should not emit a raw load log', () => {
+      expect(mockConsole.log).not.toHaveBeenCalledWith('WatchDog content script loaded');
+    });
+  });
+
+  describe('Error Handling - non-Error rejections', () => {
+    it('serializes non-Error rejections from the listener catch', async () => {
+      // correctness-30 / err-12: the outer .catch read `error.message` directly,
+      // so a non-Error throwable (here a bare string) yielded `error: undefined`.
+      const { highlightElement } = await import('../overlay');
+      (highlightElement as any).mockImplementation(() => {
+        throw 'sync boom';
+      });
+
+      const sendResponse = vi.fn();
+      const handler = messageListeners[0];
+      handler(
+        { type: 'HIGHLIGHT_ELEMENT', payload: { selector: 'div', severity: 'critical' } },
+        {},
+        sendResponse
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'sync boom' });
+    });
+  });
+
+  describe('SPA navigation - vision filter persistence (correctness-22)', () => {
+    // The active filter used to be lost when an SPA route change wiped the
+    // injected SVG defs / inline <html> filter. It is now re-applied after
+    // history navigations.
+    it('re-applies the active vision filter after a pushState navigation', async () => {
+      const { applyVisionFilter } = await import('../vision-filters');
+      const handler = messageListeners[0];
+
+      handler({ type: 'APPLY_VISION_FILTER', payload: { mode: 'protanopia' } }, {}, vi.fn());
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(applyVisionFilter).toHaveBeenCalledWith('protanopia');
+
+      (applyVisionFilter as any).mockClear();
+
+      mockHistory.pushState({}, '', '/dashboard');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(applyVisionFilter).toHaveBeenCalledWith('protanopia');
+    });
+
+    it('re-applies the active vision filter after a popstate navigation', async () => {
+      const { applyVisionFilter } = await import('../vision-filters');
+      const handler = messageListeners[0];
+
+      handler({ type: 'APPLY_VISION_FILTER', payload: { mode: 'deuteranopia' } }, {}, vi.fn());
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      (applyVisionFilter as any).mockClear();
+
+      const popstateHandlers = eventListeners.get('popstate');
+      expect(popstateHandlers).toBeDefined();
+      popstateHandlers![0]();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(applyVisionFilter).toHaveBeenCalledWith('deuteranopia');
+    });
+
+    it('does not re-apply on navigation when no filter is active', async () => {
+      const { applyVisionFilter } = await import('../vision-filters');
+      (applyVisionFilter as any).mockClear();
+
+      mockHistory.pushState({}, '', '/x');
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      expect(applyVisionFilter).not.toHaveBeenCalled();
+    });
+
+    it('removes the popstate listener and restores history on unload', () => {
+      const calls = (window.addEventListener as any).mock.calls;
+      const beforeunloadCall = calls.find((call: any) => call[0] === 'beforeunload');
+      const unloadHandler = beforeunloadCall[1];
+
+      const patchedPushState = mockHistory.pushState;
+      unloadHandler();
+
+      expect(window.removeEventListener).toHaveBeenCalledWith('popstate', expect.any(Function));
+      // The wrapper is swapped back to the captured original on teardown.
+      expect(mockHistory.pushState).not.toBe(patchedPushState);
     });
   });
 

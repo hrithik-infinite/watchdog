@@ -1,6 +1,6 @@
 import type { Category, Severity } from './types';
 
-// Expanded accessibility rules from axe-core (35 rules total)
+// Expanded accessibility rules from axe-core (39 rules total)
 export const MVP_RULES = [
   // Original 15 rules
   'image-alt',
@@ -233,8 +233,14 @@ export const WCAG_CRITERIA: Record<RuleId, { id: string; level: 'A' | 'AA'; name
   blink: { id: '2.2.2', level: 'A', name: 'Pause, Stop, Hide' },
 };
 
-// Default settings
+// Default settings. New installs land in Site-owner mode (plain language, dev
+// exports tucked away) to serve the larger non-developer audience; the first-run
+// tour lets anyone switch to Developer. `hasSeenOnboarding` starts false so both
+// new and existing users (whose stored settings predate the field) see the tour
+// once.
 export const DEFAULT_SETTINGS = {
+  persona: 'site-owner' as const,
+  hasSeenOnboarding: false,
   wcagLevel: 'AA' as const,
   showIncomplete: false,
   autoHighlight: true,

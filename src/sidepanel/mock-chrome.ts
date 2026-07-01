@@ -1,7 +1,7 @@
 // Mock Chrome APIs for standalone UI testing
 // This file is only used when running outside the extension context
 
-import type { ScanResult, Issue } from '@/shared/types';
+import type { Issue, ScanResult } from '@/shared/types';
 
 const mockIssues: Issue[] = [
   {
@@ -162,11 +162,15 @@ const mockScanResult: ScanResult = {
 // Check if we're running in a Chrome extension context
 const isExtensionContext = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
 
-if (!isExtensionContext) {
+// `import.meta.env.DEV` keeps this entire block — and, transitively, the mock
+// fixtures above — out of the production extension bundle (the bundler tree-shakes
+// the now-unreferenced data). The real extension always has chrome, so the stub
+// would never activate there anyway; this is purely for standalone dev preview.
+if (import.meta.env.DEV && !isExtensionContext) {
   console.log('Running in standalone mode with mock data');
 
   // Create mock chrome object
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // biome-ignore lint/suspicious/noExplicitAny: assigning a partial chrome stub onto window for standalone mode
   (window as any).chrome = {
     runtime: {
       id: 'mock-extension-id',
@@ -177,7 +181,7 @@ if (!isExtensionContext) {
     },
     tabs: {
       query: () => Promise.resolve([{ id: 1, url: 'https://example.com' }]),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      // biome-ignore lint/suspicious/noExplicitAny: mock message payload is intentionally untyped
       sendMessage: (_tabId: number, message: any) => {
         return new Promise((resolve) => {
           // Simulate scan delay
@@ -201,5 +205,3 @@ if (!isExtensionContext) {
     },
   };
 }
-
-export {};

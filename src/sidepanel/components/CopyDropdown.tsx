@@ -1,20 +1,23 @@
-import { useState } from 'react';
-import { ClipboardCopy, Check, ChevronDown, FileText, Code, Github } from 'lucide-react';
+import { Check, ChevronDown, ClipboardCopy, Code, FileText } from 'lucide-react';
+import { type ComponentType, useState } from 'react';
+import type { Issue, ScanResult } from '@/shared/types';
+import { GithubIcon } from '@/sidepanel/components/icons';
 import { Button } from '@/sidepanel/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/sidepanel/components/ui/dropdown-menu';
 import {
+  copyToClipboard,
+  issuesToGitHubMarkdown,
   issuesToMarkdown,
   issuesToPlainText,
-  issuesToGitHubMarkdown,
-  copyToClipboard,
 } from '@/sidepanel/lib/export';
-import type { Issue, ScanResult } from '@/shared/types';
+import { useIsSiteOwner } from '@/sidepanel/lib/persona';
 import type { AuditType } from '@/sidepanel/store';
 
 interface CopyDropdownProps {
@@ -33,6 +36,7 @@ export default function CopyDropdown({
   className,
 }: CopyDropdownProps) {
   const [copied, setCopied] = useState<CopyFormat | null>(null);
+  const isSiteOwner = useIsSiteOwner();
 
   const handleCopy = async (format: CopyFormat) => {
     let text: string;
@@ -57,38 +61,55 @@ export default function CopyDropdown({
   };
 
   const issueCount = issues.length;
-  const buttonLabel = copied ? 'Copied!' : `Copy All (${issueCount})`;
+  // Keep the trigger compact ("Copy", not "Copy All (208)") — the issue count is
+  // already shown right beside it in the score gauge and severity chips, and the
+  // long label was crushing the verdict column on narrow panels.
+  const buttonLabel = copied ? 'Copied!' : 'Copy';
+
+  const renderCopy = (
+    format: CopyFormat,
+    Icon: ComponentType<{ className?: string }>,
+    label: string
+  ) => (
+    <DropdownMenuItem onClick={() => handleCopy(format)} className="cursor-pointer">
+      <Icon className="h-4 w-4 mr-2" />
+      <span>{label}</span>
+      {copied === format && <Check className="h-3 w-3 ml-auto text-success" />}
+    </DropdownMenuItem>
+  );
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className={className} disabled={issueCount === 0}>
           {copied ? (
-            <Check className="h-4 w-4 text-green-500" />
+            <Check className="h-4 w-4 text-success" />
           ) : (
             <ClipboardCopy className="h-4 w-4" />
           )}
           <span className="ml-1.5">{buttonLabel}</span>
-          <ChevronDown className="h-3 w-3 ml-1 opacity-60" />
+          <ChevronDown className="h-3 w-3 ml-1 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuItem onClick={() => handleCopy('markdown')} className="cursor-pointer">
-          <Code className="h-4 w-4 mr-2" />
-          <span>Copy as Markdown</span>
-          {copied === 'markdown' && <Check className="h-3 w-3 ml-auto text-green-500" />}
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleCopy('plain')} className="cursor-pointer">
-          <FileText className="h-4 w-4 mr-2" />
-          <span>Copy as Plain Text</span>
-          {copied === 'plain' && <Check className="h-3 w-3 ml-auto text-green-500" />}
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => handleCopy('github')} className="cursor-pointer">
-          <Github className="h-4 w-4 mr-2" />
-          <span>Copy for GitHub</span>
-          {copied === 'github' && <Check className="h-3 w-3 ml-auto text-green-500" />}
-        </DropdownMenuItem>
+        {isSiteOwner ? (
+          <>
+            {/* Site-owner: lead with the plain-text summary and tuck the
+                developer formats under an "Advanced" section. */}
+            {renderCopy('plain', FileText, 'Copy summary')}
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Advanced</DropdownMenuLabel>
+            {renderCopy('markdown', Code, 'Copy as Markdown')}
+            {renderCopy('github', GithubIcon, 'Copy for GitHub')}
+          </>
+        ) : (
+          <>
+            {renderCopy('markdown', Code, 'Copy as Markdown')}
+            {renderCopy('plain', FileText, 'Copy as Plain Text')}
+            <DropdownMenuSeparator />
+            {renderCopy('github', GithubIcon, 'Copy for GitHub')}
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );
