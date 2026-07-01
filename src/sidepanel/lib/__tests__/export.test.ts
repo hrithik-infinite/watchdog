@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Issue, ScanResult, Severity } from '@/shared/types';
 import { escapeHtml, exportCSV, exportHTML, exportPDF, toPdfSafeText } from '../export';
+import { safeCssColor } from '../html-escape';
 
 /**
  * exportHTML / exportCSV stream their output through downloadFile, which builds a
@@ -144,14 +145,15 @@ describe('exportHTML escaping of page-derived fields', () => {
     expect(html).toContain(`href="#"`);
   });
 
-  it('threads the audit type into the report title/subtitle', async () => {
+  it('threads the audit type into the report title and kind chip', async () => {
     exportHTML(makeResult([makeIssue()]), 'seo');
     const html = await lastDownloadedText();
 
     expect(html).toContain('<title>WatchDog SEO Report</title>');
-    expect(html).toContain('WatchDog SEO Report</h1>');
-    expect(html).toContain('Automated SEO audit');
+    // The audit label surfaces in the header "kind" chip.
+    expect(html).toContain('SEO audit');
     expect(html).not.toContain('WatchDog Accessibility Report');
+    expect(html).not.toContain('Accessibility audit');
   });
 
   it('defaults the title to Accessibility when no audit type is given', async () => {
@@ -247,6 +249,141 @@ describe('exportHTML report content (report-content)', () => {
     const html = await lastDownloadedText();
 
     expect(html).toContain('WCAG 1.1.1 (A)');
+  });
+});
+
+describe('exportHTML rich report (report-template)', () => {
+  it('renders the overall score gauge with a grade', async () => {
+    exportHTML(makeResult([makeIssue()]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('/ 100');
+    expect(html).toMatch(/Score \d+ out of 100, grade [A-F]/);
+  });
+
+  it('renders a category breakdown from the summary', async () => {
+    exportHTML(makeResult([makeIssue()])); // makeResult puts the issue under `images`
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('By category');
+    expect(html).toContain('Images');
+  });
+
+  it('links to the fix learn-more URL', async () => {
+    exportHTML(makeResult([makeIssue()]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('Learn more');
+    expect(html).toContain('https://example.com/learn');
+  });
+
+  it('renders a needs-review section for incomplete items', async () => {
+    const base = makeResult([]);
+    const withIncomplete = {
+      ...base,
+      incomplete: [makeIssue({ message: 'Manual check needed' })],
+    };
+    exportHTML(withIncomplete);
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('Needs review');
+    expect(html).toContain('Manual check needed');
+  });
+
+  it('shows a clear state when there are no issues', async () => {
+    exportHTML(makeResult([]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('No issues found');
+  });
+
+  it('renders a contrast swatch with the measured ratio', async () => {
+    const issue = makeIssue({
+      category: 'color',
+      contrast: { fg: '#777777', bg: '#ffffff', ratio: 3.2, required: 4.5 },
+    });
+    exportHTML(makeResult([issue]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('3.20:1');
+    expect(html).toContain('needs 4.5:1');
+  });
+
+  it('labels a combined multi-standard scan as a website audit', async () => {
+    const a11y = makeIssue({ id: 'a', standard: 'wcag' });
+    const seo = makeIssue({ id: 'b', standard: 'seo', message: 'Missing meta description' });
+    exportHTML(makeResult([a11y, seo]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('Website audit');
+  });
+
+  it('renders element-count and impact chips, failure summary, and a passing contrast', async () => {
+    const issue = makeIssue({
+      ruleNodeCount: 4,
+      impact: 'serious', // differs from severity 'critical' → shown
+      element: {
+        selector: 'a',
+        html: '<a>x</a>',
+        failureSummary: 'Fix any of the following:\n  Element is not keyboard focusable',
+      },
+      contrast: { fg: '#000000', bg: '#ffffff', ratio: 21, required: 4.5 },
+    });
+    exportHTML(makeResult([issue]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('4 elements');
+    expect(html).toContain('Impact: serious');
+    expect(html).toContain('What axe found');
+    expect(html).toContain('Element is not keyboard focusable');
+    expect(html).toContain('21.00:1');
+    expect(html).toContain('passes');
+  });
+
+  it('falls back to the rule help URL when the fix has no learn-more link', async () => {
+    const issue = makeIssue({
+      helpUrl: 'https://help.example/rule-x',
+      fix: { description: 'Fix it.', code: '', learnMoreUrl: '' },
+    });
+    exportHTML(makeResult([issue]));
+    const html = await lastDownloadedText();
+
+    expect(html).toContain('https://help.example/rule-x');
+  });
+
+  it('formats sub-second and multi-second scan durations', async () => {
+    exportHTML({ ...makeResult([makeIssue()]), duration: 250 });
+    expect(await lastDownloadedText()).toContain('250ms');
+
+    exportHTML({ ...makeResult([makeIssue()]), duration: 2500 });
+    expect(await lastDownloadedText()).toContain('2.5s');
+  });
+
+  it('reads as passing for a clean page and failing for a badly broken one', async () => {
+    exportHTML(makeResult([makeIssue({ severity: 'minor' })]));
+    expect(await lastDownloadedText()).toMatch(/great shape|Solid overall/);
+
+    const many = Array.from({ length: 12 }, (_, i) =>
+      makeIssue({ id: `c${i}`, severity: 'critical' })
+    );
+    exportHTML(makeResult(many));
+    expect(await lastDownloadedText()).toContain('Failing');
+  });
+});
+
+describe('safeCssColor', () => {
+  it('passes through valid color notations', () => {
+    expect(safeCssColor('#fff')).toBe('#fff');
+    expect(safeCssColor('#1a2b3c')).toBe('#1a2b3c');
+    expect(safeCssColor('rgb(0, 0, 0)')).toBe('rgb(0, 0, 0)');
+    expect(safeCssColor('hsl(120, 50%, 50%)')).toBe('hsl(120, 50%, 50%)');
+    expect(safeCssColor('rebeccapurple')).toBe('rebeccapurple');
+  });
+
+  it('collapses style-breaking payloads to transparent', () => {
+    expect(safeCssColor('red; } body { display: none }')).toBe('transparent');
+    expect(safeCssColor('url(https://evil.test/x)')).toBe('transparent');
+    expect(safeCssColor('expression(alert(1))')).toBe('transparent');
   });
 });
 
