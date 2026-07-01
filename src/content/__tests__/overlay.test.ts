@@ -97,7 +97,12 @@ describe('Overlay - Element Highlighting', () => {
 
       highlightElement('.non-existent', 'critical');
 
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringMatching(/Element not found for selector/));
+      // Routed through the dev-gated logger, which prefixes with [WatchDog].
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[WatchDog]',
+        'Element not found for selector',
+        expect.objectContaining({ selector: '.non-existent' })
+      );
       warnSpy.mockRestore();
     });
 
@@ -110,8 +115,9 @@ describe('Overlay - Element Highlighting', () => {
       highlightElement('.test', 'critical');
 
       expect(errorSpy).toHaveBeenCalledWith(
-        'WatchDog: Failed to highlight element:',
-        expect.any(Error)
+        '[WatchDog]',
+        'Failed to highlight element',
+        expect.objectContaining({ error: expect.any(Error) })
       );
       errorSpy.mockRestore();
     });

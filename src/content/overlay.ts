@@ -1,3 +1,4 @@
+import logger from '@/shared/logger';
 import type { Severity } from '@/shared/types';
 
 const HIGHLIGHT_CLASS_PREFIX = 'watchdog-highlight';
@@ -20,7 +21,7 @@ export function highlightElement(selector: string, severity: Severity): void {
   try {
     const element = document.querySelector(selector);
     if (!element) {
-      console.warn(`WatchDog: Element not found for selector: ${selector}`);
+      logger.warn('Element not found for selector', { selector });
       return;
     }
 
@@ -43,7 +44,7 @@ export function highlightElement(selector: string, severity: Severity): void {
       inline: 'center',
     });
   } catch (error) {
-    console.error('WatchDog: Failed to highlight element:', error);
+    logger.error('Failed to highlight element', { error });
   }
 }
 
@@ -77,7 +78,7 @@ export function highlightMultiple(
         highlightedElements.add(element);
       }
     } catch (error) {
-      console.error('WatchDog: Failed to highlight element:', error);
+      logger.error('Failed to highlight element', { error });
     }
   }
 }
