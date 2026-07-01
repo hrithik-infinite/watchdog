@@ -1,4 +1,6 @@
-// Mock Chrome APIs for standalone testing (must be first import)
+// Standalone-preview chrome stub. DEV-gated inside the module, so it is
+// tree-shaken out of the production bundle; kept as the first import so the stub
+// is installed before the app's module graph evaluates in dev.
 import './mock-chrome';
 
 import React from 'react';

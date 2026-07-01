@@ -162,7 +162,11 @@ const mockScanResult: ScanResult = {
 // Check if we're running in a Chrome extension context
 const isExtensionContext = typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
 
-if (!isExtensionContext) {
+// `import.meta.env.DEV` keeps this entire block — and, transitively, the mock
+// fixtures above — out of the production extension bundle (the bundler tree-shakes
+// the now-unreferenced data). The real extension always has chrome, so the stub
+// would never activate there anyway; this is purely for standalone dev preview.
+if (import.meta.env.DEV && !isExtensionContext) {
   console.log('Running in standalone mode with mock data');
 
   // Create mock chrome object
