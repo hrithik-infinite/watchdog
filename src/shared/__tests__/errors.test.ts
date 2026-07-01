@@ -389,13 +389,7 @@ describe('Errors - Custom error classes and error details', () => {
         { input: 'TIMEOUT', code: 'E004' },
         { input: 'NETWORK', code: 'E008' },
         { input: 'Refresh the page', code: 'E003' },
-        // Host-permission denial (ensureHostAccess) → E009 via "needs permission".
-        {
-          input:
-            'WatchDog needs permission to read this page. Choose "Allow" when Chrome asks, then scan again.',
-          code: 'E009',
-        },
-        // Post-grant injection failure (inject.ts) → E003 via "refresh the page".
+        // Injection failure (inject.ts) → E003 via "refresh the page".
         {
           input:
             'WatchDog could not load the scanner on this page. Refresh the page and scan again.',

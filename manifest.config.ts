@@ -13,24 +13,21 @@ export default defineManifest({
   version_name: version,
   description,
 
-  // sidePanel + the side_panel manifest key require Chrome 114+. Declaring the
-  // floor hides the listing from older Chrome (where the service worker would
-  // throw at init) instead of shipping a dead install. scripting/activeTab/storage
-  // are all older, so 114 is the binding minimum.
-  minimum_chrome_version: '114',
+  // chrome.sidePanel.open() — used by the action.onClicked handler to open the
+  // panel — requires Chrome 116+. Declaring the floor hides the listing from older
+  // Chrome (where opening the panel would throw) instead of shipping a dead
+  // install. scripting/activeTab/storage are all older, so 116 is the binding
+  // minimum.
+  minimum_chrome_version: '116',
 
+  // No host permissions — declared OR optional. The extension never requests
+  // access to "all your data on all websites". Instead, clicking the toolbar icon
+  // (chrome.action.onClicked, see src/background/index.ts) grants Chrome's
+  // temporary `activeTab` access to just that one tab, which is all the background
+  // needs to inject the scanner there. Access lasts until the tab navigates and is
+  // scoped to the single page the user acted on — so the install prompt shows no
+  // host warning and the user is never prompted to grant a broad host permission.
   permissions: ['activeTab', 'storage', 'sidePanel', 'scripting'],
-
-  // Optional (not granted at install, so NO "read and change all your data"
-  // install warning — secpriv-6's clean-prompt goal is preserved). `<all_urls>`
-  // is the umbrella under which host access is requested at runtime by
-  // ensureHostAccess() on the first scan (see shared/permissions.ts). The request
-  // is scoped to the scanned page's origin WHEN that origin is known; but a side
-  // panel receives no activeTab grant and this manifest declares no `tabs`
-  // permission, so on a cold first scan Chrome redacts tab.url and the request
-  // necessarily falls back to <all_urls>. Required because executeScript has no
-  // host access otherwise.
-  optional_host_permissions: ['<all_urls>'],
 
   action: {
     default_icon: {
@@ -59,13 +56,13 @@ export default defineManifest({
   },
 
   // No declarative content script. The scanner is injected on demand into the
-  // active tab via chrome.scripting.executeScript (the self-contained IIFE bundle
-  // built by vite.content.config.ts). This is deliberate: a static `<all_urls>`
-  // content script is the only thing that would trigger Chrome's "read and change
-  // all your data on all websites" install warning, so dropping it keeps the
-  // install prompt clean (secpriv-6). Host access for the on-demand injection is
-  // requested at runtime via chrome.permissions (see shared/permissions.ts) — a
-  // side panel opened from the action icon does not receive an activeTab grant.
+  // armed tab via chrome.scripting.executeScript (the self-contained IIFE bundle
+  // built by vite.content.config.ts) from the background service worker. This is
+  // deliberate: a static `<all_urls>` content script is the only thing that would
+  // trigger Chrome's "read and change all your data on all websites" install
+  // warning, so dropping it keeps the install prompt clean. Host access for the
+  // on-demand injection comes from the `activeTab` grant the toolbar-icon click
+  // hands to the background — no host permission is ever requested.
 
   icons: {
     '16': 'icons/icon-16.png',

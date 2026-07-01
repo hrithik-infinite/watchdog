@@ -1,27 +1,46 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mocked dependencies (hoisted so the vi.mock factories can reference them).
-const { updateBadge, clearBadge, getSettings, saveSettings } = vi.hoisted(() => ({
+const {
+  updateBadge,
+  clearBadge,
+  getSettings,
+  saveSettings,
+  armTab,
+  disarmTab,
+  getArmedTab,
+  runScan,
+  ensureContentScript,
+} = vi.hoisted(() => ({
   updateBadge: vi.fn(),
   clearBadge: vi.fn(),
   getSettings: vi.fn(),
   saveSettings: vi.fn(),
+  armTab: vi.fn(() => Promise.resolve()),
+  disarmTab: vi.fn(() => Promise.resolve()),
+  getArmedTab: vi.fn(),
+  runScan: vi.fn(),
+  ensureContentScript: vi.fn(() => Promise.resolve()),
 }));
 vi.mock('../badge', () => ({ updateBadge, clearBadge }));
 vi.mock('../storage', () => ({ getSettings, saveSettings }));
+vi.mock('../armed-tab', () => ({ armTab, disarmTab, getArmedTab }));
+vi.mock('../scan-orchestrator', () => ({
+  runScan,
+  NO_ARMED_TAB_MESSAGE:
+    'Click the WatchDog toolbar icon on the page you want to scan, then scan again.',
+}));
+vi.mock('@/shared/inject', () => ({ ensureContentScript }));
 
 // Capture the listeners the service worker registers on load.
 let messageListener: (msg: unknown, sender: unknown, sendResponse: unknown) => boolean;
 let removedListener: (tabId: number) => void;
 let updatedListener: (tabId: number, changeInfo: { status?: string }) => void;
+let actionClickedListener: (tab: unknown) => void;
 
-// Captured at import time (a plain var, so it survives vi.clearAllMocks()).
-let panelBehaviorArg: unknown;
-const setPanelBehavior = vi.fn().mockImplementation((arg: unknown) => {
-  panelBehaviorArg = arg;
-  return Promise.resolve();
-});
-const tabsQuery = vi.fn().mockResolvedValue([{ id: 7 }]);
+const sidePanelOpen = vi.fn().mockResolvedValue(undefined);
+const tabsSendMessage = vi.fn().mockResolvedValue({ success: true });
+const tabsGet = vi.fn();
 
 vi.stubGlobal('chrome', {
   runtime: {
@@ -29,12 +48,15 @@ vi.stubGlobal('chrome', {
     onMessage: { addListener: (cb: typeof messageListener) => (messageListener = cb) },
   },
   tabs: {
-    query: tabsQuery,
+    get: tabsGet,
+    sendMessage: tabsSendMessage,
     onRemoved: { addListener: (cb: typeof removedListener) => (removedListener = cb) },
     onUpdated: { addListener: (cb: typeof updatedListener) => (updatedListener = cb) },
   },
-  sidePanel: { setPanelBehavior },
-  action: {},
+  action: {
+    onClicked: { addListener: (cb: typeof actionClickedListener) => (actionClickedListener = cb) },
+  },
+  sidePanel: { open: sidePanelOpen },
 });
 
 // Importing the worker runs its top-level registration against the mock above.
@@ -44,12 +66,12 @@ describe('background/index', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getSettings.mockResolvedValue({ wcagLevel: 'AA' });
-    tabsQuery.mockResolvedValue([{ id: 7 }]);
+    getArmedTab.mockResolvedValue({ id: 5, url: 'https://example.com' });
   });
 
   describe('service worker registration', () => {
-    it('opens the side panel on action click and registers all listeners', () => {
-      expect(panelBehaviorArg).toEqual({ openPanelOnActionClick: true });
+    it('registers the action-click, message, and tab listeners', () => {
+      expect(actionClickedListener).toBeTypeOf('function');
       expect(messageListener).toBeTypeOf('function');
       expect(removedListener).toBeTypeOf('function');
       expect(updatedListener).toBeTypeOf('function');
@@ -70,11 +92,9 @@ describe('background/index', () => {
     });
 
     // correctness-30 / err-12: the listener's rejection handler used to read
-    // `error.message` directly, so a non-Error throwable (here a bare string)
-    // produced `error: undefined` instead of a usable message.
+    // `error.message` directly, so a non-Error throwable produced `error: undefined`.
     it('serializes non-Error rejections from the listener catch', async () => {
       updateBadge.mockRejectedValueOnce('badge boom');
-      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       const sendResponse = vi.fn();
       messageListener(
         { type: 'SCAN_RESULT', payload: { summary: { total: 1 } } },
@@ -83,11 +103,101 @@ describe('background/index', () => {
       );
       await new Promise((resolve) => setTimeout(resolve, 10));
       expect(sendResponse).toHaveBeenCalledWith({ success: false, error: 'badge boom' });
-      errorSpy.mockRestore();
+    });
+  });
+
+  describe('action.onClicked (arm + open)', () => {
+    it('opens the side panel for the window and arms the clicked tab', async () => {
+      actionClickedListener({ id: 5, windowId: 2, url: 'https://example.com/page' });
+      // sidePanel.open must fire synchronously (before any await) to keep the gesture.
+      expect(sidePanelOpen).toHaveBeenCalledWith({ windowId: 2 });
+      // Arming is async; let it settle.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(armTab).toHaveBeenCalledWith({ id: 5, url: 'https://example.com/page' });
+      // url was on the tab arg, so no extra chrome.tabs.get lookup was needed.
+      expect(tabsGet).not.toHaveBeenCalled();
+    });
+
+    it('resolves the url via chrome.tabs.get when the click arg lacks it', async () => {
+      tabsGet.mockResolvedValueOnce({ id: 9, url: 'https://resolved.example' });
+      actionClickedListener({ id: 9, windowId: 1 });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      expect(tabsGet).toHaveBeenCalledWith(9);
+      expect(armTab).toHaveBeenCalledWith({ id: 9, url: 'https://resolved.example' });
     });
   });
 
   describe('handleMessage routing', () => {
+    it('runs the orchestrator for SCAN_REQUEST and returns its result', async () => {
+      const result = { url: 'https://example.com', summary: { total: 3 } };
+      runScan.mockResolvedValueOnce({ result });
+      const res = await handleMessage(
+        { type: 'SCAN_REQUEST', payload: { auditTypes: ['accessibility'] } } as never,
+        {} as never
+      );
+      expect(runScan).toHaveBeenCalledWith(['accessibility'], expect.any(AbortSignal));
+      expect(res).toEqual({ success: true, result, error: undefined });
+    });
+
+    it('surfaces a partial multi-scan failure as success + banner', async () => {
+      const result = { url: 'https://example.com', summary: { total: 3 } };
+      runScan.mockResolvedValueOnce({ result, partialError: 'Some audits failed: pwa: boom' });
+      const res = await handleMessage(
+        { type: 'SCAN_REQUEST', payload: { auditTypes: ['accessibility', 'pwa'] } } as never,
+        {} as never
+      );
+      expect(res).toEqual({ success: true, result, error: 'Some audits failed: pwa: boom' });
+    });
+
+    it('returns a friendly error when the orchestrator throws', async () => {
+      runScan.mockRejectedValueOnce(new Error('Cannot scan browser internal pages'));
+      const res = await handleMessage(
+        { type: 'SCAN_REQUEST', payload: { auditTypes: ['seo'] } } as never,
+        {} as never
+      );
+      expect(res).toEqual({ success: false, error: 'Cannot scan browser internal pages' });
+    });
+
+    it('reports cancellation when CANCEL_SCAN aborts an in-flight scan', async () => {
+      // runScan hangs until its signal aborts, mimicking a real scan.
+      runScan.mockImplementationOnce(
+        (_types: unknown, signal: AbortSignal) =>
+          new Promise((_resolve, reject) => {
+            signal.addEventListener('abort', () => reject(new Error('Scan cancelled')));
+          })
+      );
+      const scanPromise = handleMessage(
+        { type: 'SCAN_REQUEST', payload: { auditTypes: ['accessibility'] } } as never,
+        {} as never
+      );
+      const cancelRes = await handleMessage({ type: 'CANCEL_SCAN' } as never, {} as never);
+      expect(cancelRes).toEqual({ success: true });
+      expect(await scanPromise).toEqual({ success: false, cancelled: true });
+    });
+
+    it('resolves the armed tab for GET_ARMED_TAB', async () => {
+      const res = await handleMessage({ type: 'GET_ARMED_TAB' } as never, {} as never);
+      expect(res).toEqual({ success: true, tab: { id: 5, url: 'https://example.com' } });
+    });
+
+    it('forwards a page-op to the armed tab after ensuring the content script', async () => {
+      const message = { type: 'APPLY_VISION_FILTER', payload: { mode: 'protanopia' } };
+      const res = await handleMessage(message as never, {} as never);
+      expect(ensureContentScript).toHaveBeenCalledWith(5);
+      expect(tabsSendMessage).toHaveBeenCalledWith(5, message);
+      expect(res).toEqual({ success: true });
+    });
+
+    it('reports the no-armed-tab error for a page-op when nothing is armed', async () => {
+      getArmedTab.mockResolvedValueOnce(null);
+      const res = await handleMessage({ type: 'CLEAR_HIGHLIGHTS' } as never, {} as never);
+      expect(ensureContentScript).not.toHaveBeenCalled();
+      expect(res).toEqual({
+        success: false,
+        error: 'Click the WatchDog toolbar icon on the page you want to scan, then scan again.',
+      });
+    });
+
     it('updates the badge from a SCAN_RESULT carrying a tab id', async () => {
       const res = await handleMessage(
         { type: 'SCAN_RESULT', payload: { summary: { total: 8 } } } as never,
@@ -136,19 +246,23 @@ describe('background/index', () => {
     });
   });
 
-  describe('badge cleanup listeners', () => {
-    it('clears the badge when a tab is removed', () => {
+  describe('tab lifecycle listeners', () => {
+    it('clears the badge and disarms the tab when it is removed', () => {
       removedListener(42);
       expect(clearBadge).toHaveBeenCalledWith(42);
+      expect(disarmTab).toHaveBeenCalledWith(42);
     });
 
-    it('clears the badge when a tab starts loading, not on other status', () => {
+    it('clears the badge and disarms on loading, but not on other status', () => {
       updatedListener(42, { status: 'loading' });
       expect(clearBadge).toHaveBeenCalledWith(42);
+      expect(disarmTab).toHaveBeenCalledWith(42);
 
       clearBadge.mockClear();
+      disarmTab.mockClear();
       updatedListener(42, { status: 'complete' });
       expect(clearBadge).not.toHaveBeenCalled();
+      expect(disarmTab).not.toHaveBeenCalled();
     });
   });
 });

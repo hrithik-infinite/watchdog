@@ -5,86 +5,61 @@ import type { ScanResult } from '@/shared/types';
 import { useScanStore } from '@/sidepanel/store';
 import { useScanner } from '../useScanner';
 
-// Mock Chrome APIs
+// The panel is now a thin client: it asks the background to run the scan and
+// reflects the response. No tab resolution, host-permission, or injection happens
+// here — those moved to src/background/scan-orchestrator.ts (see its test). So the
+// only page-facing surface to mock is chrome.runtime (sendMessage + the
+// SCAN_PROGRESS onMessage listener).
+let progressListener: ((msg: unknown) => void) | undefined;
 vi.stubGlobal('chrome', {
-  tabs: {
-    sendMessage: vi.fn(),
-  },
-  scripting: {
-    executeScript: vi.fn().mockResolvedValue([]),
-    insertCSS: vi.fn().mockResolvedValue([]),
-  },
   runtime: {
-    getManifest: vi.fn().mockReturnValue({
-      content_scripts: [{ js: ['content.js'], css: ['content.css'] }],
-    }),
-    // The scan now fires a SET_BADGE message to the background on completion.
-    sendMessage: vi.fn().mockResolvedValue(undefined),
-  },
-  // ensureHostAccess() gates injection; default to access already granted so
-  // scans proceed without a prompt.
-  permissions: {
-    contains: vi.fn().mockResolvedValue(true),
-    request: vi.fn().mockResolvedValue(true),
+    sendMessage: vi.fn(() => Promise.resolve({ success: true })),
+    onMessage: {
+      addListener: (cb: (msg: unknown) => void) => {
+        progressListener = cb;
+      },
+      removeListener: vi.fn(),
+    },
   },
 });
 
-// Mock the messaging module
-vi.mock('@/shared/messaging', () => ({
-  getCurrentTab: vi.fn(),
-}));
-
 const mockScanResult: ScanResult = {
   url: 'https://example.com',
-  timestamp: Date.now(),
+  timestamp: 1_700_000_000,
   duration: 100,
-  issues: [
-    {
-      id: 'issue-1',
-      ruleId: 'image-alt',
-      severity: 'critical',
-      category: 'images',
-      message: 'Images must have alt text',
-      description: 'All images must have alternative text',
-      helpUrl: 'https://example.com/help',
-      wcag: {
-        id: '1.1.1',
-        level: 'A',
-        name: 'Non-text Content',
-        description: 'All non-text content has a text alternative',
-      },
-      element: {
-        selector: 'img.hero',
-        html: '<img class="hero" src="test.jpg">',
-      },
-      fix: {
-        description: 'Add alt attribute',
-        code: '<img class="hero" src="test.jpg" alt="Description">',
-        learnMoreUrl: 'https://example.com/learn',
-      },
-    },
-  ],
+  issues: [],
   incomplete: [],
   summary: {
-    total: 1,
-    bySeverity: { critical: 1, serious: 0, moderate: 0, minor: 0 },
+    total: 3,
+    bySeverity: { critical: 1, serious: 1, moderate: 1, minor: 0 },
     byCategory: {
       images: 1,
       interactive: 0,
       forms: 0,
       color: 0,
       document: 0,
-      structure: 0,
+      structure: 2,
       aria: 0,
       technical: 0,
     },
   },
 };
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+const sendMessage = () => chrome.runtime.sendMessage as unknown as ReturnType<typeof vi.fn>;
+
 describe('useScanner Hook', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset all store state to initial values
+    progressListener = undefined;
+    (chrome.runtime.sendMessage as any).mockResolvedValue({ success: true });
     useScanStore.setState({
       isScanning: false,
       scanResult: null,
@@ -97,951 +72,201 @@ describe('useScanner Hook', () => {
   });
 
   describe('Hook initialization', () => {
-    it('should return scanner state and functions', () => {
+    it('exposes scanner state and functions', () => {
       const { result } = renderHook(() => useScanner());
-
-      expect(result.current).toHaveProperty('isScanning');
-      expect(result.current).toHaveProperty('scanResult');
-      expect(result.current).toHaveProperty('error');
-      expect(result.current).toHaveProperty('scan');
-      expect(result.current).toHaveProperty('clearResults');
-      expect(typeof result.current.scan).toBe('function');
-      expect(typeof result.current.clearResults).toBe('function');
-    });
-
-    it('should have initial state of not scanning', () => {
-      const { result } = renderHook(() => useScanner());
-
       expect(result.current.isScanning).toBe(false);
       expect(result.current.scanResult).toBeNull();
       expect(result.current.error).toBeNull();
+      expect(typeof result.current.scan).toBe('function');
+      expect(typeof result.current.scanMultiple).toBe('function');
+      expect(typeof result.current.cancelScan).toBe('function');
+      expect(typeof result.current.clearResults).toBe('function');
     });
   });
 
-  describe('Scanning', () => {
-    it('should scan current tab successfully', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
-        success: true,
-        result: mockScanResult,
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.scanResult).toBeDefined();
-      expect(result.current.scanResult?.issues).toHaveLength(1);
-      expect(result.current.isScanning).toBe(false);
-      expect(result.current.error).toBeNull();
-    });
-
-    it('should set isScanning to false after scan completes', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
-        success: true,
-        result: mockScanResult,
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      expect(result.current.isScanning).toBe(false);
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.isScanning).toBe(false);
-      expect(result.current.scanResult).toBeDefined();
-    });
-
-    it('should handle missing tab error', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue(null);
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      // The error message must survive: setScanResult(null) in the catch must not
-      // wipe the error the same handler just set (the home-screen-with-no-message bug).
-      expect(result.current.error).toBeTruthy();
-      expect(result.current.error).not.toBeNull();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('should reject chrome:// pages', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'chrome://settings' });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-    });
-
-    it('should reject chrome-extension:// pages', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'chrome-extension://abc123' });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-    });
-
-    it('should reject about: pages', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'about:blank' });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    // Regression (err-3): these tabs are valid http(s)/file/view-source URLs, so
-    // they slipped past the chrome://-style internal-page guard and previously fell
-    // through to either a generic "Cannot scan browser internal pages" message or a
-    // 30s timeout. Each must now surface a DISTINCT, page-specific message.
-    it.each([
-      ['https://chromewebstore.google.com/detail/abc', 'Chrome Web Store'],
-      ['view-source:https://example.com', 'view-source'],
-      ['file:///Users/me/index.html', 'local files'],
-      ['https://example.com/report.pdf', 'PDF documents'],
-      ['file:///Users/me/report.pdf', 'PDF documents'],
-      ['https://example.com/report.pdf?download=1', 'PDF documents'],
-    ])('gives a distinct message for unscannable page %s', async (url, expected) => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toContain(expected);
-      // Must NOT be the generic internal-pages message, and must not have reached
-      // the content script (no scan attempted on an unscannable page).
-      expect(result.current.error).not.toBe('Cannot scan browser internal pages');
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
-      expect(chrome.tabs.sendMessage).not.toHaveBeenCalled();
-    });
-
-    it('surfaces the distinct unscannable message in multi-scan too', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({
-        id: 1,
-        url: 'https://chromewebstore.google.com/detail/abc',
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      expect(result.current.error).toContain('Chrome Web Store');
-      expect(result.current.error).not.toBe('Cannot scan browser internal pages');
-      expect(result.current.scanResult).toBeNull();
-    });
-
-    it('errors when the content script is absent and on-demand injection fails', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockRejectedValueOnce(
-        new Error('Content script not loaded')
-      );
-      // The page also disallows programmatic injection, so the scan gives up.
-      (chrome.scripting.executeScript as any).mockRejectedValueOnce(new Error('Cannot inject'));
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('injects the content script on demand and proceeds when the first PING fails', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const scanResult: ScanResult = { ...mockScanResult };
-      let pingCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation((_t: number, msg: { type: string }) => {
-        if (msg.type === 'PING') {
-          pingCount++;
-          // First PING fails (not injected); the retry after injection succeeds.
-          return pingCount === 1
-            ? Promise.reject(new Error('not loaded'))
-            : Promise.resolve({ success: true });
-        }
-        return Promise.resolve({ success: true, result: scanResult });
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
+  describe('scan', () => {
+    it('sends a SCAN_REQUEST for the audit and stores the returned result', async () => {
+      sendMessage().mockResolvedValue({ success: true, result: mockScanResult });
+      const { result } = renderHook(() => useScanner());
 
       await act(async () => {
         await result.current.scan('accessibility');
       });
 
-      rerender();
-      expect(chrome.scripting.executeScript).toHaveBeenCalled();
-      expect(result.current.scanResult).toBeDefined();
-      expect(result.current.error).toBeNull();
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'SCAN_REQUEST',
+        payload: { auditTypes: ['accessibility'] },
+      });
+      expect(useScanStore.getState().scanResult).toEqual(mockScanResult);
+      expect(useScanStore.getState().error).toBeNull();
+      expect(result.current.isScanning).toBe(false);
     });
 
-    it('should handle scan failure response', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
+    it('surfaces a failure response as an error and clears results', async () => {
+      sendMessage().mockResolvedValue({
         success: false,
-        error: 'Scan error message',
+        error: 'Cannot scan browser internal pages',
       });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('should handle missing result in response', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
-        success: true,
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('should handle unknown error during scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockRejectedValue(new Error('Network error'));
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('should handle non-Error exceptions gracefully', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockRejectedValue('String error');
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-    });
-
-    it('should send SCAN_PAGE message to content script', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
-        success: true,
-        result: mockScanResult,
-      });
-
       const { result } = renderHook(() => useScanner());
 
       await act(async () => {
-        await result.current.scan();
+        await result.current.scan('accessibility');
       });
 
-      // Check the second call (first is PING to check if content script is loaded)
-      expect(chrome.tabs.sendMessage).toHaveBeenLastCalledWith(1, {
-        type: 'SCAN_PAGE',
-        payload: { auditType: 'accessibility' },
-      });
+      expect(useScanStore.getState().error).toBe('Cannot scan browser internal pages');
+      expect(useScanStore.getState().scanResult).toBeNull();
     });
-  });
 
-  describe('Clearing results', () => {
-    it('should clear scan results', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
+    it('keeps a partial multi-scan result and shows the banner error', async () => {
+      sendMessage().mockResolvedValue({
         success: true,
         result: mockScanResult,
+        error: 'Some audits failed: pwa: boom',
       });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      // First scan
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.scanResult).toBeDefined();
-
-      // Then clear
-      act(() => {
-        result.current.clearResults();
-      });
-
-      rerender();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.error).toBeNull();
-    });
-
-    it('should clear error messages', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue(null);
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      // First scan with error
-      await act(async () => {
-        await result.current.scan();
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-
-      // Then clear
-      act(() => {
-        result.current.clearResults();
-      });
-
-      rerender();
-      expect(result.current.error).toBeNull();
-      expect(result.current.scanResult).toBeNull();
-    });
-
-    it('should be safe to call when nothing to clear', () => {
       const { result } = renderHook(() => useScanner());
 
-      expect(() => {
-        act(() => {
-          result.current.clearResults();
-        });
-      }).not.toThrow();
-
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.error).toBeNull();
-    });
-  });
-
-  describe('State management', () => {
-    it('should always clear error when starting scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      useScanStore.setState({ error: 'Previous error' });
-
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
-        success: true,
-        result: mockScanResult,
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
       await act(async () => {
-        await result.current.scan();
+        await result.current.scanMultiple(['accessibility', 'pwa']);
       });
 
-      rerender();
-      expect(result.current.error).toBeNull();
+      expect(useScanStore.getState().scanResult).toEqual(mockScanResult);
+      expect(useScanStore.getState().error).toBe('Some audits failed: pwa: boom');
     });
 
-    it('should set isScanning to false after successful scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
-        success: true,
-        result: mockScanResult,
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
+    it('leaves prior results untouched when the scan was cancelled', async () => {
+      useScanStore.setState({ scanResult: mockScanResult });
+      sendMessage().mockResolvedValue({ success: false, cancelled: true });
+      const { result } = renderHook(() => useScanner());
 
       await act(async () => {
-        await result.current.scan();
+        await result.current.scan('accessibility');
       });
 
-      rerender();
+      expect(useScanStore.getState().scanResult).toEqual(mockScanResult);
+      expect(useScanStore.getState().error).toBeNull();
+    });
+
+    it('handles a rejected message channel as an error', async () => {
+      sendMessage().mockRejectedValue(new Error('disconnected'));
+      const { result } = renderHook(() => useScanner());
+
+      await act(async () => {
+        await result.current.scan('accessibility');
+      });
+
+      expect(useScanStore.getState().error).toBe('disconnected');
+      expect(useScanStore.getState().scanResult).toBeNull();
       expect(result.current.isScanning).toBe(false);
     });
 
-    it('should set isScanning to false even if scan fails', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue(null);
-
-      const { result, rerender } = renderHook(() => useScanner());
+    it('clears any prior error at the start of a scan', async () => {
+      useScanStore.setState({ error: 'old error' });
+      sendMessage().mockResolvedValue({ success: true, result: mockScanResult });
+      const { result } = renderHook(() => useScanner());
 
       await act(async () => {
-        await result.current.scan();
+        await result.current.scan('accessibility');
       });
 
-      rerender();
-      expect(result.current.isScanning).toBe(false);
-      expect(result.current.error).toBeDefined();
+      expect(useScanStore.getState().error).toBeNull();
     });
   });
 
-  describe('Multi-scan functionality', () => {
-    it('should return early if auditTypes array is empty', async () => {
-      const { result, rerender } = renderHook(() => useScanner());
+  describe('scanMultiple', () => {
+    it('sends every requested audit type in one SCAN_REQUEST', async () => {
+      sendMessage().mockResolvedValue({ success: true, result: mockScanResult });
+      const { result } = renderHook(() => useScanner());
 
+      await act(async () => {
+        await result.current.scanMultiple(['accessibility', 'seo', 'pwa']);
+      });
+
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({
+        type: 'SCAN_REQUEST',
+        payload: { auditTypes: ['accessibility', 'seo', 'pwa'] },
+      });
+    });
+
+    it('returns early for an empty audit list without messaging the background', async () => {
+      const { result } = renderHook(() => useScanner());
       await act(async () => {
         await result.current.scanMultiple([]);
       });
-
-      rerender();
-      expect(result.current.isScanning).toBe(false);
-      expect(result.current.scanResult).toBeNull();
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalled();
     });
+  });
 
-    it('should delegate to single scan for array with one audit type', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockResolvedValue({
-        success: true,
-        result: mockScanResult,
-      });
+  describe('progress', () => {
+    it('advances progress state from SCAN_PROGRESS messages', () => {
+      const { result } = renderHook(() => useScanner());
+      expect(progressListener).toBeTypeOf('function');
 
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility']);
-      });
-
-      rerender();
-      expect(result.current.scanResult).toBeDefined();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('should run multiple audits sequentially', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const accessibilityResult: ScanResult = {
-        ...mockScanResult,
-        issues: [{ ...mockScanResult.issues[0], id: 'a11y-issue-1' }],
-      };
-
-      const performanceResult: ScanResult = {
-        ...mockScanResult,
-        issues: [
-          {
-            ...mockScanResult.issues[0],
-            id: 'perf-issue-1',
-            category: 'document',
-          },
-        ],
-      };
-
-      let callCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1 || callCount === 2) {
-          return Promise.resolve({ success: true });
-        }
-        if (callCount === 3) {
-          return Promise.resolve({ success: true, result: accessibilityResult });
-        }
-        if (callCount === 4) {
-          return Promise.resolve({ success: true, result: performanceResult });
-        }
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      expect(result.current.scanResult).toBeDefined();
-      expect(result.current.isScanning).toBe(false);
-      expect(result.current.scanResult?.issues.length).toBeGreaterThan(0);
-    });
-
-    it('should combine issues from multiple audits with prefixed IDs', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const accessibilityResult: ScanResult = {
-        url: 'https://example.com',
-        timestamp: Date.now(),
-        duration: 100,
-        issues: [{ ...mockScanResult.issues[0], id: 'a11y-issue-1' }],
-        incomplete: [],
-        summary: {
-          total: 1,
-          bySeverity: { critical: 1, serious: 0, moderate: 0, minor: 0 },
-          byCategory: {
-            images: 1,
-            interactive: 0,
-            forms: 0,
-            color: 0,
-            document: 0,
-            structure: 0,
-            aria: 0,
-            technical: 0,
-          },
-        },
-      };
-
-      const performanceResult: ScanResult = {
-        url: 'https://example.com',
-        timestamp: Date.now(),
-        duration: 100,
-        issues: [{ ...mockScanResult.issues[0], id: 'perf-issue-1' }],
-        incomplete: [{ ...mockScanResult.issues[0], id: 'incomplete-1' }],
-        summary: {
-          total: 1,
-          bySeverity: { critical: 1, serious: 0, moderate: 0, minor: 0 },
-          byCategory: {
-            images: 1,
-            interactive: 0,
-            forms: 0,
-            color: 0,
-            document: 0,
-            structure: 0,
-            aria: 0,
-            technical: 0,
-          },
-        },
-      };
-
-      let callCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1 || callCount === 2) {
-          return Promise.resolve({ success: true });
-        }
-        if (callCount === 3) {
-          return Promise.resolve({ success: true, result: accessibilityResult });
-        }
-        if (callCount === 4) {
-          return Promise.resolve({ success: true, result: performanceResult });
-        }
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      // Multi-scan completes and shows results
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('should track progress during multi-scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const result1: ScanResult = { ...mockScanResult };
-      const result2: ScanResult = { ...mockScanResult };
-
-      let callCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation(() => {
-        callCount++;
-        if (callCount <= 2) return Promise.resolve({ success: true });
-        if (callCount === 3) return Promise.resolve({ success: true, result: result1 });
-        return Promise.resolve({ success: true, result: result2 });
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      expect(result.current.totalAudits).toBe(0);
-      expect(result.current.currentAuditIndex).toBe(0);
-      expect(result.current.currentAuditType).toBeNull();
-    });
-
-    it('should handle individual audit failure in multi-scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const successResult: ScanResult = { ...mockScanResult };
-
-      let callCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1 || callCount === 2) return Promise.resolve({ success: true });
-        if (callCount === 3) return Promise.resolve({ success: true, result: successResult });
-        // Fourth call (performance audit) fails
-        return Promise.resolve({
-          success: false,
-          error: 'Performance audit failed',
+      act(() => {
+        progressListener?.({
+          type: 'SCAN_PROGRESS',
+          payload: { index: 2, total: 6, auditType: 'seo' },
         });
       });
 
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.error).toContain('Some audits failed');
-      // Partial results must survive alongside the error (not be hidden by it).
-      expect(result.current.scanResult).toBeDefined();
-      expect(result.current.scanResult?.issues.length).toBeGreaterThan(0);
+      expect(result.current.currentAuditIndex).toBe(2);
+      expect(result.current.totalAudits).toBe(6);
+      expect(result.current.currentAuditType).toBe('seo');
     });
 
-    it('shows the error (not an empty result) when every audit in a multi-scan fails', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      // PING handshake succeeds; every SCAN_PAGE fails.
-      (chrome.tabs.sendMessage as any).mockImplementation(
-        (_tabId: number, msg: { type: string }) =>
-          msg.type === 'PING'
-            ? Promise.resolve({ success: true })
-            : Promise.resolve({ success: false, error: 'audit boom' })
-      );
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
+    it('ignores unrelated broadcast messages', () => {
+      const { result } = renderHook(() => useScanner());
+      act(() => {
+        progressListener?.({ type: 'SOMETHING_ELSE' });
       });
-
-      rerender();
-      // No audit produced results, so there is nothing to show — surface the error
-      // instead of an empty "no issues" result.
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.error).toContain('All audits failed');
-    });
-
-    it('should handle missing tab error in multi-scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue(null);
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
-    });
-
-    it('should reject restricted pages in multi-scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'chrome://settings' });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-    });
-
-    it('should check content script in multi-scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-      (chrome.tabs.sendMessage as any).mockRejectedValueOnce(
-        new Error('Content script not loaded')
-      );
-      // On-demand injection also fails, so the multi-scan reports the error.
-      (chrome.scripting.executeScript as any).mockRejectedValueOnce(new Error('Cannot inject'));
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
-      });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-    });
-
-    it('should clear error at start of multi-scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      useScanStore.setState({ error: 'Previous error' });
-
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const result1: ScanResult = { ...mockScanResult };
-      // PING handshake succeeds, then the audit returns a real result, so the scan
-      // genuinely succeeds and the prior error is cleared at start (not wiped by a
-      // failure — that masking bug is gone now that setScanResult leaves error alone).
-      (chrome.tabs.sendMessage as any).mockImplementation(
-        (_tabId: number, msg: { type: string }) =>
-          msg.type === 'PING'
-            ? Promise.resolve({ success: true })
-            : Promise.resolve({ success: true, result: result1 })
-      );
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility']);
-      });
-
-      rerender();
-      expect(result.current.error).toBeNull();
-    });
-
-    it('should reset progress state after multi-scan completes', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const result1: ScanResult = { ...mockScanResult };
-      let callCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation(() => {
-        callCount++;
-        if (callCount <= 2) return Promise.resolve({ success: true });
-        return Promise.resolve({ success: true, result: result1 });
-      });
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility']);
-      });
-
-      rerender();
-      expect(result.current.currentAuditIndex).toBe(0);
-      expect(result.current.totalAudits).toBeLessThanOrEqual(1); // Will be 0 or 1 since single item delegates
       expect(result.current.currentAuditType).toBeNull();
-      expect(result.current.isScanning).toBe(false);
     });
+  });
 
-    it('should handle unknown error in multi-scan', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockRejectedValue(new Error('Network error'));
-
-      const { result, rerender } = renderHook(() => useScanner());
-
-      await act(async () => {
-        await result.current.scanMultiple(['accessibility']);
+  describe('cancelScan', () => {
+    it('is a no-op when no scan is in flight', () => {
+      const { result } = renderHook(() => useScanner());
+      act(() => {
+        result.current.cancelScan();
       });
-
-      rerender();
-      expect(result.current.error).toBeDefined();
-      expect(result.current.scanResult).toBeNull();
-      expect(result.current.isScanning).toBe(false);
+      expect(chrome.runtime.sendMessage).not.toHaveBeenCalledWith({ type: 'CANCEL_SCAN' });
     });
 
-    it('should return progress info from hook', () => {
+    it('sends CANCEL_SCAN while a scan is in flight', async () => {
+      const d = deferred<{ success: boolean; cancelled?: boolean }>();
+      sendMessage().mockImplementation((msg: { type: string }) =>
+        msg.type === 'SCAN_REQUEST' ? d.promise : Promise.resolve({ success: true })
+      );
       const { result } = renderHook(() => useScanner());
 
-      expect(result.current).toHaveProperty('currentAuditIndex');
-      expect(result.current).toHaveProperty('totalAudits');
-      expect(result.current).toHaveProperty('currentAuditType');
-      expect(result.current).toHaveProperty('scanMultiple');
-      expect(typeof result.current.currentAuditIndex).toBe('number');
-      expect(typeof result.current.totalAudits).toBe('number');
-    });
-  });
-
-  describe('Progress tracking for combined summary', () => {
-    it('should generate correct combined summary from multiple issues', async () => {
-      const { getCurrentTab } = await import('@/shared/messaging');
-      (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-
-      const result1: ScanResult = {
-        url: 'https://example.com',
-        timestamp: Date.now(),
-        duration: 100,
-        issues: [
-          {
-            ...mockScanResult.issues[0],
-            id: 'a11y-issue-1',
-            severity: 'critical',
-            category: 'images',
-          },
-        ],
-        incomplete: [],
-        summary: {
-          total: 1,
-          bySeverity: { critical: 1, serious: 0, moderate: 0, minor: 0 },
-          byCategory: {
-            images: 1,
-            interactive: 0,
-            forms: 0,
-            color: 0,
-            document: 0,
-            structure: 0,
-            aria: 0,
-            technical: 0,
-          },
-        },
-      };
-
-      const result2: ScanResult = {
-        url: 'https://example.com',
-        timestamp: Date.now(),
-        duration: 100,
-        issues: [
-          {
-            ...mockScanResult.issues[0],
-            id: 'perf-issue-1',
-            severity: 'serious',
-            category: 'forms',
-          },
-        ],
-        incomplete: [],
-        summary: {
-          total: 1,
-          bySeverity: { critical: 0, serious: 1, moderate: 0, minor: 0 },
-          byCategory: {
-            images: 0,
-            interactive: 0,
-            forms: 1,
-            color: 0,
-            document: 0,
-            structure: 0,
-            aria: 0,
-            technical: 0,
-          },
-        },
-      };
-
-      let callCount = 0;
-      (chrome.tabs.sendMessage as any).mockImplementation(() => {
-        callCount++;
-        if (callCount === 1 || callCount === 2) return Promise.resolve({ success: true });
-        if (callCount === 3) return Promise.resolve({ success: true, result: result1 });
-        return Promise.resolve({ success: true, result: result2 });
+      let scanPromise: Promise<void> | undefined;
+      await act(async () => {
+        scanPromise = result.current.scan('accessibility');
+        // Flush the internal setTimeout(0) so the request dispatches; the response
+        // stays pending on the deferred, leaving the scan in flight.
+        await new Promise((r) => setTimeout(r, 0));
       });
-
-      const { result, rerender } = renderHook(() => useScanner());
 
       await act(async () => {
-        await result.current.scanMultiple(['accessibility', 'performance']);
+        result.current.cancelScan();
       });
+      expect(chrome.runtime.sendMessage).toHaveBeenCalledWith({ type: 'CANCEL_SCAN' });
 
-      rerender();
-      // Combined summary includes issues from both audits
-      expect(result.current.scanResult?.summary).toBeDefined();
-      expect(result.current.scanResult?.summary.total).toBeGreaterThanOrEqual(1);
-      expect(result.current.scanResult?.summary.bySeverity.critical).toBeGreaterThanOrEqual(0);
-      expect(result.current.scanResult?.summary.bySeverity.serious).toBeGreaterThanOrEqual(0);
+      await act(async () => {
+        d.resolve({ success: false, cancelled: true });
+        await scanPromise;
+      });
     });
   });
 
-  describe('Timeout and cancellation', () => {
-    it('fails a scan with a timeout error when the page never responds', async () => {
-      vi.useFakeTimers();
-      try {
-        const { getCurrentTab } = await import('@/shared/messaging');
-        (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-        (chrome.tabs.sendMessage as any).mockImplementation((_t: number, msg: { type: string }) =>
-          msg.type === 'PING' ? Promise.resolve({ success: true }) : new Promise(() => {})
-        );
-
-        const { result } = renderHook(() => useScanner());
-
-        await act(async () => {
-          const scanPromise = result.current.scan('accessibility');
-          // Advance past the render tick and the 30s scan budget.
-          await vi.advanceTimersByTimeAsync(31000);
-          await scanPromise;
-        });
-
-        expect(result.current.scanResult).toBeNull();
-        expect(result.current.error?.toLowerCase()).toContain('timeout');
-        expect(result.current.isScanning).toBe(false);
-      } finally {
-        vi.useRealTimers();
-      }
-    });
-
-    it('cancelScan aborts an in-flight scan and leaves no error', async () => {
-      vi.useFakeTimers();
-      try {
-        const { getCurrentTab } = await import('@/shared/messaging');
-        (getCurrentTab as any).mockResolvedValue({ id: 1, url: 'https://example.com' });
-        (chrome.tabs.sendMessage as any).mockImplementation(
-          (_t: number, msg: { type: string }) =>
-            msg.type === 'PING' ? Promise.resolve({ success: true }) : new Promise(() => {}) // only a cancel ends this scan
-        );
-
-        const { result } = renderHook(() => useScanner());
-
-        await act(async () => {
-          const scanPromise = result.current.scan('accessibility');
-          await vi.advanceTimersByTimeAsync(10); // reach the awaiting scanSingle
-          result.current.cancelScan();
-          await scanPromise;
-        });
-
-        expect(result.current.isScanning).toBe(false);
-        expect(result.current.error).toBeNull();
-        expect(result.current.scanResult).toBeNull();
-      } finally {
-        vi.useRealTimers();
-      }
+  describe('clearResults', () => {
+    it('clears the result and error', () => {
+      useScanStore.setState({ scanResult: mockScanResult, error: 'boom' });
+      const { result } = renderHook(() => useScanner());
+      act(() => {
+        result.current.clearResults();
+      });
+      expect(useScanStore.getState().scanResult).toBeNull();
+      expect(useScanStore.getState().error).toBeNull();
     });
   });
 });

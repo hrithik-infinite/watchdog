@@ -62,12 +62,6 @@ export const ERROR_CODES: Record<string, ErrorDetails> = {
     message: 'Could not communicate with the page.',
     suggestion: 'Check your internet connection and refresh the page.',
   },
-  E009: {
-    code: 'E009',
-    title: 'Permission Needed',
-    message: 'WatchDog needs your permission to read this page.',
-    suggestion: 'Choose "Allow" when Chrome asks for access, then scan again.',
-  },
 };
 
 /**
@@ -83,9 +77,6 @@ export function getErrorDetails(error: Error | string): ErrorDetails {
   }
   if (lowerMessage.includes('internal pages') || lowerMessage.includes('restricted')) {
     return ERROR_CODES.E002;
-  }
-  if (lowerMessage.includes('needs permission')) {
-    return ERROR_CODES.E009;
   }
   if (lowerMessage.includes('refresh the page') || lowerMessage.includes('content script')) {
     return ERROR_CODES.E003;

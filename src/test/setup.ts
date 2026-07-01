@@ -36,12 +36,28 @@ global.chrome = {
       set: vi.fn(() => Promise.resolve()),
       remove: vi.fn(() => Promise.resolve()),
     },
+    // In-memory session storage backs the background's armed-tab tracking.
+    session: {
+      get: vi.fn(() => Promise.resolve({})),
+      set: vi.fn(() => Promise.resolve()),
+      remove: vi.fn(() => Promise.resolve()),
+    },
   },
   sidePanel: {
     open: vi.fn(() => Promise.resolve()),
+    setPanelBehavior: vi.fn(() => Promise.resolve()),
   },
   action: {
     setBadgeText: vi.fn(() => Promise.resolve()),
     setBadgeBackgroundColor: vi.fn(() => Promise.resolve()),
+    setBadgeTextColor: vi.fn(() => Promise.resolve()),
+    onClicked: {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    },
+  },
+  scripting: {
+    executeScript: vi.fn(() => Promise.resolve([])),
+    insertCSS: vi.fn(() => Promise.resolve()),
   },
 } as any;

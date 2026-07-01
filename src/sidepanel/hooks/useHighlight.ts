@@ -1,16 +1,16 @@
 import { useCallback } from 'react';
 import logger from '@/shared/logger';
 import type { Severity } from '@/shared/types';
-import { getTargetTabId } from '@/sidepanel/lib/target-tab';
 
+// Highlighting is best-effort and fire-and-forget: the panel asks the background
+// to forward the highlight to the armed tab's content script (injecting on
+// demand). Failures (no armed tab, tab navigated) are logged, not surfaced — the
+// page simply doesn't scroll/mark, which is a tolerable no-op for a hover cue.
 export function useHighlight() {
   const highlightElement = useCallback(async (selector: string, severity: Severity) => {
     try {
-      const tabId = await getTargetTabId();
-      if (tabId == null) return;
-
       logger.debug('Highlighting element', { selector, severity });
-      await chrome.tabs.sendMessage(tabId, {
+      await chrome.runtime.sendMessage({
         type: 'HIGHLIGHT_ELEMENT',
         payload: { selector, severity },
       });
@@ -23,14 +23,8 @@ export function useHighlight() {
   const highlightAll = useCallback(
     async (items: Array<{ selector: string; severity: Severity }>) => {
       try {
-        const tabId = await getTargetTabId();
-        if (tabId == null) return;
-
         logger.debug('Highlighting all elements', { count: items.length });
-        await chrome.tabs.sendMessage(tabId, {
-          type: 'HIGHLIGHT_ALL',
-          payload: { items },
-        });
+        await chrome.runtime.sendMessage({ type: 'HIGHLIGHT_ALL', payload: { items } });
       } catch (err) {
         logger.error('Failed to highlight all elements', { error: err });
       }
@@ -40,11 +34,8 @@ export function useHighlight() {
 
   const clearHighlights = useCallback(async () => {
     try {
-      const tabId = await getTargetTabId();
-      if (tabId == null) return;
-
       logger.debug('Clearing highlights');
-      await chrome.tabs.sendMessage(tabId, { type: 'CLEAR_HIGHLIGHTS' });
+      await chrome.runtime.sendMessage({ type: 'CLEAR_HIGHLIGHTS' });
     } catch (err) {
       logger.error('Failed to clear highlights', { error: err });
     }

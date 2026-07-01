@@ -43,11 +43,6 @@ interface ScanState {
   selectedIssueId: string | null;
   view: 'list' | 'detail';
 
-  // The tab id the current result was scanned in, so page-directed actions
-  // (highlight, vision, focus, badge) target it even after the user switches tabs
-  // with the side panel open (correctness-4). Null until a scan runs.
-  scannedTabId: number | null;
-
   // Settings
   settings: Settings;
 
@@ -55,7 +50,6 @@ interface ScanState {
   setScanning: (isScanning: boolean) => void;
   setScanResult: (result: ScanResult | null) => void;
   setError: (error: string | null) => void;
-  setScannedTabId: (tabId: number | null) => void;
   setSelectedAuditType: (auditType: AuditType) => void;
   setSelectedAuditTypes: (auditTypes: AuditType[]) => void;
   setFilter: <K extends keyof FilterState>(key: K, value: FilterState[K]) => void;
@@ -117,13 +111,10 @@ export const useScanStore = create<ScanState>((set, get) => ({
   ignoredHashes: new Set(),
   selectedIssueId: null,
   view: 'list',
-  scannedTabId: null,
   settings: DEFAULT_SETTINGS,
 
   // Actions
   setScanning: (isScanning) => set({ isScanning }),
-
-  setScannedTabId: (tabId) => set({ scannedTabId: tabId }),
 
   // Note: setScanResult does NOT touch `error`. Error is owned independently and
   // cleared explicitly at the start of each scan. Coupling them here caused a

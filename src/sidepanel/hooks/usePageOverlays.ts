@@ -1,26 +1,39 @@
 import { useCallback, useState } from 'react';
-import { ensureContentScript } from '@/shared/inject';
 import logger from '@/shared/logger';
-import { ensureHostAccess } from '@/shared/permissions';
 import type { Settings, VisionMode } from '@/shared/types';
-import { getTargetTab } from '@/sidepanel/lib/target-tab';
 import { useScanStore } from '../store';
 
-// Turn an apply failure into a user-facing line. The thrown errors are already
-// user-facing (HOST_PERMISSION_DENIED_MESSAGE / INJECTION_FAILED_MESSAGE).
+// Turn an apply failure into a user-facing line. The background returns
+// already-user-facing errors (no armed tab / injection failed); fall back to a
+// generic hint otherwise.
 function overlayErrorMessage(error: unknown): string {
   return error instanceof Error && error.message
     ? error.message
     : 'Could not apply this to the page. Scan a page first, then try again.';
 }
 
+// Send a page-directed overlay message to the background, which forwards it to the
+// armed tab's content script (injecting on demand). Throws if the background could
+// not deliver it so callers can roll back the optimistic toggle.
+async function applyToPage(message: {
+  type: 'APPLY_VISION_FILTER' | 'TOGGLE_FOCUS_ORDER';
+  payload: unknown;
+}): Promise<void> {
+  const response = (await chrome.runtime.sendMessage(message)) as
+    | { success?: boolean; error?: string }
+    | undefined;
+  if (response && response.success === false) {
+    throw new Error(response.error || 'Could not apply this to the page.');
+  }
+}
+
 /**
  * Shared control for the on-page overlays — the vision simulator and the
  * focus-order visualization (ux-public-10). Each setter persists the preference
- * and applies it to the active tab (injecting the content script on demand,
- * since there's no longer an always-on script). Used by Settings and by the
- * results-view "Experience your site" controls / contrast deep-link so the apply
- * logic lives in exactly one place.
+ * and applies it to the armed tab via the background (which holds activeTab and
+ * owns all page interaction now that the panel cannot inject directly). Used by
+ * Settings and by the results-view "Experience your site" controls / contrast
+ * deep-link so the apply logic lives in exactly one place.
  */
 export function usePageOverlays() {
   const settings = useScanStore((s) => s.settings);
@@ -46,12 +59,7 @@ export function usePageOverlays() {
       setOverlayError(null);
       persist({ visionMode: mode });
       try {
-        const tab = await getTargetTab();
-        if (tab?.id != null) {
-          await ensureHostAccess(tab.url);
-          await ensureContentScript(tab.id);
-          await chrome.tabs.sendMessage(tab.id, { type: 'APPLY_VISION_FILTER', payload: { mode } });
-        }
+        await applyToPage({ type: 'APPLY_VISION_FILTER', payload: { mode } });
       } catch (error) {
         logger.error('Failed to apply vision filter', { error });
         // Roll back the optimistic toggle so the control reflects reality.
@@ -68,12 +76,7 @@ export function usePageOverlays() {
       setOverlayError(null);
       persist({ showFocusOrder: show });
       try {
-        const tab = await getTargetTab();
-        if (tab?.id != null) {
-          await ensureHostAccess(tab.url);
-          await ensureContentScript(tab.id);
-          await chrome.tabs.sendMessage(tab.id, { type: 'TOGGLE_FOCUS_ORDER', payload: { show } });
-        }
+        await applyToPage({ type: 'TOGGLE_FOCUS_ORDER', payload: { show } });
       } catch (error) {
         logger.error('Failed to toggle focus order', { error });
         persist({ showFocusOrder: previous });

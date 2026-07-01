@@ -6,22 +6,22 @@ import logger from './logger';
 const CONTENT_SCRIPT_JS = 'content-script.js';
 const CONTENT_SCRIPT_CSS = 'content-script.css';
 
-// Shown when injection fails even though host access was granted (ensureHostAccess
-// runs first) — e.g. the page is still loading, blocks injection, or the grant was
-// revoked mid-flight. Host-permission denial is reported separately by
-// ensureHostAccess (HOST_PERMISSION_DENIED_MESSAGE). The "Refresh the page" wording
-// is matched by getErrorDetails() to surface error E003.
+// Shown when injection fails on a page the extension can otherwise access — e.g.
+// the page is still loading, blocks injection, or the activeTab grant lapsed
+// (the tab navigated). The "Refresh the page" wording is matched by
+// getErrorDetails() to surface error E003.
 export const INJECTION_FAILED_MESSAGE =
   'WatchDog could not load the scanner on this page. Refresh the page and scan again.';
 
 /**
  * Ensure the content script is present in `tabId`, injecting it on demand if
- * not. Used by every feature that messages the page (scan, vision filters,
- * focus order) now that there is no always-on `<all_urls>` content script.
+ * not. Called from the background service worker for every feature that messages
+ * the page (scan, vision filters, focus order) now that there is no always-on
+ * `<all_urls>` content script.
  *
- * Callers must hold host access first (see ensureHostAccess) — a side panel never
- * receives an activeTab grant, so without it executeScript would always fail.
- * Throws INJECTION_FAILED_MESSAGE if injection still fails after that.
+ * Host access comes from the `activeTab` grant the toolbar-icon click hands to the
+ * background — the panel could never inject this itself. Throws
+ * INJECTION_FAILED_MESSAGE if injection still fails (e.g. the grant lapsed).
  */
 export async function ensureContentScript(tabId: number): Promise<void> {
   // Fast path: already injected (same tab, not navigated since).

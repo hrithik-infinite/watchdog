@@ -1,6 +1,6 @@
 # Privacy Policy for WatchDog
 
-**Last Updated:** June 29, 2026
+**Last Updated:** July 1, 2026
 
 ## Introduction
 
@@ -139,7 +139,7 @@ WatchDog requests four Chrome permissions: `activeTab`, `storage`, `sidePanel`, 
 
 ### scripting
 - **Purpose:** Inject the scanner and overlay code into the page **on demand** — only when you scan a page or toggle a page overlay (vision simulator / focus order)
-- **Scope:** Injection happens into the active tab you act on, under the `activeTab` grant; nothing is injected in the background or ahead of time
+- **Scope:** Injection targets only the tab whose toolbar icon you clicked, using the `activeTab` access that click grants. Nothing is injected ahead of time, and no code ever runs on a tab you have not clicked the icon on.
 
 ### No "Read and change all your data on all websites" warning
 

@@ -19,6 +19,7 @@ import TopFixesCard from './components/TopFixesCard';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
 import { Switch } from './components/ui/switch';
+import { useArmedTab } from './hooks/useArmedTab';
 import { useHighlight } from './hooks/useHighlight';
 import { useIgnoredIssues } from './hooks/useIgnoredIssues';
 import { useIssues } from './hooks/useIssues';
@@ -74,7 +75,6 @@ export default function App() {
   const setHideIgnored = useScanStore((state) => state.setHideIgnored);
   const setScanResult = useScanStore((state) => state.setScanResult);
   const setError = useScanStore((state) => state.setError);
-  const setScannedTabId = useScanStore((state) => state.setScannedTabId);
 
   // Ignored issues
   const {
@@ -102,6 +102,8 @@ export default function App() {
     totalFiltered,
   } = useIssues();
   const { highlightElement, highlightAll, clearHighlights } = useHighlight();
+  // The page a scan will target — the tab whose toolbar icon opened the panel.
+  const { hostname: armedHostname } = useArmedTab();
   // WAVE-style "show all on page" overlay toggle (feat-compet-10).
   const [showAllOnPage, setShowAllOnPage] = useState(false);
   const { settings, updateSettings, loaded: settingsLoaded } = useSettings();
@@ -115,16 +117,15 @@ export default function App() {
   );
 
   // Open a previously-exported report (feat-compet-8). The report may be for a
-  // different page than the active tab, so clear the audit selection to disable
-  // page-targeted highlighting/overlays for the imported view.
+  // different page than the armed tab, so clear the audit selection — that gates
+  // off page-targeted highlighting/overlays (canHighlight) for the imported view.
   const handleImportReport = useCallback(
     (result: ScanResult) => {
       setSelectedAuditTypes([]);
-      setScannedTabId(null);
       setError(null);
       setScanResult(result);
     },
-    [setSelectedAuditTypes, setScannedTabId, setError, setScanResult]
+    [setSelectedAuditTypes, setError, setScanResult]
   );
 
   const handleStartScan = useCallback(
@@ -345,6 +346,14 @@ export default function App() {
         <div className="px-4 pt-3">
           <ImportReportButton onImport={handleImportReport} />
         </div>
+        {/* Which page a scan will target — the tab whose toolbar icon opened the
+            panel. If the user has since switched tabs, this still names the armed
+            page, cueing them to re-click the icon on the tab they now want. */}
+        <p className="px-4 pt-2 text-xs text-muted-foreground truncate">
+          {armedHostname
+            ? `Ready to scan ${armedHostname}`
+            : 'Click the WatchDog toolbar icon on the page you want to scan.'}
+        </p>
         <AuditSelector
           onStartScan={handleStartScan}
           onStartMultipleScan={handleStartMultipleScan}
