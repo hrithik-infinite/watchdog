@@ -24,10 +24,10 @@ export function highlightElement(selector: string, severity: Severity): void {
       return;
     }
 
-    // Skip highlighting full-page elements
+    // Skip highlighting full-page elements (body/html) — this is a routine,
+    // expected no-op, so it stays silent rather than logging on every call.
     const tagName = element.tagName.toLowerCase();
     if (SKIP_HIGHLIGHT_TAGS.includes(tagName)) {
-      console.info(`WatchDog: Skipping highlight for <${tagName}> element`);
       return;
     }
 

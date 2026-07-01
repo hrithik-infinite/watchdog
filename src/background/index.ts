@@ -1,3 +1,4 @@
+import logger from '@/shared/logger';
 import type { Message } from '@/shared/messaging';
 import type { ScanResult } from '@/shared/types';
 import { clearBadge, updateBadge } from './badge';
@@ -87,4 +88,4 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   }
 });
 
-console.log('WatchDog background service worker initialized');
+logger.info('Background service worker initialized');
