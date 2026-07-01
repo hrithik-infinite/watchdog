@@ -49,8 +49,11 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
   // Vision-simulator and focus-order application live in a shared hook so the
   // results-view "Experience" controls and the contrast deep-link apply them the
   // same way (persist + inject-on-demand + message the page).
-  const { setVisionMode: handleVisionModeChange, setFocusOrder: handleFocusOrderToggle } =
-    usePageOverlays();
+  const {
+    setVisionMode: handleVisionModeChange,
+    setFocusOrder: handleFocusOrderToggle,
+    overlayError,
+  } = usePageOverlays();
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -70,6 +73,17 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {/* Surface a failed overlay apply (e.g. permission declined, or no
+            scannable page) — the toggle rolls back, so this explains why. */}
+        {overlayError && (
+          <div
+            role="alert"
+            className="rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning"
+          >
+            {overlayError}
+          </div>
+        )}
+
         {/* Experience (persona) — the spine of the Site-owner repositioning. */}
         <div>
           <p className="text-caption uppercase text-muted-foreground mb-2">Experience</p>

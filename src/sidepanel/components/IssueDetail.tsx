@@ -54,7 +54,7 @@ export default function IssueDetail({
   canHighlight = false,
 }: IssueDetailProps) {
   const isSiteOwner = useIsSiteOwner();
-  const { visionMode, setVisionMode } = usePageOverlays();
+  const { visionMode, setVisionMode, overlayError } = usePageOverlays();
   const [showIgnoreModal, setShowIgnoreModal] = useState(false);
 
   // Deep-link the colorblind simulator from color-contrast issues (ux-public-10):
@@ -158,6 +158,13 @@ export default function IssueDetail({
               {isSiteOwner ? 'Mark as known' : 'Hide'}
             </Button>
           </div>
+          {/* Preview can fail (permission declined / no scannable page) — the
+              toggle rolls back, so this says why instead of failing silently. */}
+          {overlayError && (
+            <p role="alert" className="text-sm text-warning mb-2">
+              {overlayError}
+            </p>
+          )}
           {isSiteOwner ? (
             <>
               <p className="text-body text-foreground mb-2">

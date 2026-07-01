@@ -73,4 +73,22 @@ describe('usePageOverlays', () => {
     expect(useScanStore.getState().settings.visionMode).toBe('protanopia');
     expect(tabsSendMessage).not.toHaveBeenCalled();
   });
+
+  it('rolls back the optimistic toggle and surfaces an error when apply fails', async () => {
+    useScanStore.setState({ settings: { ...DEFAULT_SETTINGS, visionMode: 'none' } });
+    (ensureContentScript as any).mockRejectedValueOnce(
+      new Error('WatchDog needs permission to read this page.')
+    );
+
+    const { result } = renderHook(() => usePageOverlays());
+
+    await act(async () => {
+      await result.current.setVisionMode('protanopia');
+    });
+
+    // The optimistic flip is reverted to the prior value (no stuck-on switch)...
+    expect(useScanStore.getState().settings.visionMode).toBe('none');
+    // ...and the failure is surfaced instead of being silently swallowed.
+    expect(result.current.overlayError).toBe('WatchDog needs permission to read this page.');
+  });
 });

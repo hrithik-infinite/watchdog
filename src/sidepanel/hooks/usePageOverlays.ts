@@ -1,10 +1,18 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { ensureContentScript } from '@/shared/inject';
 import logger from '@/shared/logger';
 import { ensureHostAccess } from '@/shared/permissions';
 import type { Settings, VisionMode } from '@/shared/types';
 import { getTargetTab } from '@/sidepanel/lib/target-tab';
 import { useScanStore } from '../store';
+
+// Turn an apply failure into a user-facing line. The thrown errors are already
+// user-facing (HOST_PERMISSION_DENIED_MESSAGE / INJECTION_FAILED_MESSAGE).
+function overlayErrorMessage(error: unknown): string {
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Could not apply this to the page. Scan a page first, then try again.';
+}
 
 /**
  * Shared control for the on-page overlays — the vision simulator and the
@@ -17,6 +25,10 @@ import { useScanStore } from '../store';
 export function usePageOverlays() {
   const settings = useScanStore((s) => s.settings);
   const updateSettings = useScanStore((s) => s.updateSettings);
+  // Surfaced to the UI so an apply failure isn't silent. logger.error is dev-only
+  // (stripped in production), so without this the toggle would flip on and the
+  // page would never change with no feedback.
+  const [overlayError, setOverlayError] = useState<string | null>(null);
 
   const persist = useCallback(
     (patch: Partial<Settings>) => {
@@ -30,6 +42,8 @@ export function usePageOverlays() {
 
   const setVisionMode = useCallback(
     async (mode: VisionMode) => {
+      const previous = settings.visionMode;
+      setOverlayError(null);
       persist({ visionMode: mode });
       try {
         const tab = await getTargetTab();
@@ -40,13 +54,18 @@ export function usePageOverlays() {
         }
       } catch (error) {
         logger.error('Failed to apply vision filter', { error });
+        // Roll back the optimistic toggle so the control reflects reality.
+        persist({ visionMode: previous });
+        setOverlayError(overlayErrorMessage(error));
       }
     },
-    [persist]
+    [persist, settings.visionMode]
   );
 
   const setFocusOrder = useCallback(
     async (show: boolean) => {
+      const previous = settings.showFocusOrder;
+      setOverlayError(null);
       persist({ showFocusOrder: show });
       try {
         const tab = await getTargetTab();
@@ -57,15 +76,21 @@ export function usePageOverlays() {
         }
       } catch (error) {
         logger.error('Failed to toggle focus order', { error });
+        persist({ showFocusOrder: previous });
+        setOverlayError(overlayErrorMessage(error));
       }
     },
-    [persist]
+    [persist, settings.showFocusOrder]
   );
+
+  const clearOverlayError = useCallback(() => setOverlayError(null), []);
 
   return {
     visionMode: settings.visionMode,
     showFocusOrder: settings.showFocusOrder,
     setVisionMode,
     setFocusOrder,
+    overlayError,
+    clearOverlayError,
   };
 }
