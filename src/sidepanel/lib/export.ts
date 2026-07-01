@@ -7,6 +7,7 @@ import { calculateScore } from '@/shared/scoring';
 import type { Category, Issue, ScanResult, Severity } from '@/shared/types';
 import type { AuditType } from '@/sidepanel/store';
 import {
+  BRAND_BLUE,
   buildReportHtml,
   CATEGORY_LABELS,
   formatDuration,
@@ -169,7 +170,7 @@ export async function exportPDF(
   result: ScanResult,
   auditType: AuditType = 'accessibility'
 ): Promise<void> {
-  const { PDFDocument, rgb, StandardFonts } = await import('pdf-lib');
+  const { PDFDocument, rgb, StandardFonts, LineCapStyle } = await import('pdf-lib');
   const auditLabel = AUDIT_TYPE_LABELS[auditType];
 
   const doc = await PDFDocument.create();
@@ -458,7 +459,30 @@ export async function exportPDF(
 
   // ── Header band ──
   fill(0, PH - 70, PW, 70, INK);
-  page.drawText('WatchDog', { x: M, y: PH - 44, size: 20, font: bold, color: WHITE });
+  // Brand mark: the hound head filled in brand blue, with the eyes/nose punched
+  // back to the header color (drawSvgPath fills solid, so the evenodd holes of the
+  // full logo are reproduced with three cut-out circles). Same logo as the app +
+  // HTML report.
+  const HOUND_HEAD =
+    'M6.5 8.8 L4.5 3.1 L10.2 6.1 L13.8 6.1 L19.5 3.1 L17.5 8.8 C18.7 11 18.6 13.9 16.9 16.1 C15.5 17.9 13.9 19.2 12 19.2 C10.1 19.2 8.5 17.9 7.1 16.1 C5.4 13.9 5.3 11 6.5 8.8 Z';
+  const HOUND_HOLES: [number, number, number][] = [
+    [9.6, 12.4, 1.15],
+    [14.4, 12.4, 1.15],
+    [12, 15.2, 1.35],
+  ];
+  const logoScale = 1.35;
+  const logoX = M - 4.5 * logoScale;
+  const logoY = PH - 35 + 11.15 * logoScale; // vertically centres the hound
+  page.drawSvgPath(HOUND_HEAD, { x: logoX, y: logoY, scale: logoScale, color: col(BRAND_BLUE) });
+  for (const [ex, ey, er] of HOUND_HOLES) {
+    page.drawCircle({
+      x: logoX + ex * logoScale,
+      y: logoY - ey * logoScale,
+      size: er * logoScale,
+      color: INK,
+    });
+  }
+  page.drawText('WatchDog', { x: M + 34, y: PH - 44, size: 20, font: bold, color: WHITE });
   const kindT = toPdfSafeText(reportKind.toUpperCase());
   page.drawText(kindT, {
     x: PW - M - font.widthOfTextAtSize(kindT, 9),
@@ -469,33 +493,57 @@ export async function exportPDF(
   });
   y = PH - 70 - 26;
 
-  // ── Score panel ──
-  const panelH = 84;
+  // ── Score panel (donut gauge + verdict) — mirrors the HTML report's hero ──
+  const panelH = 88;
   need(panelH + 12);
   stroke(M, y - panelH, CW, panelH, LINE);
-  const bSize = 52;
-  const bx = M + 16;
-  const bTop = y - 16;
-  fill(bx, bTop - bSize, bSize, bSize, gradeColor);
-  const gW = bold.widthOfTextAtSize(score.grade, 30);
+  const R = 27;
+  const ring = 9;
+  const gcx = M + 22 + R;
+  const gcy = y - panelH / 2;
+  page.drawCircle({ x: gcx, y: gcy, size: R, borderColor: LINE, borderWidth: ring });
+  // Progress arc as a round-capped polyline from the top, clockwise.
+  const frac = Math.max(0, Math.min(1, score.score / 100));
+  const steps = Math.max(2, Math.round(frac * 80));
+  for (let i = 0; i < steps; i++) {
+    const t0 = (i / steps) * frac * 2 * Math.PI;
+    const t1 = ((i + 1) / steps) * frac * 2 * Math.PI;
+    page.drawLine({
+      start: { x: gcx + R * Math.sin(t0), y: gcy + R * Math.cos(t0) },
+      end: { x: gcx + R * Math.sin(t1), y: gcy + R * Math.cos(t1) },
+      thickness: ring,
+      color: gradeColor,
+      lineCap: LineCapStyle.Round,
+    });
+  }
+  const gW = bold.widthOfTextAtSize(score.grade, 22);
   page.drawText(score.grade, {
-    x: bx + bSize / 2 - gW / 2,
-    y: bTop - bSize / 2 - 10,
-    size: 30,
-    font: bold,
-    color: WHITE,
-  });
-  const tx = bx + bSize + 20;
-  page.drawText(`${score.score} / 100`, { x: tx, y: y - 30, size: 19, font: bold, color: INK });
-  page.drawText(toPdfSafeText(score.label), {
-    x: tx,
-    y: y - 48,
-    size: 11,
+    x: gcx - gW / 2,
+    y: gcy + 2,
+    size: 22,
     font: bold,
     color: gradeColor,
   });
-  const verdictLines = wrap(verdictFor(score.grade, total), CW - (tx - M) - 16, 10, font);
-  let vy = y - 64;
+  const scoreT = `${score.score} / 100`;
+  const sW = font.widthOfTextAtSize(scoreT, 8);
+  page.drawText(scoreT, { x: gcx - sW / 2, y: gcy - 14, size: 8, font, color: MUTED });
+  const tx = gcx + R + 26;
+  page.drawText(toPdfSafeText(score.label.toUpperCase()), {
+    x: tx,
+    y: y - 24,
+    size: 9,
+    font: bold,
+    color: gradeColor,
+  });
+  page.drawText(toPdfSafeText(`${total} ${total === 1 ? 'issue' : 'issues'} found`), {
+    x: tx,
+    y: y - 44,
+    size: 16,
+    font: bold,
+    color: INK,
+  });
+  const verdictLines = wrap(verdictFor(score.grade, total), PW - M - tx, 10, font);
+  let vy = y - 60;
   for (const ln of verdictLines.slice(0, 2)) {
     page.drawText(ln, { x: tx, y: vy, size: 10, font, color: MUTED });
     vy -= 13;

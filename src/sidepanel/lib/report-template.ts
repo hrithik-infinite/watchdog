@@ -11,6 +11,14 @@ import type { AuditType } from '../store';
 import { escapeHtml, safeCssColor, sanitizeUrl } from './html-escape';
 import { isWcagIssue, STANDARD_LABELS } from './standards';
 
+// WatchDog brand mark — the "hound 2b" silhouette with cut-out eyes/nose (one
+// evenodd path). Same path as src/sidepanel/components/icons (WatchDogLogo) and
+// the install icons; exported so the PDF report draws the identical logo.
+export const HOUND_2B =
+  'M6.5 8.8 L4.5 3.1 L10.2 6.1 L13.8 6.1 L19.5 3.1 L17.5 8.8 C18.7 11 18.6 13.9 16.9 16.1 C15.5 17.9 13.9 19.2 12 19.2 C10.1 19.2 8.5 17.9 7.1 16.1 C5.4 13.9 5.3 11 6.5 8.8 Z M8.45 12.4 a1.15 1.15 0 1 0 2.3 0 a1.15 1.15 0 1 0 -2.3 0 Z M13.25 12.4 a1.15 1.15 0 1 0 2.3 0 a1.15 1.15 0 1 0 -2.3 0 Z M10.65 15.2 a1.35 1.35 0 1 0 2.7 0 a1.35 1.35 0 1 0 -2.7 0 Z';
+// The brand-accent blue the hound is drawn in.
+export const BRAND_BLUE = '#3D9BFF';
+
 const AUDIT_TYPE_LABELS: Record<AuditType, string> = {
   accessibility: 'Accessibility',
   performance: 'Performance',
@@ -309,11 +317,8 @@ export function buildReportHtml(result: ScanResult, auditType: AuditType): strin
       background: #0f172a; color: #fff; border-radius: 16px 16px 0 0;
       padding: 28px 32px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
     }
-    .brand { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
-    .brand .mark {
-      width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
-      background: linear-gradient(140deg, #3b82f6, #1d4ed8); font-size: 15px; font-weight: 800;
-    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+    .brand .mark { display: block; flex-shrink: 0; }
     .kind { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
       color: #cbd5e1; background: rgba(255,255,255,.08); padding: 6px 12px; border-radius: 999px; }
 
@@ -428,7 +433,10 @@ export function buildReportHtml(result: ScanResult, auditType: AuditType): strin
 <body>
   <div class="wrap">
     <div class="top">
-      <div class="brand"><span class="mark">W</span> WatchDog</div>
+      <div class="brand">
+        <svg class="mark" width="30" height="30" viewBox="0 0 24 24" fill="${BRAND_BLUE}" aria-hidden="true"><path fill-rule="evenodd" clip-rule="evenodd" d="${HOUND_2B}"/></svg>
+        WatchDog
+      </div>
       <span class="kind">${escapeHtml(reportKind)}</span>
     </div>
 
