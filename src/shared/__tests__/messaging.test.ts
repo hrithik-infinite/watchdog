@@ -111,14 +111,6 @@ describe('Messaging - Communication between extension parts', () => {
       expect(message.payload.wcagLevel).toBe('AA');
     });
 
-    it('should support OPEN_SIDEPANEL message type', () => {
-      const message: Message = {
-        type: 'OPEN_SIDEPANEL',
-      };
-
-      expect(message.type).toBe('OPEN_SIDEPANEL');
-    });
-
     it('should support SCAN_RESULT message type', () => {
       const message: Message = {
         type: 'SCAN_RESULT',
@@ -507,10 +499,9 @@ describe('Messaging - Communication between extension parts', () => {
         { type: 'SCAN_PAGE' },
         { type: 'CLEAR_HIGHLIGHTS' },
         { type: 'GET_SETTINGS' },
-        { type: 'OPEN_SIDEPANEL' },
       ];
 
-      expect(messages).toHaveLength(5);
+      expect(messages).toHaveLength(4);
     });
   });
 

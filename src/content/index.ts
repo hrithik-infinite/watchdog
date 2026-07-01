@@ -15,7 +15,14 @@ let currentVisionMode: VisionMode = 'none';
 
 // Listen for messages from the side panel and background
 chrome.runtime.onMessage.addListener(
-  (message: Message, _sender, sendResponse: (response: unknown) => void) => {
+  (message: Message, sender, sendResponse: (response: unknown) => void) => {
+    // Only honor messages from this extension's own surfaces (side panel /
+    // background). No externally_connectable is declared, so this is
+    // defense-in-depth against a future change exposing this handler.
+    if (sender.id !== chrome.runtime.id) {
+      return false;
+    }
+
     handleMessage(message)
       .then(sendResponse)
       .catch((error: unknown) => {

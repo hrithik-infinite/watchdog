@@ -21,11 +21,11 @@ const setPanelBehavior = vi.fn().mockImplementation((arg: unknown) => {
   panelBehaviorArg = arg;
   return Promise.resolve();
 });
-const sidePanelOpen = vi.fn().mockResolvedValue(undefined);
 const tabsQuery = vi.fn().mockResolvedValue([{ id: 7 }]);
 
 vi.stubGlobal('chrome', {
   runtime: {
+    id: 'watchdog-test',
     onMessage: { addListener: (cb: typeof messageListener) => (messageListener = cb) },
   },
   tabs: {
@@ -33,7 +33,7 @@ vi.stubGlobal('chrome', {
     onRemoved: { addListener: (cb: typeof removedListener) => (removedListener = cb) },
     onUpdated: { addListener: (cb: typeof updatedListener) => (updatedListener = cb) },
   },
-  sidePanel: { setPanelBehavior, open: sidePanelOpen },
+  sidePanel: { setPanelBehavior },
   action: {},
 });
 
@@ -56,7 +56,17 @@ describe('background/index', () => {
     });
 
     it('returns true from the message listener (async sendResponse)', () => {
-      expect(messageListener({ type: 'GET_SETTINGS' }, {}, vi.fn())).toBe(true);
+      expect(messageListener({ type: 'GET_SETTINGS' }, { id: 'watchdog-test' }, vi.fn())).toBe(
+        true
+      );
+    });
+
+    it('ignores messages from a foreign sender (defense-in-depth)', () => {
+      const sendResponse = vi.fn();
+      expect(messageListener({ type: 'GET_SETTINGS' }, { id: 'someone-else' }, sendResponse)).toBe(
+        false
+      );
+      expect(getSettings).not.toHaveBeenCalled();
     });
 
     // correctness-30 / err-12: the listener's rejection handler used to read
@@ -68,7 +78,7 @@ describe('background/index', () => {
       const sendResponse = vi.fn();
       messageListener(
         { type: 'SCAN_RESULT', payload: { summary: { total: 1 } } },
-        { tab: { id: 3 } },
+        { id: 'watchdog-test', tab: { id: 3 } },
         sendResponse
       );
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -108,12 +118,6 @@ describe('background/index', () => {
         {} as never
       );
       expect(saveSettings).toHaveBeenCalledWith({ persona: 'developer' });
-      expect(res).toEqual({ success: true });
-    });
-
-    it('opens the side panel for the active tab on OPEN_SIDEPANEL', async () => {
-      const res = await handleMessage({ type: 'OPEN_SIDEPANEL' } as never, {} as never);
-      expect(sidePanelOpen).toHaveBeenCalledWith({ tabId: 7 });
       expect(res).toEqual({ success: true });
     });
 

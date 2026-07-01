@@ -20,7 +20,6 @@ export type MessageType =
   | 'TOGGLE_FOCUS_ORDER'
   | 'GET_SETTINGS'
   | 'UPDATE_SETTINGS'
-  | 'OPEN_SIDEPANEL'
   | 'SET_BADGE';
 
 // Message payloads
@@ -82,10 +81,6 @@ export interface UpdateSettingsMessage {
   payload: Partial<Settings>;
 }
 
-export interface OpenSidePanelMessage {
-  type: 'OPEN_SIDEPANEL';
-}
-
 // Set the toolbar badge for a specific tab to a total. Sent by the side panel
 // after a scan completes so the badge reflects the combined multi-scan total on
 // the scanned tab, not the last audit's count (correctness-5).
@@ -109,7 +104,6 @@ export type Message =
   | ToggleFocusOrderMessage
   | GetSettingsMessage
   | UpdateSettingsMessage
-  | OpenSidePanelMessage
   | SetBadgeMessage;
 
 // Response types

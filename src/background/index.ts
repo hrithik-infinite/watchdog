@@ -7,7 +7,9 @@ import { getSettings, saveSettings } from './storage';
 // content script (dropped in secpriv-6) the extension holds no broad host
 // access, so a background-initiated injection into open tabs would fail anyway.
 // The scanner is injected on demand into the active tab when the user scans or
-// toggles a page overlay (see shared/inject.ts), covered by `activeTab`.
+// toggles a page overlay (see shared/inject.ts); host access for that injection
+// is requested at runtime via chrome.permissions (see shared/permissions.ts) —
+// a side panel opened from the action icon does not receive an activeTab grant.
 
 // Enable side panel on extension click
 chrome.sidePanel
@@ -16,6 +18,13 @@ chrome.sidePanel
 
 // Listen for messages from content scripts and popup
 chrome.runtime.onMessage.addListener((message: Message, sender, sendResponse) => {
+  // Only honor messages from this extension's own surfaces. There is no
+  // externally_connectable, so this is defense-in-depth: it keeps these handlers
+  // first-party even if a future manifest change exposes the runtime channel.
+  if (sender.id !== chrome.runtime.id) {
+    return false;
+  }
+
   handleMessage(message, sender)
     .then(sendResponse)
     .catch((error: unknown) => {
@@ -59,14 +68,6 @@ export async function handleMessage(message: Message, sender: chrome.runtime.Mes
 
     case 'UPDATE_SETTINGS': {
       await saveSettings(message.payload);
-      return { success: true };
-    }
-
-    case 'OPEN_SIDEPANEL': {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab?.id) {
-        await chrome.sidePanel.open({ tabId: tab.id });
-      }
       return { success: true };
     }
 
