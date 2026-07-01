@@ -258,7 +258,7 @@ export default function Settings({ settings, onUpdate, onClose }: SettingsProps)
           <RotateCcw className="h-4 w-4" />
           Replay welcome tour
         </Button>
-        <p className="text-caption text-muted-foreground">WatchDog v1.0.1</p>
+        <p className="text-caption text-muted-foreground">WatchDog v2.0.0</p>
       </div>
     </div>
   );

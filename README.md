@@ -3,7 +3,7 @@
 > Instant accessibility audits with visual highlighting - A browser extension that helps developers identify and fix accessibility issues.
 
 [![License](https://img.shields.io/badge/license-ISC-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.0.1-green.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-2.0.0-green.svg)](package.json)
 
 ---
 

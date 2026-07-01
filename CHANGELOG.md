@@ -1,5 +1,20 @@
 # watchdog
 
+## 2.0.0 (2026-07-01)
+
+### Major Changes
+
+- **activeTab scan model (BREAKING)** — Scans are now triggered by clicking the toolbar icon, which grants Chrome's temporary `activeTab` access; all page interaction moved into the background service worker. The extension no longer declares **any** host permissions (removed the optional `<all_urls>`), so the install prompt shows no "read and change all your data" warning and no runtime host-permission prompt appears. The privacy policy now matches the code. Requires **Chrome 116+** (for `chrome.sidePanel.open`). Scans target the tab whose icon you click — switching tabs with the panel open means re-clicking the icon.
+
+### Minor Changes
+
+- **Redesigned exported reports** — The downloadable HTML and PDF reports were rebuilt to a professional standard with far richer data: an overall score gauge and letter grade, a plain-language verdict, a severity distribution bar, a by-category breakdown, and per-issue detail (standard, rule id, affected-element count, "why this matters", measured color-contrast swatches, axe's failure summary, code snippets, and "Learn more" links), plus a "Needs review" section. Both formats now use the real WatchDog logo and an identical hero.
+- **Consistent dates** — Every date in the reports now renders in one format (e.g. `June 02, 2026`) instead of the locale default.
+
+### Patch Changes
+
+- **Content-script logging** — Overlay highlight logging routes through the dev-gated logger, so no `console` noise ships into scanned pages.
+
 ## 1.0.1 (2026-06-29)
 
 ### Patch Changes

@@ -50,7 +50,7 @@ describe('Settings', () => {
   it('renders the title and version footer', () => {
     renderSettings();
     expect(screen.getByRole('heading', { name: /settings/i })).toBeInTheDocument();
-    expect(screen.getByText(/watchdog v1\.0\.1/i)).toBeInTheDocument();
+    expect(screen.getByText(/watchdog v2\.0\.0/i)).toBeInTheDocument();
   });
 
   describe('persona (Experience)', () => {

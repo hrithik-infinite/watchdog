@@ -282,4 +282,4 @@ WatchDog is open-source software. You can:
 
 ---
 
-*This privacy policy applies to WatchDog version 1.0.1 and later.*
+*This privacy policy applies to WatchDog version 2.0.0 and later.*
