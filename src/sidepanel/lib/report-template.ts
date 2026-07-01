@@ -20,7 +20,8 @@ const AUDIT_TYPE_LABELS: Record<AuditType, string> = {
   pwa: 'PWA',
 };
 
-const CATEGORY_LABELS: Record<Category, string> = {
+// Shared with the PDF export (export.ts) so both reports use identical labels.
+export const CATEGORY_LABELS: Record<Category, string> = {
   images: 'Images',
   interactive: 'Interactive',
   forms: 'Forms',
@@ -33,8 +34,8 @@ const CATEGORY_LABELS: Record<Category, string> = {
 
 // Order + presentation for each severity. Colors are used as accents (rails,
 // pills, bar segments), not big filled cards — a calmer, more professional look.
-const SEVERITY_ORDER: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
-const SEVERITY_META: Record<Severity, { label: string; color: string; blurb: string }> = {
+export const SEVERITY_ORDER: Severity[] = ['critical', 'serious', 'moderate', 'minor'];
+export const SEVERITY_META: Record<Severity, { label: string; color: string; blurb: string }> = {
   critical: {
     label: 'Critical',
     color: '#dc2626',
@@ -56,19 +57,19 @@ const SEVERITY_META: Record<Severity, { label: string; color: string; blurb: str
 // Audit-aware standard label. Only genuine accessibility findings carry a real
 // WCAG criterion; every other scanner reuses the `wcag` field with placeholders,
 // so keying off `standard` avoids labelling e.g. a Performance issue "WCAG 1.1.1".
-function issueStandardLabel(issue: Issue): string {
+export function issueStandardLabel(issue: Issue): string {
   if (isWcagIssue(issue.standard)) {
     return `WCAG ${issue.wcag.id} (${issue.wcag.level})`;
   }
   return STANDARD_LABELS[issue.standard!];
 }
 
-function formatDuration(ms: number): string {
+export function formatDuration(ms: number): string {
   return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
 }
 
 // A short verdict line keyed to the grade, so the hero reads as a conclusion.
-function verdictFor(grade: string, total: number): string {
+export function verdictFor(grade: string, total: number): string {
   if (total === 0) return 'No issues detected in this audit — nice work.';
   switch (grade) {
     case 'A':

@@ -432,4 +432,64 @@ describe('exportPDF resilience to non-WinAnsi text (err-10)', () => {
     expect(blob?.type).toBe('application/pdf');
     expect(blob && blob.size > 0).toBe(true);
   });
+
+  it('renders a rich, multi-severity, multi-page PDF without throwing', async () => {
+    // Exercises the score panel, category table, severity sections, contrast
+    // swatch, failure summary, element-count/impact chips, code blocks, the
+    // learn-more fallback, and the needs-review section.
+    const rich: ScanResult = {
+      url: 'https://example.com/checkout',
+      timestamp: 1_700_000_000_000,
+      duration: 2400,
+      issues: [
+        makeIssue({
+          id: '1',
+          severity: 'critical',
+          ruleNodeCount: 3,
+          impact: 'serious',
+          whyItMatters: 'Screen reader users cannot identify this control.',
+        }),
+        makeIssue({
+          id: '2',
+          severity: 'serious',
+          category: 'color',
+          contrast: { fg: '#9ca3af', bg: '#ffffff', ratio: 2.5, required: 4.5 },
+          element: {
+            selector: 'p',
+            html: '<p>x</p>',
+            failureSummary: 'Fix any of the following:\n  Contrast is too low',
+          },
+          fix: { description: 'Darken the text.', code: '', learnMoreUrl: '' },
+          helpUrl: 'https://help.example/contrast',
+        }),
+        makeIssue({ id: '3', severity: 'moderate' }),
+        makeIssue({ id: '4', severity: 'minor' }),
+      ],
+      incomplete: [makeIssue({ id: 'r1', message: 'Needs a human to confirm' })],
+      summary: {
+        total: 4,
+        bySeverity: { critical: 1, serious: 1, moderate: 1, minor: 1 },
+        byCategory: {
+          images: 1,
+          interactive: 0,
+          forms: 0,
+          color: 1,
+          document: 0,
+          structure: 2,
+          aria: 0,
+          technical: 0,
+        },
+      },
+    };
+
+    await expect(exportPDF(rich, 'accessibility')).resolves.toBeUndefined();
+    const blob = capturedBlobs.at(-1);
+    expect(blob?.type).toBe('application/pdf');
+    expect(blob && blob.size > 0).toBe(true);
+  });
+
+  it('renders a clean-page PDF when there are no issues', async () => {
+    await expect(exportPDF(makeResult([]))).resolves.toBeUndefined();
+    expect(capturedBlobs.at(-1)?.type).toBe('application/pdf');
+  });
 });

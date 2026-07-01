@@ -3,10 +3,18 @@
  * Supports JSON, CSV, HTML, PDF formats and clipboard copy
  */
 
-import type { Issue, ScanResult, Severity } from '@/shared/types';
-import { isWcagIssue, STANDARD_LABELS } from '@/sidepanel/lib/standards';
+import { calculateScore } from '@/shared/scoring';
+import type { Category, Issue, ScanResult, Severity } from '@/shared/types';
 import type { AuditType } from '@/sidepanel/store';
-import { buildReportHtml } from './report-template';
+import {
+  buildReportHtml,
+  CATEGORY_LABELS,
+  formatDuration,
+  issueStandardLabel,
+  SEVERITY_META,
+  SEVERITY_ORDER,
+  verdictFor,
+} from './report-template';
 
 /**
  * Format audit type for display
@@ -165,255 +173,448 @@ export async function exportPDF(
   const auditLabel = AUDIT_TYPE_LABELS[auditType];
 
   const doc = await PDFDocument.create();
-  const helvetica = await doc.embedFont(StandardFonts.Helvetica);
-  const helveticaBold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const mono = await doc.embedFont(StandardFonts.Courier);
 
-  const pageWidth = 595; // A4 width in points
-  const pageHeight = 842; // A4 height in points
-  const margin = 50;
-  const contentWidth = pageWidth - 2 * margin;
+  const PW = 595; // A4 width in points
+  const PH = 842; // A4 height in points
+  const M = 50;
+  const CW = PW - 2 * M;
 
-  let page = doc.addPage([pageWidth, pageHeight]);
-  let yPosition = pageHeight - margin;
-
-  const addNewPage = () => {
-    page = doc.addPage([pageWidth, pageHeight]);
-    yPosition = pageHeight - margin;
+  type Rgb = ReturnType<typeof rgb>;
+  // Parse a #hex string into a pdf-lib color; returns null for anything else.
+  const hexToRgb = (s: string): [number, number, number] | null => {
+    const m = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(s.trim());
+    if (!m) return null;
+    const h = m[1].length === 3 ? m[1].replace(/./g, (c) => c + c) : m[1];
+    const n = Number.parseInt(h, 16);
+    return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+  };
+  const col = (hex: string): Rgb => {
+    const p = hexToRgb(hex) ?? [0, 0, 0];
+    return rgb(p[0], p[1], p[2]);
   };
 
-  const checkPageBreak = (requiredSpace: number) => {
-    if (yPosition - requiredSpace < margin) {
-      addNewPage();
-    }
+  const INK = col('#0f172a');
+  const SUB = col('#334155');
+  const MUTED = col('#64748b');
+  const LINE = col('#e2e5e9');
+  const SOFT = col('#f1f5f9');
+  const CODE_BG = col('#0f172a');
+  const CODE_INK = col('#e2e8f0');
+  const WHITE = rgb(1, 1, 1);
+  const sevColor: Record<Severity, Rgb> = {
+    critical: col('#dc2626'),
+    serious: col('#ea580c'),
+    moderate: col('#d97706'),
+    minor: col('#2563eb'),
   };
 
-  // Helper to wrap text
-  const wrapText = (
-    text: string,
-    maxWidth: number,
-    fontSize: number,
-    font: typeof helvetica
-  ): string[] => {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
+  const score = calculateScore(result.issues, auditType);
+  const gradeColor = col(score.color);
+  const total = result.summary.total;
+  const counts = result.summary.bySeverity;
+  const standards = new Set(result.issues.map((i) => i.standard ?? 'wcag'));
+  const reportKind = standards.size > 1 ? 'Website audit' : `${auditLabel} audit`;
 
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      const width = font.widthOfTextAtSize(testLine, fontSize);
-      if (width > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
+  let page = doc.addPage([PW, PH]);
+  let y = PH;
+
+  const newPage = () => {
+    page = doc.addPage([PW, PH]);
+    y = PH - M;
+  };
+  const need = (h: number) => {
+    if (y - h < M + 24) newPage();
+  };
+
+  const wrap = (t: string, maxW: number, size: number, f = font): string[] => {
+    const words = toPdfSafeText(t).split(' ');
+    const out: string[] = [];
+    let cur = '';
+    for (const w of words) {
+      const test = cur ? `${cur} ${w}` : w;
+      if (f.widthOfTextAtSize(test, size) > maxW && cur) {
+        out.push(cur);
+        cur = w;
       } else {
-        currentLine = testLine;
+        cur = test;
       }
     }
-    if (currentLine) lines.push(currentLine);
-    return lines;
+    if (cur) out.push(cur);
+    return out;
   };
 
-  // Header background
-  page.drawRectangle({
-    x: 0,
-    y: pageHeight - 80,
-    width: pageWidth,
-    height: 80,
-    color: rgb(37 / 255, 99 / 255, 235 / 255),
-  });
+  // Draw wrapped text at the current y, advancing y line by line.
+  const para = (
+    t: string,
+    opts: {
+      x?: number;
+      size?: number;
+      f?: typeof font;
+      color?: Rgb;
+      maxW?: number;
+      lh?: number;
+    } = {}
+  ) => {
+    const { x = M, size = 10, f = font, color = INK, maxW = CW, lh = size + 4 } = opts;
+    for (const ln of wrap(t, maxW, size, f)) {
+      need(lh);
+      page.drawText(ln, { x, y, size, font: f, color });
+      y -= lh;
+    }
+  };
 
-  // Header text
-  page.drawText(`WatchDog ${auditLabel} Report`, {
-    x: margin,
-    y: pageHeight - 50,
-    size: 22,
-    font: helveticaBold,
-    color: rgb(1, 1, 1),
-  });
+  const fill = (x: number, yy: number, w: number, h: number, color: Rgb, opacity?: number) =>
+    page.drawRectangle({ x, y: yy, width: w, height: h, color, opacity });
+  const stroke = (x: number, yy: number, w: number, h: number, color: Rgb) =>
+    page.drawRectangle({ x, y: yy, width: w, height: h, borderColor: color, borderWidth: 1 });
 
-  yPosition = pageHeight - 110;
+  // A filled pill with a white uppercase label; returns its width.
+  const pill = (text: string, x: number, baselineY: number, bg: Rgb): number => {
+    const size = 8;
+    const t = toPdfSafeText(text.toUpperCase());
+    const w = bold.widthOfTextAtSize(t, size) + 14;
+    fill(x, baselineY - 3, w, 15, bg);
+    page.drawText(t, { x: x + 7, y: baselineY, size, font: bold, color: WHITE });
+    return w;
+  };
 
-  // Metadata
-  const metaLines = [
-    `URL: ${result.url}`,
-    `Date: ${new Date(result.timestamp).toLocaleString()}`,
-    `Scan Duration: ${result.duration.toFixed(0)}ms`,
-    `Total Issues: ${result.summary.total}`,
-  ];
-
-  for (const line of metaLines) {
-    page.drawText(toPdfSafeText(line), {
-      x: margin,
-      y: yPosition,
-      size: 10,
-      font: helvetica,
-      color: rgb(0, 0, 0),
+  // A small uppercase field label.
+  const label = (text: string) => {
+    need(13);
+    page.drawText(toPdfSafeText(text.toUpperCase()), {
+      x: M,
+      y,
+      size: 8,
+      font: bold,
+      color: MUTED,
     });
-    yPosition -= 16;
-  }
+    y -= 13;
+  };
 
-  yPosition -= 10;
-
-  // Summary section
-  checkPageBreak(100);
-  page.drawText('Summary', {
-    x: margin,
-    y: yPosition,
-    size: 16,
-    font: helveticaBold,
-    color: rgb(0, 0, 0),
-  });
-  yPosition -= 25;
-
-  const severities: Array<{ key: Severity; label: string; color: [number, number, number] }> = [
-    { key: 'critical', label: 'Critical', color: [220, 38, 38] },
-    { key: 'serious', label: 'Serious', color: [234, 88, 12] },
-    { key: 'moderate', label: 'Moderate', color: [202, 138, 4] },
-    { key: 'minor', label: 'Minor', color: [37, 99, 235] },
-  ];
-
-  for (const { key, label, color } of severities) {
-    const count = result.summary.bySeverity[key];
-    page.drawRectangle({
-      x: margin,
-      y: yPosition - 3,
-      width: 12,
-      height: 12,
-      color: rgb(color[0] / 255, color[1] / 255, color[2] / 255),
-    });
-    page.drawText(`${label}: ${count}`, {
-      x: margin + 18,
-      y: yPosition,
-      size: 10,
-      font: helvetica,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 18;
-  }
-
-  yPosition -= 20;
-
-  // Issues by severity
-  for (const { key: severity, label } of severities) {
-    const issues = result.issues.filter((i) => i.severity === severity);
-    if (issues.length === 0) continue;
-
-    checkPageBreak(40);
-    page.drawText(`${label} Issues (${issues.length})`, {
-      x: margin,
-      y: yPosition,
-      size: 14,
-      font: helveticaBold,
-      color: rgb(0, 0, 0),
-    });
-    yPosition -= 22;
-
-    for (let i = 0; i < issues.length; i++) {
-      const issue = issues[i];
-      checkPageBreak(80);
-
-      // Issue title
-      const titleLines = wrapText(
-        toPdfSafeText(`${i + 1}. ${issue.message}`),
-        contentWidth,
-        11,
-        helveticaBold
-      );
-      for (const line of titleLines) {
-        page.drawText(line, {
-          x: margin,
-          y: yPosition,
-          size: 11,
-          font: helveticaBold,
-          color: rgb(0, 0, 0),
-        });
-        yPosition -= 14;
-      }
-
-      // Lead with the plain-language consequence (when the scanner supplied it)
-      // so a non-technical reader gets the stakes before the standards detail.
-      if (issue.whyItMatters) {
-        const whyLines = wrapText(
-          toPdfSafeText(`Why this matters: ${issue.whyItMatters}`),
-          contentWidth,
-          9,
-          helvetica
-        );
-        for (const line of whyLines) {
-          checkPageBreak(12);
-          page.drawText(line, {
-            x: margin,
-            y: yPosition,
-            size: 9,
-            font: helvetica,
-            color: rgb(0.12, 0.25, 0.6),
-          });
-          yPosition -= 12;
-        }
-      }
-
-      // Standard info — audit-aware so a Performance/SEO/etc. finding is never
-      // mislabelled "WCAG". Accessibility issues keep their criterion and name.
-      const standardLine = isWcagIssue(issue.standard)
-        ? `WCAG ${issue.wcag.id} (${issue.wcag.level}) - ${issue.wcag.name}`
-        : STANDARD_LABELS[issue.standard!];
-      page.drawText(toPdfSafeText(standardLine), {
-        x: margin,
-        y: yPosition,
-        size: 9,
-        font: helvetica,
-        color: rgb(0.4, 0.4, 0.4),
+  // A dark monospace code box (green-tinted for fix snippets); wraps + advances y.
+  const codeBox = (code: string, fix = false) => {
+    const size = 8.5;
+    const pad = 8;
+    const lines = wrap(code, CW - pad * 2, size, mono);
+    const boxH = lines.length * (size + 3) + pad * 2 - 3;
+    need(boxH + 4);
+    fill(M, y - boxH, CW, boxH, fix ? col('#052e16') : CODE_BG);
+    let ty = y - pad - size + 2;
+    for (const ln of lines) {
+      page.drawText(ln, {
+        x: M + pad,
+        y: ty,
+        size,
+        font: mono,
+        color: fix ? col('#bbf7d0') : CODE_INK,
       });
-      yPosition -= 14;
+      ty -= size + 3;
+    }
+    y -= boxH + 8;
+  };
 
-      // Selector (truncate if too long)
-      const selector =
-        issue.element.selector.length > 80
-          ? `${issue.element.selector.slice(0, 77)}...`
-          : issue.element.selector;
-      page.drawText(toPdfSafeText(`Location (CSS selector): ${selector}`), {
-        x: margin,
-        y: yPosition,
-        size: 9,
-        font: helvetica,
-        color: rgb(0, 0, 0),
+  const drawContrast = (issue: Issue) => {
+    if (!issue.contrast) return;
+    const { fg, bg, ratio, required } = issue.contrast;
+    need(32);
+    const bgRgb = hexToRgb(bg);
+    const fgRgb = hexToRgb(fg);
+    if (bgRgb && fgRgb) {
+      fill(M, y - 22, 34, 26, rgb(bgRgb[0], bgRgb[1], bgRgb[2]));
+      stroke(M, y - 22, 34, 26, LINE);
+      page.drawText('Aa', {
+        x: M + 8,
+        y: y - 15,
+        size: 12,
+        font: bold,
+        color: rgb(fgRgb[0], fgRgb[1], fgRgb[2]),
       });
-      yPosition -= 14;
+    }
+    const pass = ratio >= required;
+    page.drawText(
+      toPdfSafeText(
+        `${ratio.toFixed(2)}:1 contrast  -  ${pass ? 'passes' : `needs ${required.toFixed(1)}:1`}`
+      ),
+      { x: M + 44, y: y - 8, size: 9.5, font: bold, color: pass ? col('#16a34a') : col('#dc2626') }
+    );
+    page.drawText(toPdfSafeText(`Text ${fg} on ${bg}`), {
+      x: M + 44,
+      y: y - 20,
+      size: 8.5,
+      font,
+      color: MUTED,
+    });
+    y -= 34;
+  };
 
-      // Fix description
-      const fixLines = wrapText(
-        toPdfSafeText(`How to fix it: ${issue.fix.description}`),
-        contentWidth,
-        9,
-        helvetica
-      );
-      for (const line of fixLines) {
-        checkPageBreak(14);
-        page.drawText(line, {
-          x: margin,
-          y: yPosition,
-          size: 9,
-          font: helvetica,
-          color: rgb(0, 0, 0),
-        });
-        yPosition -= 12;
+  // Render a single issue (or a muted "needs review" variant).
+  const drawIssue = (issue: Issue, review: boolean, index: number) => {
+    need(64);
+    para(`${index}. ${issue.message}`, { size: 12, f: bold, color: INK, lh: 15 });
+
+    // Sub-line: severity pill + standard + rule id.
+    need(16);
+    const pw = pill(SEVERITY_META[issue.severity].label, M, y, sevColor[issue.severity]);
+    let sx = M + pw + 8;
+    const stdT = toPdfSafeText(issueStandardLabel(issue));
+    page.drawText(stdT, { x: sx, y, size: 9, font, color: MUTED });
+    sx += font.widthOfTextAtSize(stdT, 9) + 10;
+    page.drawText(toPdfSafeText(issue.ruleId), { x: sx, y, size: 8.5, font: mono, color: SUB });
+    y -= 16;
+
+    // Metadata chips as one muted line.
+    const chips: string[] = [CATEGORY_LABELS[issue.category] ?? issue.category];
+    if (typeof issue.ruleNodeCount === 'number' && issue.ruleNodeCount > 1) {
+      chips.push(`${issue.ruleNodeCount} elements`);
+    }
+    if (issue.impact && issue.impact !== issue.severity) chips.push(`Impact: ${issue.impact}`);
+    para(chips.join('   -   '), { size: 8.5, color: MUTED, lh: 13 });
+
+    // Why this matters — a light accented box.
+    if (issue.whyItMatters) {
+      const whyLines = wrap(issue.whyItMatters, CW - 24, 9.5, font);
+      const boxH = 13 + whyLines.length * 12 + 6;
+      need(boxH + 6);
+      fill(M, y - boxH, CW, boxH, col('#eff6ff'));
+      fill(M, y - boxH, 3, boxH, col('#2563eb'));
+      let wy = y - 12;
+      page.drawText('WHY THIS MATTERS', {
+        x: M + 12,
+        y: wy,
+        size: 7.5,
+        font: bold,
+        color: col('#1d4ed8'),
+      });
+      wy -= 13;
+      for (const ln of whyLines) {
+        page.drawText(ln, { x: M + 12, y: wy, size: 9.5, font, color: SUB });
+        wy -= 12;
       }
-
-      yPosition -= 10;
+      y -= boxH + 8;
     }
 
-    yPosition -= 10;
+    para(issue.description, { size: 10, color: SUB, lh: 13 });
+    drawContrast(issue);
+
+    if (issue.element.failureSummary) {
+      label('What axe found');
+      para(issue.element.failureSummary.replace(/\n/g, '  '), { size: 9, color: MUTED, lh: 12 });
+    }
+
+    y -= 4;
+    label('Affected element');
+    codeBox(issue.element.html);
+    label('CSS selector');
+    codeBox(issue.element.selector);
+
+    if (!review) {
+      label('How to fix it');
+      para(issue.fix.description, { size: 10, color: SUB, lh: 13 });
+      if (issue.fix.code) codeBox(issue.fix.code, true);
+      const learn = issue.fix.learnMoreUrl || issue.helpUrl;
+      if (learn) {
+        need(14);
+        page.drawText(toPdfSafeText(`Learn more: ${learn}`), {
+          x: M,
+          y,
+          size: 8.5,
+          font,
+          color: col('#2563eb'),
+        });
+        y -= 14;
+      }
+    }
+
+    y -= 6;
+    fill(M, y, CW, 1, col('#eef1f4'));
+    y -= 14;
+  };
+
+  const drawSectionHeader = (
+    labelText: string,
+    count: number,
+    unit: string,
+    bg: Rgb,
+    blurb: string
+  ) => {
+    need(28);
+    y -= 4;
+    const pw = pill(labelText, M, y, bg);
+    page.drawText(toPdfSafeText(`${count} ${count === 1 ? unit : `${unit}s`}`), {
+      x: M + pw + 10,
+      y,
+      size: 10,
+      font: bold,
+      color: INK,
+    });
+    const cx = M + pw + 10 + bold.widthOfTextAtSize(`${count} ${unit}s`, 10) + 14;
+    const bl = wrap(blurb, PW - M - cx, 9, font);
+    if (bl[0]) page.drawText(bl[0], { x: cx, y, size: 9, font, color: MUTED });
+    y -= 20;
+  };
+
+  // ── Header band ──
+  fill(0, PH - 70, PW, 70, INK);
+  page.drawText('WatchDog', { x: M, y: PH - 44, size: 20, font: bold, color: WHITE });
+  const kindT = toPdfSafeText(reportKind.toUpperCase());
+  page.drawText(kindT, {
+    x: PW - M - font.widthOfTextAtSize(kindT, 9),
+    y: PH - 42,
+    size: 9,
+    font,
+    color: col('#cbd5e1'),
+  });
+  y = PH - 70 - 26;
+
+  // ── Score panel ──
+  const panelH = 84;
+  need(panelH + 12);
+  stroke(M, y - panelH, CW, panelH, LINE);
+  const bSize = 52;
+  const bx = M + 16;
+  const bTop = y - 16;
+  fill(bx, bTop - bSize, bSize, bSize, gradeColor);
+  const gW = bold.widthOfTextAtSize(score.grade, 30);
+  page.drawText(score.grade, {
+    x: bx + bSize / 2 - gW / 2,
+    y: bTop - bSize / 2 - 10,
+    size: 30,
+    font: bold,
+    color: WHITE,
+  });
+  const tx = bx + bSize + 20;
+  page.drawText(`${score.score} / 100`, { x: tx, y: y - 30, size: 19, font: bold, color: INK });
+  page.drawText(toPdfSafeText(score.label), {
+    x: tx,
+    y: y - 48,
+    size: 11,
+    font: bold,
+    color: gradeColor,
+  });
+  const verdictLines = wrap(verdictFor(score.grade, total), CW - (tx - M) - 16, 10, font);
+  let vy = y - 64;
+  for (const ln of verdictLines.slice(0, 2)) {
+    page.drawText(ln, { x: tx, y: vy, size: 10, font, color: MUTED });
+    vy -= 13;
+  }
+  y -= panelH + 18;
+
+  // ── Severity distribution bar + legend ──
+  const barH = 10;
+  need(barH + 30);
+  if (total === 0) {
+    fill(M, y - barH, CW, barH, col('#16a34a'));
+  } else {
+    let segX = M;
+    for (const s of SEVERITY_ORDER) {
+      if (counts[s] <= 0) continue;
+      const segW = (counts[s] / total) * CW;
+      fill(segX, y - barH, segW, barH, sevColor[s]);
+      segX += segW;
+    }
+  }
+  y -= barH + 14;
+  let lx = M;
+  for (const s of SEVERITY_ORDER) {
+    fill(lx, y - 1, 9, 9, sevColor[s]);
+    const t = toPdfSafeText(`${SEVERITY_META[s].label} ${counts[s]}`);
+    page.drawText(t, { x: lx + 14, y, size: 9, font, color: SUB });
+    lx += 14 + font.widthOfTextAtSize(t, 9) + 22;
+  }
+  y -= 22;
+
+  // ── Meta ──
+  para(`Page: ${result.url}`, { size: 9, color: SUB, lh: 13 });
+  para(
+    `Scanned ${new Date(result.timestamp).toLocaleString()}   -   Scan time ${formatDuration(result.duration)}   -   ${total} issue${total === 1 ? '' : 's'}${result.incomplete.length ? `   -   ${result.incomplete.length} to review` : ''}`,
+    { size: 9, color: MUTED, lh: 13 }
+  );
+  y -= 6;
+  fill(M, y, CW, 1, LINE);
+  y -= 16;
+
+  // ── By category ──
+  const catRows = (Object.entries(result.summary.byCategory) as [Category, number][])
+    .filter(([, n]) => n > 0)
+    .sort((a, b) => b[1] - a[1]);
+  if (catRows.length) {
+    const maxCat = catRows.reduce((m, [, n]) => Math.max(m, n), 0);
+    label('By category');
+    for (const [cat, n] of catRows) {
+      need(16);
+      page.drawText(toPdfSafeText(CATEGORY_LABELS[cat] ?? cat), {
+        x: M,
+        y,
+        size: 9,
+        font,
+        color: INK,
+      });
+      const trackX = M + 130;
+      const trackW = CW - 130 - 30;
+      fill(trackX, y, trackW, 7, SOFT);
+      fill(trackX, y, maxCat ? (n / maxCat) * trackW : 0, 7, col('#3b82f6'));
+      page.drawText(String(n), { x: M + CW - 18, y, size: 9, font: bold, color: MUTED });
+      y -= 16;
+    }
+    y -= 6;
+    fill(M, y, CW, 1, LINE);
+    y -= 16;
   }
 
-  // Footer on last page
-  page.drawText(toPdfSafeText(`Generated by WatchDog v1.0.0 on ${new Date().toLocaleString()}`), {
-    x: pageWidth / 2 - 100,
-    y: 30,
-    size: 8,
-    font: helvetica,
-    color: rgb(0.6, 0.6, 0.6),
+  // ── Issues ──
+  if (total === 0) {
+    para('No issues found', { size: 15, f: bold, color: INK, lh: 20 });
+    para(`This ${reportKind} completed without flagging any problems.`, { size: 10, color: MUTED });
+    y -= 6;
+  } else {
+    for (const s of SEVERITY_ORDER) {
+      const list = result.issues.filter((i) => i.severity === s);
+      if (!list.length) continue;
+      drawSectionHeader(
+        SEVERITY_META[s].label,
+        list.length,
+        'issue',
+        sevColor[s],
+        SEVERITY_META[s].blurb
+      );
+      list.forEach((issue, i) => {
+        drawIssue(issue, false, i + 1);
+      });
+      y -= 4;
+    }
+  }
+
+  if (result.incomplete.length) {
+    drawSectionHeader(
+      'Needs review',
+      result.incomplete.length,
+      'item',
+      col('#475569'),
+      'Automated checks could not decide these - confirm them by hand.'
+    );
+    result.incomplete.forEach((issue, i) => {
+      drawIssue(issue, true, i + 1);
+    });
+  }
+
+  // ── Footer + page numbers on every page ──
+  const generatedAt = toPdfSafeText(`Generated by WatchDog on ${new Date().toLocaleString()}`);
+  const pages = doc.getPages();
+  pages.forEach((p, i) => {
+    p.drawText(generatedAt, { x: M, y: 28, size: 8, font, color: MUTED });
+    const pg = `Page ${i + 1} of ${pages.length}`;
+    p.drawText(pg, {
+      x: PW - M - font.widthOfTextAtSize(pg, 8),
+      y: 28,
+      size: 8,
+      font,
+      color: MUTED,
+    });
   });
 
-  // Save PDF
   const pdfBytes = await doc.save();
   const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
   const filename = `watchdog-report-${formatTimestamp(result.timestamp)}.pdf`;
